@@ -61,46 +61,18 @@ interface SimpleStaticModel {
 }
 
 const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
-  'gemini-3.5-flash-low': {
-    name: 'Gemini 3.5 Flash (Medium)',
-    description: 'Gemini 3.5 Flash 中配版本，兼顾生成速度与推理性能，提供高性价比。',
+  'gemini-3.5-flash': {
+    name: 'Gemini 3.5 Flash',
+    description: 'Gemini 3.5 Flash base model. Select tier at runtime.',
     maxTokens: 1048576,
     maxOutputTokens: 65536,
     toolCall: true,
     reasoning: true,
     attachment: true
   },
-  'gemini-3-flash-agent': {
-    name: 'Gemini 3.5 Flash (High)',
-    description: 'Gemini 3.5 Flash 高配智能体版，响应极快，深度优化了多步骤工具调用与流程控制。',
-    maxTokens: 1048576,
-    maxOutputTokens: 65536,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'gemini-3.5-flash-extra-low': {
-    name: 'Gemini 3.5 Flash (Low)',
-    description: 'Gemini 3.5 Flash 超低配版本，适合大规模、低成本的简单文本处理任务。',
-    maxTokens: 1048576,
-    maxOutputTokens: 65536,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'gemini-3.1-pro-low': {
-    name: 'Gemini 3.1 Pro (Low)',
-    description: 'Gemini 3.1 Pro 低配版本，适合高复杂度的逻辑和代码编写任务，但限制了部分并发或配额。',
-    maxTokens: 1048576,
-    maxOutputTokens: 65535,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'gemini-pro-agent': {
-    name: 'Gemini 3.1 Pro (High)',
-    description:
-      'Gemini 3.1 Pro 高配/智能体版本，提供最先进的多模态理解与长文本推理能力，并针对智能体工具调用进行了优化。',
+  'gemini-3.1-pro': {
+    name: 'Gemini 3.1 Pro',
+    description: 'Gemini 3.1 Pro base model. Select tier at runtime.',
     maxTokens: 1048576,
     maxOutputTokens: 65535,
     toolCall: true,
