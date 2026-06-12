@@ -182,6 +182,8 @@ const TIER_MAPPING: Record<string, { low: string; medium: string; high: string }
   }
 };
 
+const tierResolutionCache = new Map<string, Promise<string>>();
+
 async function resolveModelTier(baseModelId: string): Promise<string> {
   const parts = baseModelId.split('@');
   const base = parts[0] || '';
@@ -190,23 +192,28 @@ async function resolveModelTier(baseModelId: string): Promise<string> {
   if (!mapping) {
     return baseModelId; // Not a multi-tier model
   }
-  if (suffixTier && mapping[suffixTier]) {
-    return mapping[suffixTier];
+  if (suffixTier && Object.prototype.hasOwnProperty.call(mapping, suffixTier)) {
+    return mapping[suffixTier] || baseModelId;
   }
-  // Interactive prompt if no valid suffix
-  const rl = readline.createInterface({ input, output });
-  try {
-    const answer = await rl.question(`\nSelect tier for ${base}: [1] Low, [2] Medium, [3] High? (Default: 2): `);
-    const choice = answer.trim();
-    if (choice === '1') return mapping['low'];
-    if (choice === '3') return mapping['high'];
-    return mapping['medium']; // Default to medium
-  } catch (e) {
-    console.warn(`\n[Agy] Prompt failed, defaulting to medium tier.`);
-    return mapping['medium'];
-  } finally {
-    rl.close();
+  if (!tierResolutionCache.has(base)) {
+    tierResolutionCache.set(base, (async () => {
+      // Interactive prompt if no valid suffix
+      const rl = readline.createInterface({ input, output });
+      try {
+        const answer = await rl.question(`\nSelect tier for ${base}: [1] Low, [2] Medium, [3] High? (Default: 2): `);
+        const choice = answer.trim();
+        if (choice === '1') return mapping['low'];
+        if (choice === '3') return mapping['high'];
+        return mapping['medium']; // Default to medium
+      } catch (e) {
+        console.warn(`\n[Agy] Prompt failed, defaulting to medium tier.`);
+        return mapping['medium'];
+      } finally {
+        rl.close();
+      }
+    })());
   }
+  return tierResolutionCache.get(base)!;
 }
 
 /**
