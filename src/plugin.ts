@@ -358,9 +358,24 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
             );
             await maybeShowAgyTestToast(client, projectContext.effectiveProjectId);
 
+            const originalRequestedModel = parseGenerativeLanguageRequest(input)?.effectiveModel;
+            let modifiedInput = input;
+            if (isGL && originalRequestedModel) {
+               const originalBase = originalRequestedModel.replace('google-agy/', '');
+               const resolvedBase = await resolveModelTier(originalBase);
+               if (originalBase !== resolvedBase) {
+                 if (typeof modifiedInput === 'string') {
+                    modifiedInput = modifiedInput.replace(`models/${originalBase}`, `models/${resolvedBase}`);
+                 } else if (modifiedInput instanceof Request) {
+                    const newUrl = modifiedInput.url.replace(`models/${originalBase}`, `models/${resolvedBase}`);
+                    modifiedInput = new Request(newUrl, modifiedInput);
+                 }
+               }
+            }
+
             const parts = parseRefreshParts(authRecord.refresh);
             const transformed = prepareAgyRequest(
-              input,
+              modifiedInput,
               init,
               authRecord.access,
               projectContext.effectiveProjectId,
