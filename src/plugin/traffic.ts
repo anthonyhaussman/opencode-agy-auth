@@ -8,7 +8,7 @@ let lastTrafficTime = 0;
 const TRAFFIC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
- * 模拟官方 Agy 客户端在后台定期发送的实验获取和指标遥测流量，以防止接口封禁或检测异常。
+ * Simulates the experimental fetch and metric telemetry traffic sent periodically by the official Agy client in the background to prevent API bans or anomaly detection.
  */
 export function simulateClientBackgroundTraffic(accessToken: string, projectId: string, userAgentModel?: string): void {
   const now = Date.now();
@@ -17,7 +17,7 @@ export function simulateClientBackgroundTraffic(accessToken: string, projectId: 
   }
   lastTrafficTime = now;
 
-  // 异步静默发送，绝不阻塞编辑器的核心生成流程
+  // Asynchronous silent send, never blocking the core generation flow of the editor.
   Promise.all([
     sendListExperiments(accessToken, userAgentModel),
     sendCodeAssistMetrics(accessToken, projectId, userAgentModel),

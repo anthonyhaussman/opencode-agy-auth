@@ -12,7 +12,7 @@ import {
 import { buildMetadata, isVpcScError, parseJsonSafe, wait } from '../plugin/project/utils';
 
 /**
- * 加载给定 access token 和可选项目的托管项目信息。
+ * Loads hosted project information for a given access token and optional project.
  */
 export async function loadManagedProject(
   accessToken: string,
@@ -63,7 +63,7 @@ export async function loadManagedProject(
 }
 
 /**
- * 为用户启用托管项目，可选择重试直到完成。
+ * Enables a hosted project for the user, optionally retrying until complete.
  */
 export async function onboardManagedProject(
   accessToken: string,

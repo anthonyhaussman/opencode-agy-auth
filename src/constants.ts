@@ -1,7 +1,7 @@
-// 在插件加载器和凭证存储之间共享的 Provider 标识符。
+// Provider identifier shared between the plugin loader and credential storage.
 export const AGY_PROVIDER_ID = 'google-agy';
 
-// Antigravity CLI (Daily) 常量定义
+// Antigravity CLI (Daily) constant definitions.
 export const AGY_CLIENT_ID = '1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com';
 export const AGY_CLIENT_SECRET = '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';
 export const AGY_SCOPES: readonly string[] = [

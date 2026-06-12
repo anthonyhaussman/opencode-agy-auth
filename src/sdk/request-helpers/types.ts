@@ -9,7 +9,7 @@ export interface GeminiApiError {
 }
 
 /**
- * 我们触及的 Gemini API 响应的最小表示。
+ * The minimal representation of the Gemini API response we touch.
  */
 export interface GeminiApiBody {
   response?: unknown;
@@ -23,7 +23,7 @@ export interface GeminiErrorEnhancement {
 }
 
 /**
- * Gemini 响应暴露的用量元数据。字段是可选的，以反映部分负载。
+ * Usage metadata exposed by Gemini responses. Fields are optional to reflect partial payloads.
  */
 export interface GeminiUsageMetadata {
   totalTokenCount?: number;
@@ -33,7 +33,7 @@ export interface GeminiUsageMetadata {
 }
 
 /**
- * Gemini 接受的思维链配置。
+ * Thinking configuration accepted by Gemini.
  */
 export interface ThinkingConfig {
   thinkingBudget?: number;

@@ -1,7 +1,7 @@
 /**
- * NOTE: 这里的 request 模块承载了标准 OpenAI 协议与 Agy 原生 Gemini 协议的序列化、反序列化以及流式数据转化。
- * 虽然通常属于应用/适配器层职责，但由于它和 Agy 专属的 SSE 流去重、多轮对话签名缓存具有极高耦合，
- * 为了确保对外接口的简单干净，我们将其打包作为 SDK 的内建能力，为上层屏蔽所有协议转换的内部复杂性。
+ * NOTE: The request module here handles serialization, deserialization, and streaming data conversion between the standard OpenAI protocol and Agy's native Gemini protocol.
+ * Though normally an app/adapter layer responsibility, it's highly coupled with Agy's exclusive SSE streaming deduplication and multi-turn signature caching,
+ * so to ensure a simple and clean external interface, we package it as a built-in SDK capability, shielding the upper layer from all protocol conversion internal complexities.
  */
 
 export { prepareAgyRequest } from "./prepare";

@@ -1,7 +1,7 @@
 import type { ThinkingConfig } from "./types";
 
 /**
- * 将 thinkingConfig 别名规范化为标准的 Gemini 字段名。
+ * Normalizes thinkingConfig aliases to standard Gemini field names.
  */
 export function normalizeThinkingConfig(config: unknown): ThinkingConfig | undefined {
   if (!config || typeof config !== "object") {
@@ -22,7 +22,7 @@ export function normalizeThinkingConfig(config: unknown): ThinkingConfig | undef
     return undefined;
   }
 
-  // 映射 thinkingLevel 到 thinkingBudget 并过滤，避免上游 v1internal 接口不兼容
+  // Maps thinkingLevel to thinkingBudget and filters it to avoid upstream v1internal API incompatibilities.
   if (thinkingLevel !== undefined && thinkingBudget === undefined) {
     if (thinkingLevel === "HIGH") {
       thinkingBudget = 2048;

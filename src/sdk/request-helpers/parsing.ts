@@ -1,7 +1,7 @@
 import type { GeminiApiBody, GeminiUsageMetadata } from "./types";
 
 /**
- * 解析 Gemini API 响应体；处理 API 有时返回的数组包装响应。
+ * Parses the Gemini API response body; handles array-wrapped responses sometimes returned by the API.
  */
 export function parseGeminiApiBody(rawText: string): GeminiApiBody | null {
   try {
@@ -20,7 +20,7 @@ export function parseGeminiApiBody(rawText: string): GeminiApiBody | null {
 }
 
 /**
- * 从响应对象中提取 usageMetadata，并进行类型安全防护。
+ * Extracts usageMetadata from the response object with type-safe guards.
  */
 export function extractUsageMetadata(body: GeminiApiBody): GeminiUsageMetadata | null {
   const usage = (body.response && typeof body.response === "object"

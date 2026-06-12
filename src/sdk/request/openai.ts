@@ -1,10 +1,10 @@
 /**
- * NOTE: 格式/协议转换逻辑虽然通常属于应用层（Plugin），但此处作为特例放在 SDK 内部实现。
- * 原因：
- * 格式转换（OpenAI 格式与 Gemini/Agy 原生格式互转）与 Agy 特有的流式 SSE 数据解析、
- * 思维链去重（Deduplication）及多轮对话的签名自愈（Thinking Recovery / Signature Cache）存在极强的耦合性。
- * 通过在 SDK 内封装此转换过程，可以对 OpenCode 插件应用层完全屏蔽非标 API 交互的复杂细节，
- * 使插件只需简单调用并转发标准 OpenAI 格式的请求和响应流。
+ * NOTE: Format/protocol conversion logic is typically in the app layer (Plugin), but is implemented here inside the SDK as a special case.
+ * Reason:
+ * Format conversion (OpenAI format to Gemini/Agy native and vice versa) is tightly coupled with Agy's unique streaming SSE data parsing,
+ * thought chain deduplication, and signature self-healing (Thinking Recovery / Signature Cache) in multi-turn dialogues.
+ * Encapsulating this conversion in the SDK completely shields the OpenCode plugin app layer from non-standard API interaction complexities,
+ * allowing the plugin to simply call and forward standard OpenAI formatted requests and response streams.
  */
 
 interface GeminiFunctionCallPart {
@@ -35,7 +35,7 @@ interface OpenAIMessage {
 }
 
 /**
- * 将 OpenAI 的 `tool_calls` 转换为 Gemini 的 `functionCall` 部分。
+ * Converts OpenAI's `tool_calls` into Gemini's `functionCall` sections.
  */
 export function transformOpenAIToolCalls(requestPayload: Record<string, unknown>): void {
   const messages = requestPayload.messages;
@@ -94,7 +94,7 @@ export function transformOpenAIToolCalls(requestPayload: Record<string, unknown>
 }
 
 /**
- * 向扁平化和包装后的负载中的函数调用（function calls）添加合成的 thoughtSignature 签名。
+ * Adds synthesized thoughtSignature to function calls in the flattened and wrapped payload.
  */
 export function addThoughtSignaturesToFunctionCalls(requestPayload: Record<string, unknown>): void {
   const processContents = (contents: unknown): void => {

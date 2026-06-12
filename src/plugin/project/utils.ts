@@ -9,7 +9,7 @@ import {
 } from "./types";
 
 /**
- * 构建 Code Assist API 所需的元数据头部。
+ * Builds the metadata headers required for the Code Assist API.
  */
 export function buildMetadata(projectId?: string, includeDuetProject = true): Record<string, string> {
   const metadata: Record<string, string> = {
@@ -22,7 +22,7 @@ export function buildMetadata(projectId?: string, includeDuetProject = true): Re
 }
 
 /**
- * 规整来自 API 负载或配置的项目标识符。
+ * Normalizes project identifiers from API payloads or configuration.
  */
 export function normalizeProjectId(value?: string | CloudAiCompanionProject): string | undefined {
   if (!value) {
@@ -40,7 +40,7 @@ export function normalizeProjectId(value?: string | CloudAiCompanionProject): st
 }
 
 /**
- * 从允许的层级列表中选择默认的层级 ID。
+ * Selects the default hierarchy ID from the allowed hierarchy list.
  */
 export function pickOnboardTier(allowedTiers?: AgyUserTier[]): AgyUserTier {
   if (allowedTiers && allowedTiers.length > 0) {
@@ -55,7 +55,7 @@ export function pickOnboardTier(allowedTiers?: AgyUserTier[]): AgyUserTier {
 }
 
 /**
- * 根据不合规层级的负载构建简明错误消息。
+ * Builds a concise error message for non-compliant hierarchy payloads.
  */
 export function buildIneligibleTierMessage(tiers?: AgyIneligibleTier[]): string | undefined {
   if (!tiers || tiers.length === 0) {
@@ -88,7 +88,7 @@ export function throwIfValidationRequired(tiers?: AgyIneligibleTier[]): void {
 }
 
 /**
- * 从 Cloud Code 响应中检测 VPC-SC 错误。
+ * Detects VPC-SC errors from Cloud Code responses.
  */
 export function isVpcScError(payload: unknown): boolean {
   if (!payload || typeof payload !== "object") {
@@ -111,7 +111,7 @@ export function isVpcScError(payload: unknown): boolean {
 }
 
 /**
- * 安全解析 JSON，失败时返回 null。
+ * Safely parses JSON, returning null on failure.
  */
 export function parseJsonSafe(text: string): unknown {
   try {
@@ -122,7 +122,7 @@ export function parseJsonSafe(text: string): unknown {
 }
 
 /**
- * 基于 Promise 的延迟工具。
+ * Promise-based delay utility.
  */
 export function wait(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -131,7 +131,7 @@ export function wait(ms: number): Promise<void> {
 }
 
 /**
- * 根据 refresh token 为项目上下文生成缓存键。
+ * Generates a cache key for the project context based on the refresh token.
  */
 export function getCacheKey(auth: OAuthAuthDetails): string | undefined {
   const refresh = auth.refresh?.trim();

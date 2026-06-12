@@ -41,7 +41,7 @@ interface AgyUserInfo {
 }
 
 /**
- * 构建包含 PKCE 的 Agy OAuth 授权 URL。
+ * Builds the Agy OAuth authorization URL with PKCE.
  */
 export async function authorizeAgy(): Promise<AgyAuthorization> {
   const pkce = (await generatePKCE()) as PkcePair;
@@ -67,7 +67,7 @@ export async function authorizeAgy(): Promise<AgyAuthorization> {
 }
 
 /**
- * 使用已知的 PKCE 验证器为 Agy 交换授权码。
+ * Exchanges the authorization code for Agy using a known PKCE verifier.
  */
 export async function exchangeAgyWithVerifier(code: string, verifier: string): Promise<AgyTokenExchangeResult> {
   try {

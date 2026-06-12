@@ -15,7 +15,7 @@ const RETRY_IN_FLIGHT_LOG_INTERVAL_MS = 5000;
 const MODEL_CAPACITY_COOLDOWN_MS = 8000;
 
 /**
- * 发送带有重试/指数退避语义的请求，与 Gemini/Agy CLI 保持一致。
+ * Sends a request with retry/exponential backoff semantics, consistent with Gemini/Agy CLI.
  */
 export async function fetchWithRetry(
   input: RequestInfo,

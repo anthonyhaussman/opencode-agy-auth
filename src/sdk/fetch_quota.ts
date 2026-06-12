@@ -5,7 +5,7 @@ import { buildAgyCliUserAgent } from './user-agent';
 import type { RetrieveUserQuotaResponse } from '../plugin/project/types';
 
 /**
- * 获取 Code Assist 的配额桶信息，其中包含当前账号/项目可见的模型 ID。
+ * Fetches the Code Assist quota bucket information, which contains the model IDs visible to the current account/project.
  */
 export async function retrieveUserQuota(
   accessToken: string,

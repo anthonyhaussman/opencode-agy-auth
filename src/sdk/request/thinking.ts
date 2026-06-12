@@ -1,31 +1,31 @@
 import { createHash } from "node:crypto";
 
 /**
- * NOTE: 特别设计——流式去重与签名状态自愈
- * Agy/Gemini 官方 API 具有以下非标行为和严格约束，必须在此处进行特殊处理：
- * 1. 【流式去重】：官方 API 在 streaming 阶段返回的数据包中，思维链 (Thinking) 内容是累加输出的。
- *    我们必须对每次返回的 delta 进行哈希比对与剪裁，防止 IDE 接收到重复的文字。
- * 2. 【签名状态自愈】：多轮对话中，如果因为 tool 调用或者客户端状态断裂导致 thoughtSignature 丢失，
- *    官方接口会抛出签名不匹配的错误。此处设计了自动检测机制（如 needsThinkingRecovery），在签名断裂时，
- *    自动在上下文 messages 中回插/对齐兜底的思维链片段与签名，使对话链路能够自愈并继续进行。
+ * NOTE: Special Design - Streaming deduplication and signature state self-healing
+ * Agy/Gemini official API has the following non-standard behaviors and strict constraints that must be specially handled here:
+ * 1. [Streaming Deduplication]: In the data packets returned by the official API during streaming, thought chain (Thinking) content is output cumulatively.
+ *    We must perform hash comparison and truncation on each returned delta to prevent the IDE from receiving duplicate text.
+ * 2. [Signature State Self-healing]: In multi-turn dialogues, if the thoughtSignature is lost due to tool calls or client state breakage,
+ *    the official API throws a signature mismatch error. An auto-detection mechanism (e.g., needsThinkingRecovery) is designed here to, upon signature breakage,
+ *    automatically backfill/align fallback thought chain fragments and signatures in context messages, allowing the dialogue chain to self-heal and continue.
  */
 
 // ============================================================================
-// 类型与接口定义 (Types & Interfaces)
+// Types & Interfaces
 // ============================================================================
 
 /**
- * 缓存的已签名思维链数据结构
+ * Cached signed thought chain data structure
  */
 export interface SignedThinking {
-  /** 完整的思维链文本内容 */
+  /** Full thought chain text content */
   text: string;
-  /** 对应的服务器签名 */
+  /** Corresponding server signature */
   signature: string;
 }
 
 /**
- * 签名存储管理器的外部契约接口
+ * External contract interface for signature storage manager
  */
 export interface SignatureStore {
   get(sessionKey: string): SignedThinking | undefined;
@@ -35,33 +35,33 @@ export interface SignatureStore {
 }
 
 /**
- * 流式处理阶段的自定义回调函数集合
+ * Custom callback functions for the streaming phase
  */
 export interface StreamingCallbacks {
-  /** 当缓存到最新的思维链及签名时触发 */
+  /** Triggered when the latest thought chain and signature are cached */
   onCacheSignature?: (sessionKey: string, text: string, signature: string) => void;
-  /** 当需要注入调试说明（如配额超限警告）到流中时触发 */
+  /** Triggered when debugging instructions (e.g., quota overrun warnings) need injection into the stream */
   onInjectDebug?: (response: unknown, debugText: string) => unknown;
-  /** 转换自定义思维链部件的方法 */
+  /** Method to transform custom thought chain parts */
   transformThinkingParts?: (parts: unknown) => unknown;
 }
 
 /**
- * 流式处理阶段的配置参数
+ * Configuration parameters for the streaming phase
  */
 export interface StreamingOptions {
-  /** 签名会话的唯一标识，用于跨轮次签名恢复 */
+  /** Unique identifier for the signature session, used for cross-turn signature recovery */
   signatureSessionKey?: string;
-  /** 需要注入流中的调试文本（可选） */
+  /** Debugging text to inject into the stream (optional) */
   debugText?: string;
-  /** 是否在此流中缓存最新生成的签名 */
+  /** Whether to cache the latest generated signature in this stream */
   cacheSignatures?: boolean;
-  /** 已经渲染出的思维链哈希集合，用于在工具调用循环中避免重复输出 */
+  /** Set of already rendered thought chain hashes, used to avoid duplicate output in tool call loops */
   displayedThinkingHashes?: Set<string>;
 }
 
 /**
- * 缓存特定索引或类型的思维链文本缓冲区（应对流式分块累加输出）
+ * Text buffer for caching thought chains of a specific index or type (handles streaming chunk cumulative output)
  */
 export interface ThoughtBuffer {
   get(index: number): string | undefined;
@@ -70,29 +70,29 @@ export interface ThoughtBuffer {
 }
 
 /**
- * 多轮对话运行时智能体与工具交互的状态记录
+ * Agent and tool interaction state record during multi-turn dialogue runtime
  */
 export interface ConversationState {
-  /** 是否处于未完成的工具调用循环中（即上次以 functionResponse 结尾，本轮继续） */
+  /** Whether inside an incomplete tool call loop (i.e., last turn ended with functionResponse, continuing this turn) */
   inToolLoop: boolean;
-  /** 当前这一轮对话中，首条模型回复消息的数组索引 */
+  /** Array index of the first model reply message in the current dialogue turn */
   turnStartIdx: number;
-  /** 当前一轮对话的开始是否包含思维链（thought） */
+  /** Whether the start of the current dialogue turn contains a thought chain (thought) */
   turnHasThinking: boolean;
-  /** 最后一条模型回复消息的数组索引 */
+  /** Array index of the last model reply message */
   lastModelIdx: number;
-  /** 最后一条模型消息是否包含思维链 */
+  /** Whether the last model message contains a thought chain */
   lastModelHasThinking: boolean;
-  /** 最后一条模型消息是否包含工具调用（tool_use） */
+  /** Whether the last model message contains a tool call (tool_use) */
   lastModelHasToolCalls: boolean;
 }
 
 // ============================================================================
-// 缓冲区与存储工厂函数 (Stores & Buffers Factories)
+// Stores & Buffers Factories
 // ============================================================================
 
 /**
- * 创建一个基于内存 Map 的签名存储管理器
+ * Creates a memory Map-based signature storage manager
  */
 export function createSignatureStore(): SignatureStore {
   const store = new Map<string, SignedThinking>();
@@ -110,7 +110,7 @@ export function createSignatureStore(): SignatureStore {
 }
 
 /**
- * 创建一个用于暂存流式块的思维链文本累加缓冲区
+ * Creates a thought chain text accumulation buffer for temporarily storing streaming chunks
  */
 export function createThoughtBuffer(): ThoughtBuffer {
   const buffer = new Map<number, string>();
@@ -125,16 +125,16 @@ export function createThoughtBuffer(): ThoughtBuffer {
 }
 
 /**
- * 默认使用的全局内存签名存储
+ * Default global memory signature storage
  */
 export const defaultSignatureStore = createSignatureStore();
 
 // ============================================================================
-// 辅助哈希计算函数 (Hashing Helper)
+// Hashing Helper
 // ============================================================================
 
 /**
- * 生成一个字符串的快速哈希值（DJB2 算法），用来去重已输出的思维链块
+ * Generates a fast string hash (DJB2 algorithm) to deduplicate already output thought chain blocks
  */
 function hashString(str: string): string {
   let hash = 5381;
@@ -145,12 +145,12 @@ function hashString(str: string): string {
 }
 
 // ============================================================================
-// 思考状态检测与历史自愈辅助逻辑 (Detection & Recovery Helpers)
+// Thinking State Detection & Historical Self-healing Helpers
 // ============================================================================
 
 /**
- * 判断某个消息部件是否属于思维链类型
- * 兼容 Gemini（thought 字段）和 Claude（type: "thinking" 等）
+ * Checks if a message part belongs to the thought chain type
+ * Compatible with Gemini (thought field) and Claude (type: "thinking", etc.)
  */
 function isThinkingPart(part: any): boolean {
   if (!part || typeof part !== "object") return false;
@@ -162,21 +162,21 @@ function isThinkingPart(part: any): boolean {
 }
 
 /**
- * 判断某个消息部件是否属于工具执行结果响应
+ * Checks if a message part is a tool execution result response
  */
 function isFunctionResponsePart(part: any): boolean {
   return part && typeof part === "object" && "functionResponse" in part;
 }
 
 /**
- * 判断某个消息部件是否属于模型发起的工具调用请求
+ * Checks if a message part is a model-initiated tool call request
  */
 function isFunctionCallPart(part: any): boolean {
   return part && typeof part === "object" && "functionCall" in part;
 }
 
 /**
- * 判断消息是否仅是工具执行返回的返回体（属于 role = user 但全是 functionResponse 的形式）
+ * Checks if a message is exclusively a tool execution return body (role = user but entirely functionResponse)
  */
 function isToolResultMessage(msg: any): boolean {
   if (!msg || msg.role !== "user") return false;
@@ -185,7 +185,7 @@ function isToolResultMessage(msg: any): boolean {
 }
 
 /**
- * 判断一条消息中是否包含任意思维链段（包括 Gemini 数组格式或 Claude 的 content 格式）
+ * Checks if a message contains any thought chain segment (including Gemini array format or Claude content format)
  */
 function messageHasThinking(msg: any): boolean {
   if (!msg || typeof msg !== "object") return false;
@@ -205,7 +205,7 @@ function messageHasThinking(msg: any): boolean {
 }
 
 /**
- * 判断消息是否包含工具调用（支持 Gemini 与 Claude 的 tool_use）
+ * Checks if a message contains a tool call (supports Gemini and Claude tool_use)
  */
 function messageHasToolCalls(msg: any): boolean {
   if (!msg || typeof msg !== "object") return false;
@@ -222,7 +222,7 @@ function messageHasToolCalls(msg: any): boolean {
 }
 
 /**
- * 分析多轮历史对话数组，提取出当前智能体的交互循环状态、模型消息位置、本轮是否含思维链等上下文指标
+ * Analyzes multi-turn historical dialogue arrays to extract context metrics like agent interaction loop state, model message positions, whether the turn has thoughts, etc.
  */
 export function analyzeConversationState(contents: any[]): ConversationState {
   const state: ConversationState = {
@@ -238,7 +238,7 @@ export function analyzeConversationState(contents: any[]): ConversationState {
     return state;
   }
 
-  // 寻找最后一轮真实的人类用户提问位置
+  // Find the position of the last real human user question
   let lastRealUserIdx = -1;
   for (let i = 0; i < contents.length; i++) {
     const msg = contents[i];
@@ -247,7 +247,7 @@ export function analyzeConversationState(contents: any[]): ConversationState {
     }
   }
 
-  // 扫描所有的模型消息，提取最近一轮回复的特征
+  // Scan all model messages to extract features of the most recent reply round
   for (let i = 0; i < contents.length; i++) {
     const msg = contents[i];
     const role = msg?.role;
@@ -256,7 +256,7 @@ export function analyzeConversationState(contents: any[]): ConversationState {
       const hasThinking = messageHasThinking(msg);
       const hasToolCalls = messageHasToolCalls(msg);
 
-      // 如果这是在最近一轮用户提问之后的首个模型消息，作为当前 turn 的起点
+      // If this is the first model message after the most recent user question, treat as the start of the current turn
       if (i > lastRealUserIdx && state.turnStartIdx === -1) {
         state.turnStartIdx = i;
         state.turnHasThinking = hasThinking;
@@ -268,7 +268,7 @@ export function analyzeConversationState(contents: any[]): ConversationState {
     }
   }
 
-  // 判断是否处于 incomplete 的工具循环尾部（即用户刚刚返回了工具调用结果，正等待模型下一步处理）
+  // Determine if in the tail of an incomplete tool loop (i.e., user just returned tool call results, waiting for model's next step)
   if (contents.length > 0) {
     const lastMsg = contents[contents.length - 1];
     if (lastMsg?.role === "user" && isToolResultMessage(lastMsg)) {
@@ -280,7 +280,7 @@ export function analyzeConversationState(contents: any[]): ConversationState {
 }
 
 /**
- * 计算尾部未完结的工具响应个数
+ * Calculate the number of uncompleted tool responses at the tail
  */
 function countTrailingToolResults(contents: any[]): number {
   let count = 0;
@@ -306,7 +306,7 @@ function countTrailingToolResults(contents: any[]): number {
 }
 
 /**
- * 闭合工具执行循环并注入过渡内容，以便在不提供旧思维链的情况下顺利恢复对话
+ * Closes the tool execution loop and injects transition content to smoothly recover the dialogue without providing the old thought chain
  */
 export function closeToolLoopForThinking(contents: any[]): any[] {
   const strippedContents = contents;
@@ -335,14 +335,14 @@ export function closeToolLoopForThinking(contents: any[]): any[] {
 }
 
 /**
- * 检查当前状态是否满足触发历史自愈的条件
+ * Checks if the current state meets conditions to trigger historical self-healing
  */
 export function needsThinkingRecovery(state: ConversationState): boolean {
   return state.inToolLoop && !state.turnHasThinking;
 }
 
 /**
- * 判断当前模型回复消息是否被裁剪过思维链（仅有工具调用而丢失了它之前的思维链描述）
+ * Determines if the current model reply message had its thought chain pruned (has only tool calls but lost its preceding thought chain description)
  */
 export function looksLikeCompactedThinkingTurn(msg: any): boolean {
   if (!msg || typeof msg !== "object") return false;
@@ -383,7 +383,7 @@ export function looksLikeCompactedThinkingTurn(msg: any): boolean {
 }
 
 /**
- * 深度判断本次 Turn 启动中是否包含可能被系统压缩裁剪了思维链的历史轮次
+ * Deeply determines if the start of this Turn contains historical rounds whose thought chains might have been pruned/compressed by the system
  */
 export function hasPossibleCompactedThinking(
   contents: any[],
@@ -402,12 +402,12 @@ export function hasPossibleCompactedThinking(
 }
 
 // ============================================================================
-// SSE 去重过滤处理器 (Streaming Transformers & Deduplicators)
+// SSE Deduplication Filter Processors (Streaming Transformers & Deduplicators)
 // ============================================================================
 
 /**
- * 针对流式 SSE 数据包，对重复输出的思维链文本进行计算和局部剥离
- * 同时支持 Gemini 专属的 candidates.content 结构与 Claude 专属的 content[type=thinking] 结构
+ * For streaming SSE data packets, calculates and locally strips duplicated thought chain text
+ * Simultaneously supports Gemini's exclusive candidates.content structure and Claude's exclusive content[type=thinking] structure
  */
 export function deduplicateThinkingText(
   response: unknown,
@@ -418,7 +418,7 @@ export function deduplicateThinkingText(
 
   const resp = response as Record<string, unknown>;
 
-  // 分支 1：处理 Gemini 结构类型 (candidates)
+  // Branch 1: Handle Gemini structure type (candidates)
   if (Array.isArray(resp.candidates)) {
     const newCandidates = resp.candidates.map((candidate: unknown, index: number) => {
       const cand = candidate as Record<string, unknown> | null;
@@ -433,7 +433,7 @@ export function deduplicateThinkingText(
         if (p.thought === true || p.type === "thinking") {
           const fullText = (p.text || p.thinking || "") as string;
           
-          // 如果该思维链已经被渲染过，直接阻断其在流中的展示，避免在工具调用分支中发生长段重叠渲染
+          // If this thought chain was already rendered, block it directly from the stream to prevent long overlapping rendering in tool call branches
           if (displayedThinkingHashes) {
             const hash = hashString(fullText);
             if (displayedThinkingHashes.has(hash)) {
@@ -443,7 +443,7 @@ export function deduplicateThinkingText(
             displayedThinkingHashes.add(hash);
           }
 
-          // 计算增量输出 (Delta)
+          // Calculate incremental output (Delta)
           const sentText = sentBuffer.get(index) ?? "";
 
           if (fullText.startsWith(sentText)) {
@@ -473,7 +473,7 @@ export function deduplicateThinkingText(
     return { ...resp, candidates: newCandidates };
   }
 
-  // 分支 2：处理 Claude 结构类型 (content 块)，因为 Agy 后端转发时包含了 Claude
+  // Branch 2: Handle Claude structure type (content blocks) because Agy backend forwarding includes Claude
   if (Array.isArray(resp.content)) {
     let thinkingIndex = 0;
     const newContent = resp.content.map((block: unknown) => {
@@ -519,8 +519,8 @@ export function deduplicateThinkingText(
 }
 
 /**
- * 从返回的消息体中缓存思维链内容及其对应的验证签名，供下一轮交互做签名对齐
- * 同样支持 Gemini 签名机制 (candidates[].thoughtSignature) 与 Claude 签名机制 (content[].signature)
+ * Caches thought chain content and its validation signature from the returned message body for signature alignment in the next interaction round
+ * Also supports Gemini signature mechanism (candidates[].thoughtSignature) and Claude signature mechanism (content[].signature)
  */
 export function cacheThinkingSignaturesFromResponse(
   response: unknown,
@@ -533,7 +533,7 @@ export function cacheThinkingSignaturesFromResponse(
 
   const resp = response as Record<string, unknown>;
 
-  // 分支 1：收集并缓存 Gemini 类型签名
+  // Branch 1: Collect and cache Gemini type signatures
   if (Array.isArray(resp.candidates)) {
     resp.candidates.forEach((candidate: unknown, index: number) => {
       const cand = candidate as Record<string, unknown> | null;
@@ -563,7 +563,7 @@ export function cacheThinkingSignaturesFromResponse(
     });
   }
 
-  // 分支 2：收集并缓存 Claude 类型签名
+  // Branch 2: Collect and cache Claude type signatures
   if (Array.isArray(resp.content)) {
     const CLAUDE_BUFFER_KEY = 0;
     resp.content.forEach((block: unknown) => {
@@ -588,7 +588,7 @@ export function cacheThinkingSignaturesFromResponse(
 }
 
 /**
- * 转换单行流式 SSE 返回的数据，在此触发思维链缓存与增量去重
+ * Transforms a single line of streaming SSE returned data, triggering thought chain caching and incremental deduplication here
  */
 export function transformSseLine(
   line: string,
@@ -610,7 +610,7 @@ export function transformSseLine(
   try {
     const parsed = JSON.parse(json) as { response?: unknown };
     if (parsed.response !== undefined) {
-      // 提取并写入缓存
+      // Extract and write to cache
       if (options.cacheSignatures && options.signatureSessionKey) {
         cacheThinkingSignaturesFromResponse(
           parsed.response,
@@ -621,14 +621,14 @@ export function transformSseLine(
         );
       }
 
-      // 计算去重
+      // Calculate deduplication
       let response: unknown = deduplicateThinkingText(
         parsed.response,
         sentThinkingBuffer,
         options.displayedThinkingHashes
       );
 
-      // 调试文本注入
+      // Debug text injection
       if (options.debugText && callbacks.onInjectDebug && !debugState.injected) {
         response = callbacks.onInjectDebug(response, options.debugText);
         debugState.injected = true;
@@ -644,7 +644,7 @@ export function transformSseLine(
 }
 
 /**
- * 创建转换流处理器 (TransformStream)，用于对输出流进行切分、去重和重组
+ * Creates a TransformStream processor to split, deduplicate, and recombine the output stream
  */
 export function createStreamingTransformer(
   signatureStore: SignatureStore,
@@ -705,7 +705,7 @@ export function createStreamingTransformer(
         controller.enqueue(encoder.encode(transformedLine));
       }
 
-      // 兜底策略：如果最后没有生成任何 token usage 元数据，强制注入一个值为 0 计数的 fallback，确保 VS Code 统计能够兼容通过
+      // Fallback strategy: If no token usage metadata was generated at the end, forcibly inject a 0-count fallback to ensure VS Code statistics compatibility
       if (!hasSeenUsageMetadata) {
         const syntheticUsage = {
           response: {

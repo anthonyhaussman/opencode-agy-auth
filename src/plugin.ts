@@ -217,7 +217,7 @@ async function resolveModelTier(baseModelId: string): Promise<string> {
 }
 
 /**
- * 为 Opencode 注册 Agy OAuth 提供者。
+ * Registers the Agy OAuth provider for Opencode.
  */
 export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<PluginResult> => {
   let latestConfig: Config | undefined;
@@ -266,7 +266,7 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
         template: AGY_QUOTA_COMMAND_TEMPLATE
       };
 
-      // 动态注册 google-agy 提供商配置，使其无缝工作而无需用户手动映射
+      // Dynamically registers the google-agy provider config to make it work seamlessly without manual user mapping.
       config.provider = config.provider || {};
       config.provider[AGY_PROVIDER_ID] = {
         npm: '@ai-sdk/google',
@@ -276,7 +276,7 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
         ...config.provider[AGY_PROVIDER_ID]
       };
 
-      // 默认提供写死的静态模型列表
+      // Provides a hardcoded static model list by default.
       config.provider[AGY_PROVIDER_ID].models = STATIC_MODELS;
     },
     tool: {
@@ -455,7 +455,7 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
         if (!auth || !isOAuthAuth(auth)) {
           return {
             'login-required': {
-              name: '暂无模型列表'
+              name: 'No models available'
             }
           };
         }

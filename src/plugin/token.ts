@@ -29,15 +29,15 @@ interface OAuthErrorPayload {
 }
 
 /**
- * NOTE: 特别设计——并发刷新锁机制
- * 当 IDE 启动、或者有多个请求同时并发调用 Agy 服务，且检测到当前的 Access Token 已过期时，
- * 会同时触发 Token 刷新流程。如果每个并发请求都独立向 Google 接口发起 refresh_token 刷新，会造成：
- * 1. 网络请求冗余；
- * 2. 产生“竞争条件”（后发起的刷新使先发起的刷新失效，导致其他并发请求报错）。
+ * NOTE: Special Design - Concurrent Refresh Lock Mechanism
+ * When the IDE starts, or multiple requests concurrently call the Agy service and detect the current Access Token has expired,
+ * a Token refresh process is triggered. If each concurrent request independently sends a refresh_token request to the Google API, it causes:
+ * 1. Redundant network requests;
+ * 2. "Race conditions" (a later refresh invalidates an earlier one, causing other concurrent requests to fail).
  * 
- * 此处使用 `refreshInFlight` 映射存储正在进行的刷新 Promise。对于相同的 refresh token，
- * 只发起一次真实的刷新网络请求，其余并发请求通过 Promise 合并挂起等待，直至刷新成功后统一分发，
- * 避免了竞态冲突，大幅提升了插件高并发下的健壮性。
+ * Here, the `refreshInFlight` map is used to store ongoing refresh Promises. For the same refresh token,
+ * only one actual refresh network request is made. Other concurrent requests wait on the shared Promise until it succeeds,
+ * avoiding race conditions and greatly improving plugin robustness under high concurrency.
  */
 const refreshInFlight = new Map<string, Promise<OAuthAuthDetails | undefined>>();
 

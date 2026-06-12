@@ -12,7 +12,7 @@ import { createStreamingTransformer, defaultSignatureStore } from "./thinking";
 import type { ChatLogger } from "../chat-logger";
 
 /**
- * 规范化 Gemini/Agy 响应，保留请求元数据和用量计数器。
+ * Normalizes Gemini/Agy responses, preserving request metadata and usage counters.
  */
 export async function transformAgyResponse(
   response: Response,

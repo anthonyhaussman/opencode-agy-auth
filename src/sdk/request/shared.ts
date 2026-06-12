@@ -8,7 +8,7 @@ const CODE_ASSIST_HOST_SUFFIX = "cloudcode-pa.googleapis.com";
 const MODEL_ACTION_PATTERN = /\/models\/[^:]+:\w+/;
 
 /**
- * 返回支持的 RequestInfo 输入的 URL 字符串。
+ * Returns the URL string for supported RequestInfo inputs.
  */
 export function toRequestUrlString(value: RequestInfo): string {
   if (typeof value === "string") {
@@ -25,7 +25,7 @@ export function toRequestUrlString(value: RequestInfo): string {
 }
 
 /**
- * 通过 URL 检测 Gemini/Generative Language API 请求。
+ * Detects Gemini/Generative Language API requests via URL.
  */
 export function isGenerativeLanguageRequest(input: RequestInfo): input is string {
   const url = toRequestUrlString(input);
@@ -74,7 +74,7 @@ export function pickString(...values: unknown[]): string | undefined {
 }
 
 /**
- * 通过将 traceId 映射到 responseId，为下游客户端保留 Cloud Code 追踪标识。
+ * Preserves Cloud Code trace identity for downstream clients by mapping traceId to responseId.
  */
 export function injectResponseIdFromTrace<T extends Record<string, unknown>>(body: T): T {
   const traceId = readString(body.traceId);

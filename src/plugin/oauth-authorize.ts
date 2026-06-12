@@ -8,7 +8,7 @@ import { formatRefreshParts } from './auth';
 import type { OAuthAuthDetails, PluginClient } from './types';
 
 /**
- * 构建用于插件认证方法的 OAuth 授权回调。
+ * Builds the OAuth authorization callback for the plugin authentication method.
  */
 export function createOAuthAuthorizeMethod(options?: {
   client?: PluginClient;
@@ -62,8 +62,8 @@ export function createOAuthAuthorizeMethod(options?: {
           const message = error instanceof Error ? error.message : String(error);
           options.client.tui.showToast({
             body: {
-              title: "绑定项目上下文失败",
-              message: `已授权成功但无法绑定项目，将无法使用真实模型：${message}`,
+              title: "Failed to bind project context",
+              message: `Authorized successfully but failed to bind project, real models will be unavailable: ${message}`,
               variant: "warning",
               duration: 15000
             }
@@ -91,7 +91,7 @@ export function createOAuthAuthorizeMethod(options?: {
     return {
       url: authorization.url,
       instructions:
-        '请在浏览器中完成 Google 账户授权。授权完成后，页面会跳转至 https://antigravity.google/oauth-callback?code=... 。请将最终浏览器地址栏的完整跳转 URL 或其中的 code 参数值复制并粘贴到下方输入框中：',
+        'Please complete Google account authorization in your browser. After authorization, the page will redirect to https://antigravity.google/oauth-callback?code=... . Please copy the full redirect URL from your browser address bar, or just the code parameter value, and paste it into the input box below:',
       method: 'code',
       callback: async (callbackUrl: string): Promise<AgyTokenExchangeResult> => {
         try {

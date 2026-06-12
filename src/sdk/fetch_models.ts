@@ -49,7 +49,7 @@ export interface FetchAvailableModelsResponse {
 }
 
 /**
- * 从 Agy 服务端拉取当前账号在指定项目下可用的模型列表。
+ * Fetches the list of available models for the current account under the specified project from the Agy server.
  */
 export async function fetchAvailableModels(
   accessToken: string,
