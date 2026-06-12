@@ -83,7 +83,7 @@ const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
   },
   'claude-sonnet-4-6': {
     name: 'Claude Sonnet 4.6 (Thinking)',
-    description: 'Claude Sonnet 4.6 深度推理模型，完美平衡了思考过程、处理速度与输出质量。',
+    description: 'Claude Sonnet 4.6 deep reasoning model, perfectly balancing thinking process, processing speed, and output quality.',
     maxTokens: 250000,
     maxOutputTokens: 64000,
     toolCall: true,
@@ -92,7 +92,7 @@ const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
   },
   'claude-opus-4-6-thinking': {
     name: 'Claude Opus 4.6 (Thinking)',
-    description: 'Claude Opus 4.6 深度推理模型，内置思考链，非常适合解决顶尖难度的算法和逻辑难题。',
+    description: 'Claude Opus 4.6 deep reasoning model, built-in chain of thought, highly suitable for top-tier algorithm and logic puzzles.',
     maxTokens: 250000,
     maxOutputTokens: 64000,
     toolCall: true,
@@ -101,7 +101,7 @@ const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
   },
   'gpt-oss-120b-medium': {
     name: 'GPT-OSS 120B (Medium)',
-    description: 'GPT 开源 120B 参数中配模型，在本地化部署或特定开源基准上表现卓越。',
+    description: 'GPT open-source 120B parameter medium tier model, excellent performance in local deployment or specific open-source benchmarks.',
     maxTokens: 131072,
     maxOutputTokens: 32768,
     toolCall: true,
@@ -169,7 +169,7 @@ for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
   STATIC_MODELS[modelId] = buildModelFromSimple(modelId, simple);
 }
 
-const TIER_MAPPING: Record<string, Record<string, string>> = {
+const TIER_MAPPING: Record<string, { low: string; medium: string; high: string } & Record<string, string>> = {
   'gemini-3.5-flash': {
     low: 'gemini-3.5-flash-extra-low',
     medium: 'gemini-3.5-flash-low', // Note: orig code maps "medium" to "-low" in internal ID
@@ -184,7 +184,7 @@ const TIER_MAPPING: Record<string, Record<string, string>> = {
 
 async function resolveModelTier(baseModelId: string): Promise<string> {
   const parts = baseModelId.split('@');
-  const base = parts[0];
+  const base = parts[0] || '';
   const suffixTier = parts[1]?.toLowerCase();
   const mapping = TIER_MAPPING[base];
   if (!mapping) {
