@@ -1,4 +1,6 @@
 import type { Config } from './plugin/types';
+import * as readline from 'node:readline/promises';
+import { stdin as input, stdout as output } from 'node:process';
 import { AGY_PROVIDER_ID } from './constants';
 import { agyFetch } from './fetch';
 import { createOAuthAuthorizeMethod } from './plugin/oauth-authorize';
@@ -165,6 +167,46 @@ const buildModelFromSimple = (modelId: string, simple: SimpleStaticModel): Provi
 const STATIC_MODELS: Record<string, ProviderModel> = {};
 for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
   STATIC_MODELS[modelId] = buildModelFromSimple(modelId, simple);
+}
+
+const TIER_MAPPING: Record<string, Record<string, string>> = {
+  'gemini-3.5-flash': {
+    low: 'gemini-3.5-flash-extra-low',
+    medium: 'gemini-3.5-flash-low', // Note: orig code maps "medium" to "-low" in internal ID
+    high: 'gemini-3-flash-agent'
+  },
+  'gemini-3.1-pro': {
+    low: 'gemini-3.1-pro-low',
+    medium: 'gemini-pro-agent', // Assuming medium defaults to high if no medium exists
+    high: 'gemini-pro-agent'
+  }
+};
+
+async function resolveModelTier(baseModelId: string): Promise<string> {
+  const parts = baseModelId.split('@');
+  const base = parts[0];
+  const suffixTier = parts[1]?.toLowerCase();
+  const mapping = TIER_MAPPING[base];
+  if (!mapping) {
+    return baseModelId; // Not a multi-tier model
+  }
+  if (suffixTier && mapping[suffixTier]) {
+    return mapping[suffixTier];
+  }
+  // Interactive prompt if no valid suffix
+  const rl = readline.createInterface({ input, output });
+  try {
+    const answer = await rl.question(`\nSelect tier for ${base}: [1] Low, [2] Medium, [3] High? (Default: 2): `);
+    const choice = answer.trim();
+    if (choice === '1') return mapping['low'];
+    if (choice === '3') return mapping['high'];
+    return mapping['medium']; // Default to medium
+  } catch (e) {
+    console.warn(`\n[Agy] Prompt failed, defaulting to medium tier.`);
+    return mapping['medium'];
+  } finally {
+    rl.close();
+  }
 }
 
 /**
