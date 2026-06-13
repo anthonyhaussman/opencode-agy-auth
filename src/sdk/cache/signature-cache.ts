@@ -4,113 +4,113 @@ import { homedir, tmpdir } from "node:os";
 
 // =============================================================================
 /**
- * NOTE: 特别设计——跨轮次签名磁盘级持久化缓存
- * Google Agy / Gemini 2.5/3 思考模型引入了严苛的“思考签名校验（Thought Signature Validation）”限制：
- * 在多轮对话（特别是包含 Tool 调用的场景）中，下一次请求必须携带与上一次 API 返回值完全一致的上下文签名（thoughtSignature）。
- * 为了避免以下情况导致对话报错崩溃：
- * 1. IDE 侧会话生命周期重建，导致内存中的签名状态丢失。
- * 2. 多轮 Tool 交互产生的并发包打乱了签名的内存缓存。
- * 我们在这里实现了一个后台线程定时批量写盘的磁盘缓存层。以会话 ID（sessionId）和历史思维链的摘要哈希组合作为 Key，
- * 对签名和思维链做持久化，即使 IDE 重启或发生轮次分裂，依然能拉回最新且匹配的签名以完成官方的校验约束。
+ * NOTE: Special Design - Cross-turn signature disk-level persistent cache
+ * Google Agy / Gemini 2.5/3 thinking models introduce strict "Thought Signature Validation" restrictions:
+ * In multi-turn dialogues (especially with Tool calls), the next request must carry a context signature (thoughtSignature) exactly matching the previous API response.
+ * To avoid conversation crashes caused by the following:
+ * 1. IDE-side session lifecycle rebuilds, causing loss of in-memory signature states.
+ * 2. Concurrent packets from multi-turn Tool interactions disrupting the memory cache of signatures.
+ * We implement a disk cache layer here with a background thread that periodically flushes to disk. Using a combination of session ID (sessionId) and historical thought chain hash digest as the Key,
+ * it persists the signatures and thought chains. Even if the IDE restarts or turns split, it can pull back the latest matching signature to fulfill official validation constraints.
  */
-// 类型与接口定义 (Types & Interfaces)
+// Types & Interfaces
 // =============================================================================
 
 /**
- * 签名缓存配置项
+ * Signature cache configuration options
  */
 export interface SignatureCacheConfig {
-  /** 是否启用缓存 */
+  /** Whether to enable caching */
   enabled: boolean;
-  /** 内存缓存的生存时间（秒） */
+  /** In-memory cache time-to-live (seconds) */
   memory_ttl_seconds: number;
-  /** 磁盘缓存的生存时间（秒） */
+  /** Disk cache time-to-live (seconds) */
   disk_ttl_seconds: number;
-  /** 自动写盘的间隔时间（秒） */
+  /** Auto-save interval to disk (seconds) */
   write_interval_seconds: number;
 }
 
 /**
- * 缓存的单条数据条目
+ * Single cached data entry
  */
 interface CacheEntry {
-  /** 缓存的值（比如签名） */
+  /** Cached value (e.g., signature) */
   value: string;
-  /** 时间戳（毫秒） */
+  /** Timestamp (milliseconds) */
   timestamp: number;
-  /** 完整的思维链文本内容（可选，用于压缩后自愈恢复） */
+  /** Full thought chain text content (optional, for self-healing recovery after compression) */
   thinkingText?: string;
-  /** 思维链文本的预览（仅用于调试日志） */
+  /** Preview of thought chain text (for debug logs only) */
   textPreview?: string;
-  /** 与此思维链块关联的工具调用 ID 列表 */
+  /** List of tool call IDs associated with this thought chain block */
   toolIds?: string[];
 }
 
 /**
- * 保存到磁盘上的完整缓存结构
+ * Complete cache structure saved to disk
  */
 interface CacheData {
-  /** 版本号 */
+  /** Version number */
   version: "1.0";
-  /** 内存 TTL 配置 */
+  /** Memory TTL config */
   memory_ttl_seconds: number;
-  /** 磁盘 TTL 配置 */
+  /** Disk TTL config */
   disk_ttl_seconds: number;
-  /** 缓存条目映射表 */
+  /** Cache entry mapping table */
   entries: Record<string, CacheEntry>;
-  /** 统计数据 */
+  /** Statistics */
   statistics: {
-    /** 内存命中次数 */
+    /** Memory hit count */
     memory_hits: number;
-    /** 磁盘命中次数 */
+    /** Disk hit count */
     disk_hits: number;
-    /** 未命中次数 */
+    /** Miss count */
     misses: number;
-    /** 写盘次数 */
+    /** Disk write count */
     writes: number;
-    /** 上次写盘时间戳 */
+    /** Last disk write timestamp */
     last_write: number;
   };
 }
 
 /**
- * 缓存运行时的状态和统计信息
+ * Cache runtime state and statistics
  */
 interface CacheStats {
-  /** 内存命中次数 */
+  /** Memory hit count */
   memoryHits: number;
-  /** 磁盘命中次数 */
+  /** Disk hit count */
   diskHits: number;
-  /** 未命中次数 */
+  /** Miss count */
   misses: number;
-  /** 写盘次数 */
+  /** Disk write count */
   writes: number;
-  /** 当前保存在内存中的条目总数 */
+  /** Total number of entries currently in memory */
   memoryEntries: number;
-  /** 缓存是否处于脏状态（有未存盘的数据） */
+  /** Whether the cache is dirty (has unsaved data) */
   dirty: boolean;
-  /** 磁盘存储是否启用 */
+  /** Whether disk storage is enabled */
   diskEnabled: boolean;
 }
 
 /**
- * 获取完整思维链缓存数据结构
+ * Retrieve full thought chain cache data structure
  */
 export interface ThinkingCacheData {
-  /** 思维链文本 */
+  /** Thought chain text */
   text: string;
-  /** 签名 */
+  /** Signature */
   signature: string;
-  /** 关联的工具 ID 列表 */
+  /** Associated tool ID list */
   toolIds?: string[];
 }
 
 // =============================================================================
-// 文件与目录工具函数 (Path & Storage Utilities)
+// Path & Storage Utilities
 // =============================================================================
 
 /**
- * 获取插件配置保存目录
+ * Get plugin config save directory
  */
 function getConfigDir(): string {
   const platform = process.platform;
@@ -122,14 +122,14 @@ function getConfigDir(): string {
 }
 
 /**
- * 获取缓存文件的保存绝对路径
+ * Get absolute path for saving cache file
  */
 function getCacheFilePath(): string {
   return join(getConfigDir(), "antigravity-signature-cache.json");
 }
 
 /**
- * 同步确保配置文件被加到 .gitignore，避免泄露签名和缓存
+ * Synchronously ensure the config file is added to .gitignore to avoid leaking signatures and cache
  */
 function ensureGitignoreSync(configDir: string): void {
   const gitignorePath = join(configDir, ".gitignore");
@@ -149,31 +149,31 @@ function ensureGitignoreSync(configDir: string): void {
       appendFileSync(gitignorePath, suffix + missing.join("\n") + "\n", "utf-8");
     }
   } catch {
-    // 忽略异常：防泄露属于非阻塞的次要功能
+    // Ignore exception: anti-leakage is a non-blocking secondary feature
   }
 }
 
 // =============================================================================
-// 签名缓存管理器主类 (Signature Cache Manager)
+// Signature Cache Manager
 // =============================================================================
 
 export class SignatureCache {
-  // 内存缓存映射表
+  // Memory cache map
   private cache: Map<string, CacheEntry> = new Map();
   
-  // 配置项
+  // Configuration options
   private memoryTtlMs: number;
   private diskTtlMs: number;
   private writeIntervalMs: number;
   private cacheFilePath: string;
   private enabled: boolean;
   
-  // 状态变量
+  // State variables
   private dirty: boolean = false;
   private writeTimer: ReturnType<typeof setInterval> | null = null;
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
   
-  // 统计指标
+  // Statistical metrics
   private stats = {
     memoryHits: 0,
     diskHits: 0,
@@ -195,18 +195,18 @@ export class SignatureCache {
   }
 
   // ===========================================================================
-  // 公开的签名缓存 API (Public Signature API)
+  // Public Signature API
   // ===========================================================================
 
   /**
-   * 基于会话 ID 和模型 ID 生成唯一的缓存键
+   * Generates a unique cache key based on session ID and model ID
    */
   static makeKey(sessionId: string, modelId: string): string {
     return `${sessionId}:${modelId}`;
   }
 
   /**
-   * 将一个签名存入缓存中（标记为脏状态，等待后台写盘）
+   * Stores a signature in cache (marks as dirty, awaits background disk write)
    */
   store(key: string, signature: string): void {
     if (!this.enabled) return;
@@ -219,8 +219,8 @@ export class SignatureCache {
   }
 
   /**
-   * 从缓存中检索签名，并更新命中统计
-   * 若过期或不存在则返回 null
+   * Retrieves a signature from cache and updates hit stats
+   * Returns null if expired or missing
    */
   retrieve(key: string): string | null {
     if (!this.enabled) return null;
@@ -232,7 +232,7 @@ export class SignatureCache {
         this.stats.memoryHits++;
         return entry.value;
       }
-      // 已在内存中过期，删除
+      // Expired in memory, delete
       this.cache.delete(key);
     }
 
@@ -241,7 +241,7 @@ export class SignatureCache {
   }
 
   /**
-   * 检查某个键在缓存中是否有效且未过期（不影响统计数据）
+   * Checks if a key is valid and unexpired in cache (without affecting stats)
    */
   has(key: string): boolean {
     if (!this.enabled) return false;
@@ -254,12 +254,12 @@ export class SignatureCache {
   }
 
   // ===========================================================================
-  // 思维链全量缓存 API (Full Thinking Cache API)
+  // Full Thinking Cache API
   // ===========================================================================
 
   /**
-   * 缓存完整的思维链文本内容及签名
-   * 即使后续的上下文遭到压缩，我们也能从中自愈和恢复历史上下文中的 thought block。
+   * Caches the full thought chain text content and signature
+   * Allows self-healing and recovery of historical thought blocks even if the context is subsequently compressed.
    */
   storeThinking(
     key: string,
@@ -280,7 +280,7 @@ export class SignatureCache {
   }
 
   /**
-   * 从缓存中提取完整的思维链信息
+   * Extracts full thought chain info from cache
    */
   retrieveThinking(key: string): ThinkingCacheData | null {
     if (!this.enabled) return null;
@@ -303,7 +303,7 @@ export class SignatureCache {
   }
 
   /**
-   * 检查是否存在某个键的完整思维链内容
+   * Checks if full thought chain content exists for a key
    */
   hasThinking(key: string): boolean {
     if (!this.enabled) return false;
@@ -316,7 +316,7 @@ export class SignatureCache {
   }
 
   /**
-   * 获取当前缓存统计数据与内存占用情况
+   * Gets current cache stats and memory footprint
    */
   getStats(): CacheStats {
     return {
@@ -328,7 +328,7 @@ export class SignatureCache {
   }
 
   /**
-   * 手动触发立即保存到磁盘
+   * Manually triggers immediate save to disk
    */
   async flush(): Promise<boolean> {
     if (!this.enabled) return true;
@@ -336,7 +336,7 @@ export class SignatureCache {
   }
 
   /**
-   * 优雅关机：停止所有定时器，并将未写盘的数据保存到磁盘上
+   * Graceful shutdown: stops all timers and flushes unsaved data to disk
    */
   shutdown(): void {
     if (this.writeTimer) {
@@ -354,11 +354,11 @@ export class SignatureCache {
   }
 
   // ===========================================================================
-  // 磁盘数据持久化操作 (Disk Operations)
+  // Disk Operations
   // ===========================================================================
 
   /**
-   * 从磁盘中加载签名缓存，并验证 TTL 状态
+   * Loads signature cache from disk and validates TTL state
    */
   private loadFromDisk(): void {
     try {
@@ -370,7 +370,7 @@ export class SignatureCache {
       const data = JSON.parse(content) as CacheData;
 
       if (data.version !== "1.0") {
-        // 版本不匹配时，静默忽略并开始全新的缓存
+        // On version mismatch, silently ignore and start a fresh cache
         return;
       }
 
@@ -388,13 +388,13 @@ export class SignatureCache {
         }
       }
     } catch {
-      // 容错处理：磁盘缓存加载失败时，静默开始全新内存缓存
+      // Fault tolerance: silently start fresh memory cache on disk load failure
     }
   }
 
   /**
-   * 将内存缓存同步保存到磁盘上（采用先写临时文件后 rename 的原子写入模式）
-   * 写入时会与磁盘上原有的未过期数据条目进行合并
+   * Synchronously saves memory cache to disk (using atomic write: temp file then rename)
+   * Merges with existing unexpired entries on disk during write
    */
   private saveToDisk(): boolean {
     try {
@@ -407,7 +407,7 @@ export class SignatureCache {
 
       const now = Date.now();
 
-      // 步骤 1: 读取现存的磁盘数据条目
+      // Step 1: Read existing disk entries
       let existingEntries: Record<string, CacheEntry> = {};
       if (existsSync(this.cacheFilePath)) {
         try {
@@ -415,11 +415,11 @@ export class SignatureCache {
           const data = JSON.parse(content) as CacheData;
           existingEntries = data.entries || {};
         } catch {
-          // 容错：如果格式错误或损坏，直接覆盖
+          // Fault tolerance: overwrite if malformed or corrupted
         }
       }
 
-      // 步骤 2: 过滤已过期的磁盘条目
+      // Step 2: Filter expired disk entries
       const validDiskEntries: Record<string, CacheEntry> = {};
       for (const [key, entry] of Object.entries(existingEntries)) {
         const age = now - entry.timestamp;
@@ -428,7 +428,7 @@ export class SignatureCache {
         }
       }
 
-      // 步骤 3: 内存缓存覆盖或合并到有效磁盘条目中（内存数据最新，优先级最高）
+      // Step 3: Overwrite or merge memory cache into valid disk entries (memory data is newest, highest priority)
       const mergedEntries: Record<string, CacheEntry> = { ...validDiskEntries };
       for (const [key, entry] of this.cache.entries()) {
         mergedEntries[key] = {
@@ -440,7 +440,7 @@ export class SignatureCache {
         };
       }
 
-      // 步骤 4: 构建需要持久化的结构体
+      // Step 4: Build persistent structure
       const cacheData: CacheData = {
         version: "1.0",
         memory_ttl_seconds: this.memoryTtlMs / 1000,
@@ -455,19 +455,19 @@ export class SignatureCache {
         },
       };
 
-      // 步骤 5: 原子写入（先写临时文件，重命名完成最终持久化，防止损坏现有数据）
+      // Step 5: Atomic write (write to temp file, rename to finalize, preventing data corruption)
       const tmpPath = join(tmpdir(), `antigravity-cache-${Date.now()}-${Math.random().toString(36).slice(2)}.tmp`);
       writeFileSync(tmpPath, JSON.stringify(cacheData, null, 2), "utf-8");
 
       try {
         renameSync(tmpPath, this.cacheFilePath);
       } catch {
-        // 在 Windows 跨卷重命名可能会失败，fallback 到复制 + 删除
+        // Cross-volume rename on Windows might fail, fallback to copy + delete
         writeFileSync(this.cacheFilePath, readFileSync(tmpPath));
         try {
           unlinkSync(tmpPath);
         } catch {
-          // 忽略临时文件删除失败
+          // Ignore temp file deletion failure
         }
       }
 
@@ -475,34 +475,34 @@ export class SignatureCache {
       this.dirty = false;
       return true;
     } catch {
-      // 磁盘缓存写盘是非核心流程，静默失败即可
+      // Disk writing is non-core, fail silently
       return false;
     }
   }
 
   // ===========================================================================
-  // 后台自动定时任务 (Background Tasks)
+  // Background Tasks
   // ===========================================================================
 
   /**
-   * 启动自动保存和自动清理过期内存条目的定时器
+   * Starts timers for auto-saving and auto-cleaning expired memory entries
    */
   private startBackgroundTasks(): void {
-    // 定期写盘（如果发生过修改）
+    // Periodic disk write (if modified)
     this.writeTimer = setInterval(() => {
       if (this.dirty) {
         this.saveToDisk();
       }
     }, this.writeIntervalMs);
 
-    // 每 30 分钟进行一次内存垃圾清理，腾出闲置空间
+    // Perform memory garbage collection every 30 mins to free unused space
     this.cleanupTimer = setInterval(() => {
       this.cleanupExpired();
     }, 30 * 60 * 1000);
   }
 
   /**
-   * 移除内存中超过生存周期的过期缓存
+   * Removes memory cache entries exceeding their TTL
    */
   private cleanupExpired(): void {
     const now = Date.now();
@@ -516,11 +516,11 @@ export class SignatureCache {
 }
 
 // =============================================================================
-// 工厂辅助函数 (Factory function)
+// Factory function
 // =============================================================================
 
 /**
- * 根据配置实例化签名缓存对象。如果配置未启用则返回 null
+ * Instantiates signature cache object based on config. Returns null if disabled.
  */
 export function createSignatureCache(config: SignatureCacheConfig | undefined): SignatureCache | null {
   if (!config || !config.enabled) {

@@ -19,7 +19,7 @@ const RETRYABLE_NETWORK_CODES = new Set([
 ]);
 
 /**
- * 在尝试重试之前，确保请求体是可重放的。
+ * Ensures the request body is replayable before attempting a retry.
  */
 export function canRetryRequest(init: RequestInit | undefined): boolean {
   if (!init?.body) {
@@ -47,14 +47,14 @@ export function canRetryRequest(init: RequestInit | undefined): boolean {
 }
 
 /**
- * 基于状态码的重试策略，与 Gemini/Agy CLI 保持一致。
+ * Status code-based retry strategy, consistent with Gemini/Agy CLI.
  */
 export function isRetryableStatus(status: number): boolean {
   return status === 429 || (status >= 500 && status < 600);
 }
 
 /**
- * 处理瞬时网络故障（包含嵌套在 `cause.code` 中的错误码）。
+ * Handles transient network failures (including error codes nested in `cause.code`).
  */
 export function isRetryableNetworkError(error: unknown): boolean {
   const code = getNetworkErrorCode(error);
@@ -66,7 +66,7 @@ export function isRetryableNetworkError(error: unknown): boolean {
 }
 
 /**
- * 优先通过 Retry-After 响应头、响应体中的配额信息或 fallback 指数退避策略来解析重试的延迟毫秒数。
+ * Prioritizes parsing retry delay milliseconds via Retry-After header, quota info in response body, or fallback exponential backoff.
  */
 export async function resolveRetryDelayMs(
   response: Response,

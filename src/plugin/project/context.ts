@@ -15,7 +15,7 @@ const projectContextResultCache = new Map<string, ProjectContextResult>();
 const projectContextPendingCache = new Map<string, Promise<ProjectContextResult>>();
 
 /**
- * 清除缓存的项目上下文结果和挂起的 Promise。
+ * Clears cached project context results and pending Promises.
  */
 export function invalidateProjectContextCache(refresh?: string): void {
   if (!refresh) {
@@ -41,7 +41,7 @@ export function invalidateProjectContextCache(refresh?: string): void {
 }
 
 /**
- * 解析 access token 对应的项目上下文，可选择持久化更新后的认证信息。
+ * Resolves the project context corresponding to the access token, optionally persisting updated auth details.
  */
 export async function resolveProjectContextFromAccessToken(
   auth: OAuthAuthDetails,
@@ -129,7 +129,7 @@ export async function resolveProjectContextFromAccessToken(
 }
 
 /**
- * 解析当前认证状态的有效项目 ID，并按 refresh token 缓存结果。
+ * Resolves the effective project ID for the current auth state and caches the result by refresh token.
  */
 export async function ensureProjectContext(
   auth: OAuthAuthDetails,

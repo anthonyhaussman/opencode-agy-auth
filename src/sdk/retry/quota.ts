@@ -35,12 +35,12 @@ const CLOUDCODE_DOMAINS = new Set([
 ]);
 
 /**
- * NOTE: 特别设计——精细化 429 报错分类与重试策略
- * 传统的网络请求重试模块通常将 429 统一视作限流进行重试或报错。
- * 在此处我们做精细化解析：
- * 1. 区分“账号物理配额耗尽”与“模型瞬时容量超载（MODEL_CAPACITY_EXHAUSTED）”。
- * 2. 如果是物理配额耗尽，直接判定为不可重试的终端状态，避免做无意义的网络请求；
- *    如果是谷歌后端模型容量瞬时超载，则判定为可重试，解析响应中的 RetryInfo 延迟并通知上层（通过 TUI Toast 提示用户，并进行退避重试）。
+ * NOTE: Special Design - Granular 429 Error Classification and Retry Strategy
+ * Traditional network retry modules usually treat 429 errors uniformly as rate-limiting for retries or throwing errors.
+ * Here we parse it granularly:
+ * 1. Differentiate between "Account physical quota exhausted" and "Model instantaneous capacity overloaded (MODEL_CAPACITY_EXHAUSTED)".
+ * 2. If it's physical quota exhaustion, it's considered an unretriable terminal state to avoid meaningless network requests;
+ *    If it's a momentary overload of Google's backend model capacity, it's considered retriable, parses RetryInfo delay from response, and notifies the upper layer (showing a Toast in TUI, backing off, and retrying).
  */
 export async function classifyQuotaResponse(response: Response): Promise<QuotaContext | null> {
   const payload = await parseErrorBody(response);
@@ -111,7 +111,7 @@ export async function classifyQuotaResponse(response: Response): Promise<QuotaCo
 }
 
 /**
- * 直接从错误负载中提取 RetryInfo 延迟提示信息。
+ * Extracts the RetryInfo delay hint directly from the error payload.
  */
 export async function parseRetryDelayFromBody(response: Response): Promise<number | null> {
   const payload = await parseErrorBody(response);

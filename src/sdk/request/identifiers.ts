@@ -68,7 +68,7 @@ function stripSessionIdentifierAliases(payload: Record<string, unknown>): void {
 }
 
 /**
- * 为包装后的 Code Assist 负载应用规范的标识符。
+ * Applies canonical identifiers for wrapped Code Assist payloads.
  */
 export function normalizeWrappedIdentifiers(
   wrapped: Record<string, unknown>,
@@ -89,7 +89,7 @@ export function normalizeWrappedIdentifiers(
 }
 
 /**
- * 在包装之前，为未包装的请求负载应用规范的标识符。
+ * Applies canonical identifiers for unwrapped request payloads prior to wrapping.
  */
 export function normalizeRequestPayloadIdentifiers(
   payload: Record<string, unknown>,

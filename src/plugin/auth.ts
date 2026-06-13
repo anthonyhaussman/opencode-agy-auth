@@ -7,7 +7,7 @@ export function isOAuthAuth(auth: AuthDetails): auth is OAuthAuthDetails {
 }
 
 /**
- * 将打包后的 refresh 字符串拆分为对应的 refresh token 和项目 ID。
+ * Splits the packed refresh string into the corresponding refresh token and project ID.
  */
 export function parseRefreshParts(refresh: string): RefreshParts {
   const [refreshToken = '', projectId = '', managedProjectId = ''] = (refresh ?? '').split('|');
@@ -19,7 +19,7 @@ export function parseRefreshParts(refresh: string): RefreshParts {
 }
 
 /**
- * 将 refresh token 的各个部分序列化为存储的字符串格式。
+ * Serializes the parts of a refresh token into the stored string format.
  */
 export function formatRefreshParts(parts: RefreshParts): string {
   if (!parts.refreshToken) {
@@ -36,7 +36,7 @@ export function formatRefreshParts(parts: RefreshParts): string {
 }
 
 /**
- * 判断 access token 是否已过期或缺失，并预留时钟偏差缓冲时间。
+ * Determines whether the access token has expired or is missing, with a buffer for clock skew.
  */
 export function accessTokenExpired(auth: OAuthAuthDetails): boolean {
   if (!auth.access || typeof auth.expires !== 'number') {

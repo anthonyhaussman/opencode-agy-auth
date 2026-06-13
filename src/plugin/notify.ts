@@ -7,7 +7,7 @@ const TEST_TOAST_FLAG = "OPENCODE_AGY_TEST_TOAST";
 const testToastShownByProject = new Set<string>();
 
 /**
- * 当服务器端 Agy 模型容量耗尽时，向用户弹出 Toast 提示。
+ * Shows a Toast notification to the user when the server-side Agy model capacity is exhausted.
  */
 export async function maybeShowAgyCapacityToast(
   client: PluginClient,
@@ -44,7 +44,7 @@ export async function maybeShowAgyCapacityToast(
 }
 
 /**
- * 临时的冒烟测试 Toast，仅当 OPENCODE_AGY_TEST_TOAST=1 时启用。
+ * Temporary smoke test Toast, only enabled when OPENCODE_AGY_TEST_TOAST=1.
  */
 export async function maybeShowAgyTestToast(
   client: PluginClient,

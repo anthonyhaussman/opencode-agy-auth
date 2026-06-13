@@ -21,7 +21,7 @@ export interface ThinkingConfigDefaults {
 }
 
 /**
- * 将 OpenAI 样式的请求重写为 Gemini Code Assist 请求的格式。
+ * Rewrites OpenAI-style requests into the format for Gemini Code Assist requests.
  */
 export function prepareAgyRequest(
   input: RequestInfo,

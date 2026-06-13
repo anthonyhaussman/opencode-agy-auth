@@ -57,7 +57,7 @@ export interface RetrieveUserQuotaResponse {
 }
 
 /**
- * 在 Gemini 启用过程中，如果缺少必需的 Google Cloud 项目则抛出此错误。
+ * Thrown during Gemini enablement if the required Google Cloud project is missing.
  */
 export class ProjectIdRequiredError extends Error {
   constructor() {

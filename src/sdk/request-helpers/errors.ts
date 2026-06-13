@@ -10,7 +10,7 @@ import {
 } from "./types";
 
 /**
- * 使用直接的预览访问信息增强 Gemini 3 模型的 404 错误。
+ * Enhances 404 errors for Gemini 3 models with direct preview access information.
  */
 export function rewriteGeminiPreviewAccessError(
   body: GeminiApiBody,
@@ -38,7 +38,7 @@ export function rewriteGeminiPreviewAccessError(
 }
 
 /**
- * 使用验证/配额消息及重试提示增强 Gemini 错误。
+ * Enhances Gemini errors with validation/quota messages and retry hints.
  */
 export function enhanceGeminiErrorResponse(
   body: GeminiApiBody,

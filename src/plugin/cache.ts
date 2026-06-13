@@ -3,11 +3,11 @@ import { accessTokenExpired } from "./auth";
 import type { OAuthAuthDetails } from "./types";
 import { SignatureCache, createSignatureCache, type SignatureCacheConfig } from "../sdk/cache/signature-cache";
 
-// 内存中缓存已登录账户的授权信息
+// In-memory cache of authorized account details.
 const authCache = new Map<string, OAuthAuthDetails>();
 
 /**
- * 规整并去除刷新令牌 refresh token 字符串的首尾空格
+ * Normalizes and trims whitespace from the refresh token string.
  */
 function normalizeRefreshKey(refresh?: string): string | undefined {
   const key = refresh?.trim();
@@ -15,7 +15,7 @@ function normalizeRefreshKey(refresh?: string): string | undefined {
 }
 
 /**
- * 从缓存中提取有效的 OAuthAuthDetails，如果有可用且未过期的 Token 会进行复用，否则优先使用传入的最新值
+ * Extracts valid OAuthAuthDetails from cache. Reuses an available and unexpired Token if present, otherwise prioritizes the latest provided value.
  */
 export function resolveCachedAuth(auth: OAuthAuthDetails): OAuthAuthDetails {
   const key = normalizeRefreshKey(auth.refresh);
@@ -43,7 +43,7 @@ export function resolveCachedAuth(auth: OAuthAuthDetails): OAuthAuthDetails {
 }
 
 /**
- * 显式更新或保存已授权的令牌信息到缓存中
+ * Explicitly updates or saves authorized token details to the cache.
  */
 export function storeCachedAuth(auth: OAuthAuthDetails): void {
   const key = normalizeRefreshKey(auth.refresh);
@@ -54,7 +54,7 @@ export function storeCachedAuth(auth: OAuthAuthDetails): void {
 }
 
 /**
- * 清除已缓存的登录授权信息，若不传刷新令牌，则清除全局缓存
+ * Clears cached login authorization details. If no refresh token is provided, clears the global cache.
  */
 export function clearCachedAuth(refresh?: string): void {
   if (!refresh) {
@@ -68,7 +68,7 @@ export function clearCachedAuth(refresh?: string): void {
 }
 
 // ============================================================================
-// 思考签名缓存层 (支持多轮对话中对 Gemini 和 Claude 签名状态对齐的自愈)
+// Thinking signature cache layer (supports self-healing alignment of Gemini and Claude signature states in multi-turn dialogues).
 // ============================================================================
 
 interface SignatureEntry {
@@ -76,23 +76,23 @@ interface SignatureEntry {
   timestamp: number;
 }
 
-// 内存缓存层: sessionId -> Map<textHash, SignatureEntry>
+// In-memory cache layer: sessionId -> Map<textHash, SignatureEntry>
 const signatureCache = new Map<string, Map<string, SignatureEntry>>();
 
-// 缓存有效期设定为 1 小时
+// Cache validity period set to 1 hour.
 const SIGNATURE_CACHE_TTL_MS = 60 * 60 * 1000;
 
-// 每个 session 的最大缓存量，防止长时间不关闭时发生内存泄漏
+// Maximum cache size per session to prevent memory leaks when left open for a long time.
 const MAX_ENTRIES_PER_SESSION = 100;
 
-// 取 sha256 结果前 16 位 16 进制字符作为 textHash 的键宽
+// Use the first 16 hex characters of the sha256 result as the textHash key width.
 const SIGNATURE_TEXT_HASH_HEX_LEN = 16;
 
-// 磁盘级持久化缓存实例
+// Disk-level persistent cache instance.
 let diskCache: SignatureCache | null = null;
 
 /**
- * 初始化磁盘级别的签名存储管理器
+ * Initializes the disk-level signature storage manager.
  */
 export function initDiskSignatureCache(config: SignatureCacheConfig | undefined): SignatureCache | null {
   diskCache = createSignatureCache(config);
@@ -100,24 +100,24 @@ export function initDiskSignatureCache(config: SignatureCacheConfig | undefined)
 }
 
 /**
- * 对思维链内容计算稳定的 sha256 哈希，截取前 16 位作为唯一键
+ * Calculates a stable sha256 hash of the thought chain content, taking the first 16 characters as the unique key.
  */
 function hashText(text: string): string {
   return createHash("sha256").update(text, "utf8").digest("hex").slice(0, SIGNATURE_TEXT_HASH_HEX_LEN);
 }
 
 /**
- * 构建磁盘存储上复合的主键 sessionId:textHash
+ * Builds the composite primary key sessionId:textHash on disk storage.
  */
 function makeDiskKey(sessionId: string, textHash: string): string {
   return `${sessionId}:${textHash}`;
 }
 
-// 最新签名映射：sessionId -> 最近一次的签名字符串
+// Latest signature mapping: sessionId -> most recent signature string.
 const latestSignatureMap = new Map<string, string>();
 
 /**
- * 缓存某次思维链片段和其对应的服务签名，同时将其同步存储到磁盘中
+ * Caches a thought chain fragment and its corresponding service signature, synchronously saving it to disk.
  */
 export function cacheSignature(sessionId: string, text: string, signature: string): void {
   if (!sessionId || !text || !signature) return;
@@ -130,7 +130,7 @@ export function cacheSignature(sessionId: string, text: string, signature: strin
     signatureCache.set(sessionId, sessionMemCache);
   }
 
-  // 超过容量限制时，触发 LRU 清理过期条目
+  // When capacity limit is exceeded, trigger LRU cleanup of expired entries.
   if (sessionMemCache.size >= MAX_ENTRIES_PER_SESSION) {
     const now = Date.now();
     for (const [key, entry] of sessionMemCache.entries()) {
@@ -138,7 +138,7 @@ export function cacheSignature(sessionId: string, text: string, signature: strin
         sessionMemCache.delete(key);
       }
     }
-    // 若依然超限，直接丢弃时间戳最老的前 25% 条目
+    // If still over the limit, discard the oldest 25% of entries by timestamp.
     if (sessionMemCache.size >= MAX_ENTRIES_PER_SESSION) {
       const entries = Array.from(sessionMemCache.entries())
         .sort((a, b) => a[1].timestamp - b[1].timestamp);
@@ -152,30 +152,30 @@ export function cacheSignature(sessionId: string, text: string, signature: strin
   sessionMemCache.set(textHash, { signature, timestamp: Date.now() });
   latestSignatureMap.set(sessionId, signature);
 
-  // 如果启用了磁盘持久化，同步写盘
+  // If disk persistence is enabled, write to disk synchronously.
   if (diskCache) {
     const diskKey = makeDiskKey(sessionId, textHash);
     diskCache.store(diskKey, signature);
-    // 同时以 sessionId 直接作为 key 存储最新的签名值，用于应对不需要 textHash 的全局签名恢复
+    // Also store the latest signature value directly using sessionId as the key, for global signature recovery without textHash.
     diskCache.store(sessionId, signature);
   }
 }
 
 /**
- * 恢复并获取某会话下最近一次被缓存的签名（支持签名恢复）
+ * Recovers and retrieves the most recently cached signature for a session (supports signature recovery).
  */
 export function getLatestSignature(sessionId: string): string | undefined {
   if (!sessionId) return undefined;
 
-  // 优先从内存缓存中获取
+  // Prioritize retrieval from in-memory cache.
   const memValue = latestSignatureMap.get(sessionId);
   if (memValue) return memValue;
 
-  // 内存未命中，退化至磁盘中查询
+  // In-memory miss, fallback to disk query.
   if (diskCache) {
     const diskValue = diskCache.retrieve(sessionId);
     if (diskValue) {
-      // 读出后自动升入内存 Map，加速后续查询
+      // Automatically promote to in-memory Map after read, accelerating subsequent queries.
       latestSignatureMap.set(sessionId, diskValue);
       return diskValue;
     }

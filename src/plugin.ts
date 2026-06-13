@@ -61,46 +61,18 @@ interface SimpleStaticModel {
 }
 
 const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
-  'gemini-3.5-flash-low': {
-    name: 'Gemini 3.5 Flash (Medium)',
-    description: 'Gemini 3.5 Flash 中配版本，兼顾生成速度与推理性能，提供高性价比。',
+  'gemini-3.5-flash': {
+    name: 'Gemini 3.5 Flash',
+    description: 'Gemini 3.5 Flash base model. Select tier at runtime.',
     maxTokens: 1048576,
     maxOutputTokens: 65536,
     toolCall: true,
     reasoning: true,
     attachment: true
   },
-  'gemini-3-flash-agent': {
-    name: 'Gemini 3.5 Flash (High)',
-    description: 'Gemini 3.5 Flash 高配智能体版，响应极快，深度优化了多步骤工具调用与流程控制。',
-    maxTokens: 1048576,
-    maxOutputTokens: 65536,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'gemini-3.5-flash-extra-low': {
-    name: 'Gemini 3.5 Flash (Low)',
-    description: 'Gemini 3.5 Flash 超低配版本，适合大规模、低成本的简单文本处理任务。',
-    maxTokens: 1048576,
-    maxOutputTokens: 65536,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'gemini-3.1-pro-low': {
-    name: 'Gemini 3.1 Pro (Low)',
-    description: 'Gemini 3.1 Pro 低配版本，适合高复杂度的逻辑和代码编写任务，但限制了部分并发或配额。',
-    maxTokens: 1048576,
-    maxOutputTokens: 65535,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'gemini-pro-agent': {
-    name: 'Gemini 3.1 Pro (High)',
-    description:
-      'Gemini 3.1 Pro 高配/智能体版本，提供最先进的多模态理解与长文本推理能力，并针对智能体工具调用进行了优化。',
+  'gemini-3.1-pro': {
+    name: 'Gemini 3.1 Pro',
+    description: 'Gemini 3.1 Pro base model. Select tier at runtime.',
     maxTokens: 1048576,
     maxOutputTokens: 65535,
     toolCall: true,
@@ -109,7 +81,7 @@ const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
   },
   'claude-sonnet-4-6': {
     name: 'Claude Sonnet 4.6 (Thinking)',
-    description: 'Claude Sonnet 4.6 深度推理模型，完美平衡了思考过程、处理速度与输出质量。',
+    description: 'Claude Sonnet 4.6 deep reasoning model, perfectly balancing thinking process, processing speed, and output quality.',
     maxTokens: 250000,
     maxOutputTokens: 64000,
     toolCall: true,
@@ -118,7 +90,7 @@ const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
   },
   'claude-opus-4-6-thinking': {
     name: 'Claude Opus 4.6 (Thinking)',
-    description: 'Claude Opus 4.6 深度推理模型，内置思考链，非常适合解决顶尖难度的算法和逻辑难题。',
+    description: 'Claude Opus 4.6 deep reasoning model, built-in chain of thought, highly suitable for top-tier algorithm and logic puzzles.',
     maxTokens: 250000,
     maxOutputTokens: 64000,
     toolCall: true,
@@ -127,7 +99,7 @@ const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
   },
   'gpt-oss-120b-medium': {
     name: 'GPT-OSS 120B (Medium)',
-    description: 'GPT 开源 120B 参数中配模型，在本地化部署或特定开源基准上表现卓越。',
+    description: 'GPT open-source 120B parameter medium tier model, excellent performance in local deployment or specific open-source benchmarks.',
     maxTokens: 131072,
     maxOutputTokens: 32768,
     toolCall: true,
@@ -136,9 +108,32 @@ const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
   }
 };
 
+const TIER_MAPPING: Record<string, { low: string; medium: string; high: string } & Record<string, string>> = {
+  'gemini-3.5-flash': {
+    low: 'gemini-3.5-flash-extra-low',
+    medium: 'gemini-3.5-flash-low',
+    high: 'gemini-3-flash-agent'
+  },
+  'gemini-3.1-pro': {
+    low: 'gemini-3.1-pro-low',
+    medium: 'gemini-pro-agent',
+    high: 'gemini-pro-agent'
+  }
+};
+
 const buildModelFromSimple = (modelId: string, simple: SimpleStaticModel): ProviderModel => {
   const isClaude = modelId.startsWith('claude-');
   const isGpt = modelId.startsWith('gpt-');
+  
+  let variants: any = undefined;
+  if (TIER_MAPPING[modelId]) {
+    variants = {
+      'low': { headers: { 'x-agy-tier': 'low' } },
+      'medium': { headers: { 'x-agy-tier': 'medium' } },
+      'high': { headers: { 'x-agy-tier': 'high' } }
+    };
+  }
+
   return {
     id: modelId,
     providerID: AGY_PROVIDER_ID,
@@ -186,7 +181,8 @@ const buildModelFromSimple = (modelId: string, simple: SimpleStaticModel): Provi
     options: {
       description: simple.description
     },
-    headers: {}
+    headers: {},
+    variants
   };
 };
 
@@ -195,8 +191,35 @@ for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
   STATIC_MODELS[modelId] = buildModelFromSimple(modelId, simple);
 }
 
+function resolveModelTier(baseModelId: string, init?: RequestInit): string {
+  const parts = baseModelId.split('@');
+  const base = parts[0] || '';
+  const suffixTier = parts[1]?.toLowerCase();
+  
+  const mapping = TIER_MAPPING[base];
+  if (!mapping) {
+    return baseModelId;
+  }
+
+  // Check for variant header injected by the TUI
+  let headerTier: string | null = null;
+  if (init?.headers) {
+    const headers = new Headers(init.headers);
+    headerTier = headers.get('x-agy-tier')?.toLowerCase() || null;
+  }
+
+  const requestedTier = headerTier || suffixTier;
+
+  // Resolve to specific tier or default to medium
+  if (requestedTier && Object.prototype.hasOwnProperty.call(mapping, requestedTier)) {
+    return mapping[requestedTier] || baseModelId;
+  }
+  
+  return mapping['medium'];
+}
+
 /**
- * 为 Opencode 注册 Agy OAuth 提供者。
+ * Registers the Agy OAuth provider for Opencode.
  */
 export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<PluginResult> => {
   let latestConfig: Config | undefined;
@@ -245,7 +268,7 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
         template: AGY_QUOTA_COMMAND_TEMPLATE
       };
 
-      // 动态注册 google-agy 提供商配置，使其无缝工作而无需用户手动映射
+      // Dynamically registers the google-agy provider config to make it work seamlessly without manual user mapping.
       config.provider = config.provider || {};
       config.provider[AGY_PROVIDER_ID] = {
         npm: '@ai-sdk/google',
@@ -255,7 +278,7 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
         ...config.provider[AGY_PROVIDER_ID]
       };
 
-      // 默认提供写死的静态模型列表
+      // Provides a hardcoded static model list by default.
       config.provider[AGY_PROVIDER_ID].models = STATIC_MODELS;
     },
     tool: {
@@ -344,9 +367,24 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
             );
             await maybeShowAgyTestToast(client, projectContext.effectiveProjectId);
 
+            const originalRequestedModel = parseGenerativeLanguageRequest(input)?.effectiveModel;
+            let modifiedInput = input;
+            if (isGL && originalRequestedModel) {
+               const originalBase = originalRequestedModel.replace('google-agy/', '');
+               const resolvedBase = resolveModelTier(originalBase, init);
+               if (originalBase !== resolvedBase) {
+                 if (typeof modifiedInput === 'string') {
+                    modifiedInput = modifiedInput.replace(`models/${originalBase}`, `models/${resolvedBase}`);
+                 } else if (modifiedInput instanceof Request) {
+                    const newUrl = modifiedInput.url.replace(`models/${originalBase}`, `models/${resolvedBase}`);
+                    modifiedInput = new Request(newUrl, modifiedInput);
+                 }
+               }
+            }
+
             const parts = parseRefreshParts(authRecord.refresh);
             const transformed = prepareAgyRequest(
-              input,
+              modifiedInput,
               init,
               authRecord.access,
               projectContext.effectiveProjectId,
@@ -419,7 +457,7 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
         if (!auth || !isOAuthAuth(auth)) {
           return {
             'login-required': {
-              name: '暂无模型列表'
+              name: 'No models available'
             }
           };
         }
