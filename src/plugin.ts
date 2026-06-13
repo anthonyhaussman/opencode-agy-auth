@@ -191,6 +191,77 @@ for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
   STATIC_MODELS[modelId] = buildModelFromSimple(modelId, simple);
 }
 
+function getSafeHeader(headers: unknown, key: string): string | undefined {
+  if (!headers) {
+    return undefined;
+  }
+  const targetKey = key.toLowerCase();
+  
+  if (typeof (headers as any).get === 'function') {
+    try {
+      return (headers as any).get(targetKey) || undefined;
+    } catch {
+      // Fallback in case get throws
+    }
+  }
+
+  if (Array.isArray(headers)) {
+    const found = headers.find((item) => {
+      if (Array.isArray(item) && typeof item[0] === 'string') {
+        return item[0].toLowerCase() === targetKey;
+      }
+      return false;
+    });
+    return found ? String(found[1]) : undefined;
+  }
+
+  if (typeof headers === 'object') {
+    const foundKey = Object.keys(headers).find(k => k.toLowerCase() === targetKey);
+    return foundKey ? ((headers as Record<string, unknown>)[foundKey] !== undefined ? String((headers as Record<string, unknown>)[foundKey]) : undefined) : undefined;
+  }
+
+  return undefined;
+}
+
+function setSafeHeaders(initHeaders: unknown, newHeaders: Record<string, string>): unknown {
+  if (typeof globalThis.Headers !== 'undefined') {
+    const headers = new globalThis.Headers((initHeaders as any) ?? {});
+    for (const [k, v] of Object.entries(newHeaders)) {
+      headers.set(k, v);
+    }
+    return headers;
+  }
+
+  if (Array.isArray(initHeaders)) {
+    const nextHeaders = [...initHeaders];
+    for (const [k, v] of Object.entries(newHeaders)) {
+      const idx = nextHeaders.findIndex(item => Array.isArray(item) && typeof item[0] === 'string' && item[0].toLowerCase() === k.toLowerCase());
+      if (idx !== -1) {
+        nextHeaders[idx] = [k, v];
+      } else {
+        nextHeaders.push([k, v]);
+      }
+    }
+    return nextHeaders;
+  }
+
+  const nextHeaders: Record<string, string> = {};
+  if (initHeaders && typeof initHeaders === 'object') {
+    for (const [k, v] of Object.entries(initHeaders)) {
+      nextHeaders[k] = String(v);
+    }
+  }
+  for (const [k, v] of Object.entries(newHeaders)) {
+    const existingKey = Object.keys(nextHeaders).find(key => key.toLowerCase() === k.toLowerCase());
+    if (existingKey) {
+      nextHeaders[existingKey] = v;
+    } else {
+      nextHeaders[k] = v;
+    }
+  }
+  return nextHeaders;
+}
+
 function resolveModelTier(baseModelId: string, init?: RequestInit): string {
   const parts = baseModelId.split('@');
   const base = parts[0] || '';
@@ -201,20 +272,7 @@ function resolveModelTier(baseModelId: string, init?: RequestInit): string {
     return baseModelId;
   }
 
-  // Check for variant header injected by the TUI
-  let headerTier: string | null = null;
-  if (init?.headers) {
-    if (typeof Headers !== 'undefined' && init.headers instanceof Headers) {
-      headerTier = init.headers.get('x-agy-tier')?.toLowerCase() || null;
-    } else if (Array.isArray(init.headers)) {
-      const found = init.headers.find(([k]) => k.toLowerCase() === 'x-agy-tier');
-      headerTier = found ? found[1].toLowerCase() : null;
-    } else if (typeof init.headers === 'object') {
-      const key = Object.keys(init.headers).find(k => k.toLowerCase() === 'x-agy-tier');
-      headerTier = key ? (init.headers as Record<string, string>)[key]?.toLowerCase() || null : null;
-    }
-  }
-
+  const headerTier = getSafeHeader(init?.headers, 'x-agy-tier')?.toLowerCase() || null;
   const requestedTier = headerTier || suffixTier;
 
   // Resolve to specific tier or default to medium
@@ -340,17 +398,16 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
             const configuredProjectId = await resolveLatestConfiguredProjectId(provider);
 
             if (isInternal) {
-              const headers = new Headers(init?.headers ?? {});
-              const hasAuth =
-                headers.has('Authorization') ||
-                Object.keys(init?.headers ?? {}).some((k) => k.toLowerCase() === 'authorization');
+              const hasAuth = getSafeHeader(init?.headers, 'Authorization') !== undefined;
               if (hasAuth) {
                 return agyFetch(input, init);
               }
 
-              headers.set('Authorization', `Bearer ${authRecord.access}`);
               const userAgent = buildAgyCliUserAgent(latestAgyUserAgentModel);
-              headers.set('User-Agent', userAgent);
+              const headers = setSafeHeaders(init?.headers, {
+                'Authorization': `Bearer ${authRecord.access}`,
+                'User-Agent': userAgent
+              });
 
               if (configuredProjectId) {
                 simulateClientBackgroundTraffic(authRecord.access, configuredProjectId, latestAgyUserAgentModel);
@@ -358,7 +415,7 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
 
               return agyFetch(input, {
                 ...init,
-                headers
+                headers: headers as any
               });
             }
             const requestTarget = parseGenerativeLanguageRequest(input);
