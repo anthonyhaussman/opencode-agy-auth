@@ -127,11 +127,11 @@ const buildModelFromSimple = (modelId: string, simple: SimpleStaticModel): Provi
   
   let variants: any = undefined;
   if (TIER_MAPPING[modelId]) {
-    variants = [
-      { id: 'low', headers: { 'x-agy-tier': 'low' } },
-      { id: 'medium', headers: { 'x-agy-tier': 'medium' } },
-      { id: 'high', headers: { 'x-agy-tier': 'high' } }
-    ];
+    variants = {
+      'low': { headers: { 'x-agy-tier': 'low' } },
+      'medium': { headers: { 'x-agy-tier': 'medium' } },
+      'high': { headers: { 'x-agy-tier': 'high' } }
+    };
   }
 
   return {
