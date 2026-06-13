@@ -204,8 +204,15 @@ function resolveModelTier(baseModelId: string, init?: RequestInit): string {
   // Check for variant header injected by the TUI
   let headerTier: string | null = null;
   if (init?.headers) {
-    const headers = new Headers(init.headers);
-    headerTier = headers.get('x-agy-tier')?.toLowerCase() || null;
+    if (typeof Headers !== 'undefined' && init.headers instanceof Headers) {
+      headerTier = init.headers.get('x-agy-tier')?.toLowerCase() || null;
+    } else if (Array.isArray(init.headers)) {
+      const found = init.headers.find(([k]) => k.toLowerCase() === 'x-agy-tier');
+      headerTier = found ? found[1].toLowerCase() : null;
+    } else if (typeof init.headers === 'object') {
+      const key = Object.keys(init.headers).find(k => k.toLowerCase() === 'x-agy-tier');
+      headerTier = key ? (init.headers as Record<string, string>)[key]?.toLowerCase() || null : null;
+    }
   }
 
   const requestedTier = headerTier || suffixTier;
@@ -375,7 +382,7 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
                if (originalBase !== resolvedBase) {
                  if (typeof modifiedInput === 'string') {
                     modifiedInput = modifiedInput.replace(`models/${originalBase}`, `models/${resolvedBase}`);
-                 } else if (modifiedInput instanceof Request) {
+                 } else if (typeof Request !== 'undefined' && modifiedInput instanceof Request) {
                     const newUrl = modifiedInput.url.replace(`models/${originalBase}`, `models/${resolvedBase}`);
                     modifiedInput = new Request(newUrl, modifiedInput);
                  }
