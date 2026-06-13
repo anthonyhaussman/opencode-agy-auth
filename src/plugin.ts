@@ -1,6 +1,4 @@
 import type { Config } from './plugin/types';
-import * as readline from 'node:readline/promises';
-import { stdin as input, stdout as output } from 'node:process';
 import { AGY_PROVIDER_ID } from './constants';
 import { agyFetch } from './fetch';
 import { createOAuthAuthorizeMethod } from './plugin/oauth-authorize';
@@ -110,9 +108,32 @@ const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
   }
 };
 
+const TIER_MAPPING: Record<string, { low: string; medium: string; high: string } & Record<string, string>> = {
+  'gemini-3.5-flash': {
+    low: 'gemini-3.5-flash-extra-low',
+    medium: 'gemini-3.5-flash-low',
+    high: 'gemini-3-flash-agent'
+  },
+  'gemini-3.1-pro': {
+    low: 'gemini-3.1-pro-low',
+    medium: 'gemini-pro-agent',
+    high: 'gemini-pro-agent'
+  }
+};
+
 const buildModelFromSimple = (modelId: string, simple: SimpleStaticModel): ProviderModel => {
   const isClaude = modelId.startsWith('claude-');
   const isGpt = modelId.startsWith('gpt-');
+  
+  let variants: any = undefined;
+  if (TIER_MAPPING[modelId]) {
+    variants = [
+      { id: 'low', headers: { 'x-agy-tier': 'low' } },
+      { id: 'medium', headers: { 'x-agy-tier': 'medium' } },
+      { id: 'high', headers: { 'x-agy-tier': 'high' } }
+    ];
+  }
+
   return {
     id: modelId,
     providerID: AGY_PROVIDER_ID,
@@ -160,7 +181,8 @@ const buildModelFromSimple = (modelId: string, simple: SimpleStaticModel): Provi
     options: {
       description: simple.description
     },
-    headers: {}
+    headers: {},
+    variants
   };
 };
 
@@ -169,51 +191,31 @@ for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
   STATIC_MODELS[modelId] = buildModelFromSimple(modelId, simple);
 }
 
-const TIER_MAPPING: Record<string, { low: string; medium: string; high: string } & Record<string, string>> = {
-  'gemini-3.5-flash': {
-    low: 'gemini-3.5-flash-extra-low',
-    medium: 'gemini-3.5-flash-low', // Note: orig code maps "medium" to "-low" in internal ID
-    high: 'gemini-3-flash-agent'
-  },
-  'gemini-3.1-pro': {
-    low: 'gemini-3.1-pro-low',
-    medium: 'gemini-pro-agent', // Assuming medium defaults to high if no medium exists
-    high: 'gemini-pro-agent'
-  }
-};
-
-const tierResolutionCache = new Map<string, Promise<string>>();
-
-async function resolveModelTier(baseModelId: string): Promise<string> {
+function resolveModelTier(baseModelId: string, init?: RequestInit): string {
   const parts = baseModelId.split('@');
   const base = parts[0] || '';
   const suffixTier = parts[1]?.toLowerCase();
+  
   const mapping = TIER_MAPPING[base];
   if (!mapping) {
-    return baseModelId; // Not a multi-tier model
+    return baseModelId;
   }
-  if (suffixTier && Object.prototype.hasOwnProperty.call(mapping, suffixTier)) {
-    return mapping[suffixTier] || baseModelId;
+
+  // Check for variant header injected by the TUI
+  let headerTier: string | null = null;
+  if (init?.headers) {
+    const headers = new Headers(init.headers);
+    headerTier = headers.get('x-agy-tier')?.toLowerCase() || null;
   }
-  if (!tierResolutionCache.has(base)) {
-    tierResolutionCache.set(base, (async () => {
-      // Interactive prompt if no valid suffix
-      const rl = readline.createInterface({ input, output });
-      try {
-        const answer = await rl.question(`\nSelect tier for ${base}: [1] Low, [2] Medium, [3] High? (Default: 2): `);
-        const choice = answer.trim();
-        if (choice === '1') return mapping['low'];
-        if (choice === '3') return mapping['high'];
-        return mapping['medium']; // Default to medium
-      } catch (e) {
-        console.warn(`\n[Agy] Prompt failed, defaulting to medium tier.`);
-        return mapping['medium'];
-      } finally {
-        rl.close();
-      }
-    })());
+
+  const requestedTier = headerTier || suffixTier;
+
+  // Resolve to specific tier or default to medium
+  if (requestedTier && Object.prototype.hasOwnProperty.call(mapping, requestedTier)) {
+    return mapping[requestedTier] || baseModelId;
   }
-  return tierResolutionCache.get(base)!;
+  
+  return mapping['medium'];
 }
 
 /**
@@ -369,7 +371,7 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
             let modifiedInput = input;
             if (isGL && originalRequestedModel) {
                const originalBase = originalRequestedModel.replace('google-agy/', '');
-               const resolvedBase = await resolveModelTier(originalBase);
+               const resolvedBase = resolveModelTier(originalBase, init);
                if (originalBase !== resolvedBase) {
                  if (typeof modifiedInput === 'string') {
                     modifiedInput = modifiedInput.replace(`models/${originalBase}`, `models/${resolvedBase}`);
