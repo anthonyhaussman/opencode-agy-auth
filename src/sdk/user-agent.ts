@@ -1,3 +1,4 @@
+import os from 'os';
 import { AGY_CLI_VERSION } from './agy-cli-version';
 
 const AGY_CLI_UA_NAME = 'GeminiCLI';
@@ -13,7 +14,12 @@ export function getAgyCliVersion(): string {
 }
 
 export function buildAgyCliUserAgent(model?: string): string {
-  return 'antigravity/cli/1.0.3 darwin/amd64';
+  const version = getAgyCliVersion();
+  const rawPlatform = os.platform();
+  const platform = rawPlatform === 'win32' ? 'windows' : rawPlatform;
+  const rawArch = os.arch();
+  const arch = rawArch === 'x64' ? 'amd64' : rawArch;
+  return `antigravity/cli/${version} ${platform}/${arch}`;
 }
 
 function getAgyCliSurface(): string {
