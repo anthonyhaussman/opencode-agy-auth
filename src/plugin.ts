@@ -128,9 +128,9 @@ const buildModelFromSimple = (modelId: string, simple: SimpleStaticModel): Provi
   let variants: any = undefined;
   if (TIER_MAPPING[modelId]) {
     variants = {
-      'low': { headers: { 'x-agy-tier': 'low' } },
-      'medium': { headers: { 'x-agy-tier': 'medium' } },
-      'high': { headers: { 'x-agy-tier': 'high' } }
+      'low': { id: 'low', name: 'low', displayName: 'low', title: 'low', label: 'low', options: { name: 'low' }, headers: { 'x-agy-tier': 'low' } },
+      'medium': { id: 'medium', name: 'medium', displayName: 'medium', title: 'medium', label: 'medium', options: { name: 'medium' }, headers: { 'x-agy-tier': 'medium' } },
+      'high': { id: 'high', name: 'high', displayName: 'high', title: 'high', label: 'high', options: { name: 'high' }, headers: { 'x-agy-tier': 'high' } }
     };
   }
 
@@ -143,6 +143,7 @@ const buildModelFromSimple = (modelId: string, simple: SimpleStaticModel): Provi
       npm: '@ai-sdk/google'
     },
     name: simple.name,
+    family: modelId.includes('gemini') ? 'gemini' : (isClaude ? 'claude' : (isGpt ? 'gpt' : 'unknown')),
     status: 'active',
     release_date: '2026-05-26',
     capabilities: {
