@@ -14,15 +14,15 @@ export function getAgyCliVersion(): string {
 }
 
 export function buildAgyCliUserAgent(model?: string): string {
-  if (cachedUserAgent) {
+  const version = getAgyCliVersion();
+  if (cachedUserAgent && cachedUserAgent.startsWith('antigravity/cli/' + version + ' ')) {
     return cachedUserAgent;
   }
-  const version = getAgyCliVersion();
   const rawPlatform = os.platform();
   const platform = rawPlatform === 'win32' ? 'windows' : rawPlatform;
   const rawArch = os.arch();
   const arch = rawArch === 'x64' ? 'amd64' : rawArch;
-  cachedUserAgent = `antigravity/cli/${version} ${platform}/${arch}`;
+  cachedUserAgent = 'antigravity/cli/' + version + ' ' + platform + '/' + arch;
   return cachedUserAgent;
 }
 
