@@ -1,9 +1,9 @@
-import os from 'os';
+import os from 'node:os';
 import { AGY_CLI_VERSION } from './agy-cli-version';
 
-const AGY_CLI_UA_NAME = 'GeminiCLI';
-const AGY_CLI_DEFAULT_MODEL = 'gemini-code-assist';
 const AGY_CLI_DEFAULT_SURFACE = 'terminal';
+
+let cachedUserAgent: string | null = null;
 
 export function getAgyCliVersion(): string {
   const explicitVersion = process.env.OPENCODE_AGY_CLI_VERSION?.trim();
@@ -14,12 +14,16 @@ export function getAgyCliVersion(): string {
 }
 
 export function buildAgyCliUserAgent(model?: string): string {
+  if (cachedUserAgent) {
+    return cachedUserAgent;
+  }
   const version = getAgyCliVersion();
   const rawPlatform = os.platform();
   const platform = rawPlatform === 'win32' ? 'windows' : rawPlatform;
   const rawArch = os.arch();
   const arch = rawArch === 'x64' ? 'amd64' : rawArch;
-  return `antigravity/cli/${version} ${platform}/${arch}`;
+  cachedUserAgent = `antigravity/cli/${version} ${platform}/${arch}`;
+  return cachedUserAgent;
 }
 
 function getAgyCliSurface(): string {
@@ -31,5 +35,7 @@ function getAgyCliSurface(): string {
 }
 
 export const userAgentInternals = {
-  resetCache() {}
+  resetCache() {
+    cachedUserAgent = null;
+  }
 };
