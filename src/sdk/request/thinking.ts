@@ -464,6 +464,11 @@ export function deduplicateThinkingText(
 
       const filteredParts = newParts.filter((p) => p !== null);
 
+      if (filteredParts.length === 0) {
+        const { content: _ignore, ...candWithoutContent } = cand;
+        return candWithoutContent;
+      }
+
       return {
         ...cand,
         content: { ...content, parts: filteredParts },
@@ -512,6 +517,10 @@ export function deduplicateThinkingText(
     });
 
     const filteredContent = newContent.filter((b) => b !== null);
+    if (filteredContent.length === 0) {
+      const { content: _ignore, ...respWithoutContent } = resp;
+      return respWithoutContent;
+    }
     return { ...resp, content: filteredContent };
   }
 
@@ -709,12 +718,17 @@ export function createStreamingTransformer(
       if (!hasSeenUsageMetadata) {
         const syntheticUsage = {
           response: {
+            candidates: [
+              {
+                finishReason: "STOP",
+              },
+            ],
             usageMetadata: {
               promptTokenCount: 0,
               candidatesTokenCount: 0,
               totalTokenCount: 0,
-            }
-          }
+            },
+          },
         };
         controller.enqueue(encoder.encode(`\ndata: ${JSON.stringify(syntheticUsage)}\n\n`));
       }

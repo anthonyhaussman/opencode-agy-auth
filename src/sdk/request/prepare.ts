@@ -235,6 +235,14 @@ function transformRequestBody(
         if (!lastFunctionCall.thoughtSignature || lastFunctionCall.thoughtSignature === "skip_thought_signature_validator") {
           lastFunctionCall.thoughtSignature = latestSig;
         }
+      } else if (contents.length > 0 && latestSig) {
+        const lastContent = contents[contents.length - 1];
+        if (lastContent && Array.isArray(lastContent.parts) && lastContent.parts.length > 0) {
+          const lastPart = lastContent.parts[lastContent.parts.length - 1];
+          if (lastPart && typeof lastPart === "object" && !lastPart.thoughtSignature) {
+            lastPart.thoughtSignature = latestSig;
+          }
+        }
       }
       requestPayload.contents = contents;
     }
