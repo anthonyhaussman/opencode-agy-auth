@@ -464,11 +464,6 @@ export function deduplicateThinkingText(
 
       const filteredParts = newParts.filter((p) => p !== null);
 
-      if (filteredParts.length === 0) {
-        const { content: _ignore, ...candWithoutContent } = cand;
-        return candWithoutContent;
-      }
-
       return {
         ...cand,
         content: { ...content, parts: filteredParts },
@@ -518,8 +513,7 @@ export function deduplicateThinkingText(
 
     const filteredContent = newContent.filter((b) => b !== null);
     if (filteredContent.length === 0) {
-      const { content: _ignore, ...respWithoutContent } = resp;
-      return respWithoutContent;
+      return { ...resp, content: [] };
     }
     return { ...resp, content: filteredContent };
   }

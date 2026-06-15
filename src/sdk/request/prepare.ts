@@ -163,26 +163,7 @@ function transformRequestBody(
         injectMissingToolCallIds(contents);
 
         const latestSig = getLatestSignature(sessionId);
-
-        // Collect all function calls in chronological order
-        const allFunctionCalls: any[] = [];
-        for (const content of contents) {
-          if (content && typeof content === "object" && Array.isArray(content.parts)) {
-            for (const part of content.parts) {
-              if (part && typeof part === "object" && part.functionCall) {
-                allFunctionCalls.push(part);
-              }
-            }
-          }
-        }
-
-        // Only apply the latest signature to the VERY LAST function call
-        if (allFunctionCalls.length > 0 && latestSig) {
-          const lastFunctionCall = allFunctionCalls[allFunctionCalls.length - 1];
-          if (!lastFunctionCall.thoughtSignature || lastFunctionCall.thoughtSignature === "skip_thought_signature_validator") {
-            lastFunctionCall.thoughtSignature = latestSig;
-          }
-        }
+        applyLatestSignature(contents, latestSig);
         requestPayloadInside.contents = contents;
       }
 
@@ -216,34 +197,7 @@ function transformRequestBody(
       injectMissingToolCallIds(contents);
 
       const latestSig = getLatestSignature(sessionId);
-
-      // Collect all function calls in chronological order
-      const allFunctionCalls: any[] = [];
-      for (const content of contents) {
-        if (content && typeof content === "object" && Array.isArray(content.parts)) {
-          for (const part of content.parts) {
-            if (part && typeof part === "object" && part.functionCall) {
-              allFunctionCalls.push(part);
-            }
-          }
-        }
-      }
-
-      // Only apply the latest signature to the VERY LAST function call
-      if (allFunctionCalls.length > 0 && latestSig) {
-        const lastFunctionCall = allFunctionCalls[allFunctionCalls.length - 1];
-        if (!lastFunctionCall.thoughtSignature || lastFunctionCall.thoughtSignature === "skip_thought_signature_validator") {
-          lastFunctionCall.thoughtSignature = latestSig;
-        }
-      } else if (contents.length > 0 && latestSig) {
-        const lastContent = contents[contents.length - 1];
-        if (lastContent && Array.isArray(lastContent.parts) && lastContent.parts.length > 0) {
-          const lastPart = lastContent.parts[lastContent.parts.length - 1];
-          if (lastPart && typeof lastPart === "object" && !lastPart.thoughtSignature) {
-            lastPart.thoughtSignature = latestSig;
-          }
-        }
-      }
+      applyLatestSignature(contents, latestSig);
       requestPayload.contents = contents;
     }
 
@@ -540,4 +494,28 @@ function injectMissingToolCallIds(contents: any[]): void {
     }
   }
 }
+
+function applyLatestSignature(contents: any[], latestSig: string | undefined): void {
+  // Collect all function calls in chronological order
+  const allFunctionCalls: any[] = [];
+  for (const content of contents) {
+    if (content && typeof content === "object" && Array.isArray(content.parts)) {
+      for (const part of content.parts) {
+        if (part && typeof part === "object" && part.functionCall) {
+          allFunctionCalls.push(part);
+        }
+      }
+    }
+  }
+
+  // Only apply the latest signature to the VERY LAST function call
+  if (allFunctionCalls.length > 0 && latestSig) {
+    const lastFunctionCall = allFunctionCalls[allFunctionCalls.length - 1];
+    if (!lastFunctionCall.thoughtSignature || lastFunctionCall.thoughtSignature === "skip_thought_signature_validator") {
+      lastFunctionCall.thoughtSignature = latestSig;
+    }
+  }
+}
+
+
 
