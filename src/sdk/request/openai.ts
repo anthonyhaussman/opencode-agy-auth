@@ -71,7 +71,7 @@ export function transformOpenAIToolCalls(requestPayload: Record<string, unknown>
 
       const name = fn.name;
       const args = parseJsonObject(fn.arguments);
-      
+
       const functionCallPart: NonNullable<GeminiFunctionCallPart['functionCall']> = {
         name: name ?? "",
         args,

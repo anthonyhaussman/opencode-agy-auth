@@ -62,7 +62,7 @@ export function prepareAgyRequest(
 
   const { requestedModel: rawModel, effectiveModel, action: rawAction } = requestTarget;
   const streaming = rawAction === STREAM_ACTION;
-  
+
   const transformedUrl = `${AGY_CODE_ASSIST_ENDPOINT}/v1internal:${rawAction}${
     streaming ? "?alt=sse" : ""
   }`;
@@ -158,7 +158,7 @@ function transformRequestBody(
         if (needsThinkingRecovery(state)) {
           contents = closeToolLoopForThinking(contents);
         }
-        
+
         contents = normalizeContentsSequence(contents);
         injectMissingToolCallIds(contents);
 
@@ -192,7 +192,7 @@ function transformRequestBody(
       if (needsThinkingRecovery(state)) {
         contents = closeToolLoopForThinking(contents);
       }
-      
+
       contents = normalizeContentsSequence(contents);
       injectMissingToolCallIds(contents);
 
@@ -335,7 +335,7 @@ function normalizeToolSchemaTypes(tools: unknown): void {
   if (!Array.isArray(tools)) return;
 
   const validSchemaKeys = new Set([
-    "type", "description", "properties", "items", 
+    "type", "description", "properties", "items",
     "required", "enum", "nullable", "format"
   ]);
 
@@ -471,7 +471,7 @@ function injectMissingToolCallIds(contents: any[]): void {
         if (!part.functionCall.id) {
           const generatedId = randomUUID();
           part.functionCall.id = generatedId;
-          
+
           let ids = missingIdsByName.get(part.functionCall.name);
           if (!ids) {
             ids = [];

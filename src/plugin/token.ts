@@ -34,7 +34,7 @@ interface OAuthErrorPayload {
  * a Token refresh process is triggered. If each concurrent request independently sends a refresh_token request to the Google API, it causes:
  * 1. Redundant network requests;
  * 2. "Race conditions" (a later refresh invalidates an earlier one, causing other concurrent requests to fail).
- * 
+ *
  * Here, the `refreshInFlight` map is used to store ongoing refresh Promises. For the same refresh token,
  * only one actual refresh network request is made. Other concurrent requests wait on the shared Promise until it succeeds,
  * avoiding race conditions and greatly improving plugin robustness under high concurrency.

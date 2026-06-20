@@ -51,7 +51,7 @@ async function sendCodeAssistMetrics(accessToken: string, projectId: string, use
 
   const plat = os.platform();
   const arch = os.arch();
-  
+
   const platMap: Record<string, string> = {
     darwin: 'DARWIN',
     linux: 'LINUX',
@@ -61,7 +61,7 @@ async function sendCodeAssistMetrics(accessToken: string, projectId: string, use
     x64: 'AMD64',
     arm64: 'ARM64'
   };
-  
+
   const p = platMap[plat] || 'UNSPECIFIED';
   const a = archMap[arch] || 'UNSPECIFIED';
   const platform = `${p}_${a}`;
@@ -115,10 +115,10 @@ async function sendCodeAssistMetrics(accessToken: string, projectId: string, use
 async function sendTrajectoryAnalytics(accessToken: string, userAgentModel?: string) {
   const url = `${AGY_CODE_ASSIST_ENDPOINT}/v1internal:recordTrajectoryAnalytics`;
   const userAgent = buildAgyCliUserAgent(userAgentModel);
-  
+
   const plat = os.platform();
   const arch = os.arch();
-  
+
   const platMap: Record<string, string> = {
     darwin: 'DARWIN',
     linux: 'LINUX',
@@ -128,7 +128,7 @@ async function sendTrajectoryAnalytics(accessToken: string, userAgentModel?: str
     x64: 'AMD64',
     arm64: 'ARM64'
   };
-  
+
   const p = platMap[plat] || 'UNSPECIFIED';
   const a = archMap[arch] || 'UNSPECIFIED';
   const platform = `${p}_${a}`;

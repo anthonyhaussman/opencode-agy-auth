@@ -42,7 +42,7 @@ class ChatLoggerImpl implements ChatLogger {
     this.stream.write(`=========== REQUEST ===========\n`);
     this.stream.write(`[Time] ${new Date().toISOString()}\n`);
     this.stream.write(`[Request] ${method} ${url}\n`);
-    
+
     if (headers) {
       this.stream.write(`[Headers]\n`);
       const h = new Headers(headers);

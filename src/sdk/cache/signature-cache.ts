@@ -160,19 +160,19 @@ function ensureGitignoreSync(configDir: string): void {
 export class SignatureCache {
   // Memory cache map
   private cache: Map<string, CacheEntry> = new Map();
-  
+
   // Configuration options
   private memoryTtlMs: number;
   private diskTtlMs: number;
   private writeIntervalMs: number;
   private cacheFilePath: string;
   private enabled: boolean;
-  
+
   // State variables
   private dirty: boolean = false;
   private writeTimer: ReturnType<typeof setInterval> | null = null;
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
-  
+
   // Statistical metrics
   private stats = {
     memoryHits: 0,

@@ -124,7 +124,7 @@ const TIER_MAPPING: Record<string, { low: string; medium: string; high: string }
 const buildModelFromSimple = (modelId: string, simple: SimpleStaticModel): ProviderModel => {
   const isClaude = modelId.startsWith('claude-');
   const isGpt = modelId.startsWith('gpt-');
-  
+
   let variants: any = undefined;
   if (TIER_MAPPING[modelId]) {
     variants = {
@@ -197,7 +197,7 @@ function getSafeHeader(headers: unknown, key: string): string | undefined {
     return undefined;
   }
   const targetKey = key.toLowerCase();
-  
+
   if (typeof (headers as any).get === 'function') {
     try {
       return (headers as any).get(targetKey) || undefined;
@@ -267,7 +267,7 @@ function resolveModelTier(baseModelId: string, init?: RequestInit): string {
   const parts = baseModelId.split('@');
   const base = parts[0] || '';
   const suffixTier = parts[1]?.toLowerCase();
-  
+
   const mapping = TIER_MAPPING[base];
   if (!mapping) {
     return baseModelId;
@@ -280,7 +280,7 @@ function resolveModelTier(baseModelId: string, init?: RequestInit): string {
   if (requestedTier && Object.prototype.hasOwnProperty.call(mapping, requestedTier)) {
     return mapping[requestedTier] || baseModelId;
   }
-  
+
   return mapping['medium'];
 }
 

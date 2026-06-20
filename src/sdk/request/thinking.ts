@@ -429,10 +429,10 @@ export function deduplicateThinkingText(
 
       const newParts = content.parts.map((part: unknown) => {
         const p = part as Record<string, unknown>;
-        
+
         if (p.thought === true || p.type === "thinking") {
           const fullText = (p.text || p.thinking || "") as string;
-          
+
           // If this thought chain was already rendered, block it directly from the stream to prevent long overlapping rendering in tool call branches
           if (displayedThinkingHashes) {
             const hash = hashString(fullText);
@@ -480,7 +480,7 @@ export function deduplicateThinkingText(
       const b = block as Record<string, unknown> | null;
       if (b?.type === "thinking") {
         const fullText = (b.thinking || b.text || "") as string;
-        
+
         if (displayedThinkingHashes) {
           const hash = hashString(fullText);
           if (displayedThinkingHashes.has(hash)) {

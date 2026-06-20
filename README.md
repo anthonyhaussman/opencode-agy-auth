@@ -35,7 +35,7 @@ Update your OpenCode configuration file (typically `opencode.json` at the root o
 }
 ```
 
-By default, the plugin registers a specialized provider ID to interface with `agy`. 
+By default, the plugin registers a specialized provider ID to interface with `agy`.
 You can switch your active OpenCode provider to `agy` or let the plugin inject authentication into your existing sessions.
 
 ### Environment Variables
