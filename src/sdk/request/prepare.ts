@@ -154,13 +154,16 @@ function transformRequestBody(
       }
       if (requestPayloadInside && Array.isArray(requestPayloadInside.contents)) {
         let contents = requestPayloadInside.contents;
+
+        injectMissingToolCallIds(contents);
+        fixOrphanedFunctionResponses(contents);
+
         const state = analyzeConversationState(contents);
         if (needsThinkingRecovery(state)) {
           contents = closeToolLoopForThinking(contents);
         }
 
         contents = normalizeContentsSequence(contents);
-        injectMissingToolCallIds(contents);
 
         const latestSig = getLatestSignature(sessionId);
         applyLatestSignature(contents, latestSig);
@@ -188,13 +191,15 @@ function transformRequestBody(
 
     let contents = requestPayload.contents as any[];
     if (Array.isArray(contents)) {
+      injectMissingToolCallIds(contents);
+      fixOrphanedFunctionResponses(contents);
+
       const state = analyzeConversationState(contents);
       if (needsThinkingRecovery(state)) {
         contents = closeToolLoopForThinking(contents);
       }
 
       contents = normalizeContentsSequence(contents);
-      injectMissingToolCallIds(contents);
 
       const latestSig = getLatestSignature(sessionId);
       applyLatestSignature(contents, latestSig);
@@ -513,6 +518,45 @@ function applyLatestSignature(contents: any[], latestSig: string | undefined): v
     const lastFunctionCall = allFunctionCalls[allFunctionCalls.length - 1];
     if (!lastFunctionCall.thoughtSignature || lastFunctionCall.thoughtSignature === "skip_thought_signature_validator") {
       lastFunctionCall.thoughtSignature = latestSig;
+    }
+  }
+}
+
+function fixOrphanedFunctionResponses(contents: any[]): void {
+  const validCallIds = new Set<string>();
+
+  for (const content of contents) {
+    if (!content || typeof content !== "object" || !Array.isArray(content.parts)) {
+      continue;
+    }
+    for (const part of content.parts) {
+      if (part && typeof part === "object" && part.functionCall && part.functionCall.id) {
+        validCallIds.add(part.functionCall.id);
+      }
+    }
+  }
+
+  for (const content of contents) {
+    if (!content || typeof content !== "object" || !Array.isArray(content.parts)) {
+      continue;
+    }
+    for (const part of content.parts) {
+      if (part && typeof part === "object" && part.functionResponse && part.functionResponse.id) {
+        if (!validCallIds.has(part.functionResponse.id)) {
+          const name = part.functionResponse.name || "unknown_tool";
+          const responseObj = part.functionResponse.response || {};
+
+          let responseStr = "";
+          try {
+            responseStr = typeof responseObj === "string" ? responseObj : JSON.stringify(responseObj);
+          } catch (e) {
+            responseStr = String(responseObj);
+          }
+
+          part.text = `[Orphaned Tool Response for ${name}]: ${responseStr}`;
+          delete part.functionResponse;
+        }
+      }
     }
   }
 }
