@@ -116,8 +116,8 @@ const TIER_MAPPING: Record<string, { low: string; medium: string; high: string }
   },
   'gemini-3.1-pro': {
     low: 'gemini-3.1-pro-low',
-    medium: 'gemini-pro-agent',
-    high: 'gemini-pro-agent'
+    medium: 'gemini-3.1-pro-high',
+    high: 'gemini-3.1-pro-high'
   }
 };
 

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { AGY_CODE_ASSIST_ENDPOINT } from "../../constants";
+import modelsJson from "../../../models.json";
 import { normalizeThinkingConfig } from "../request-helpers";
 import { buildAgyCliUserAgent } from "../user-agent";
 import { normalizeRequestPayloadIdentifiers, normalizeWrappedIdentifiers } from "./identifiers";
@@ -104,6 +105,18 @@ export function prepareAgyRequest(
   };
 }
 
+function getModelEnum(modelName: string): string {
+  const models = (modelsJson as any).models;
+  if (models && models[modelName] && models[modelName].model) {
+    return models[modelName].model;
+  }
+  const deprecated = (modelsJson as any).deprecatedModelIds;
+  if (deprecated && deprecated[modelName] && deprecated[modelName].oldModelEnum) {
+    return deprecated[modelName].oldModelEnum;
+  }
+  return "MODEL_PLACEHOLDER_M16";
+}
+
 function transformRequestBody(
   body: string,
   projectId: string,
@@ -142,7 +155,7 @@ function transformRequestBody(
         requestPayloadInside.labels = {
           last_execution_id: randomUUID(),
           last_step_index: "0",
-          model_enum: "MODEL_PLACEHOLDER_M16",
+          model_enum: getModelEnum(effectiveModel),
           trajectory_id: randomUUID(),
           used_claude: "false",
           used_claude_conservative: "false"
@@ -214,7 +227,7 @@ function transformRequestBody(
       requestPayload.labels = {
         last_execution_id: randomUUID(),
         last_step_index: "0",
-        model_enum: "MODEL_PLACEHOLDER_M16",
+        model_enum: getModelEnum(effectiveModel),
         trajectory_id: randomUUID(),
         used_claude: "false",
         used_claude_conservative: "false"
