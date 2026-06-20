@@ -1,2 +1,2 @@
-export const AGY_CLI_VERSION = '1.0.8';
+export const AGY_CLI_VERSION = '1.0.10';
 
