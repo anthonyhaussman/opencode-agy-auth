@@ -554,8 +554,9 @@ function fixOrphanedFunctionResponses(contents: any[]): void {
       continue;
     }
     for (const part of content.parts) {
-      if (part && typeof part === "object" && part.functionResponse && part.functionResponse.id) {
-        if (!validCallIds.has(part.functionResponse.id)) {
+      if (part && typeof part === "object" && part.functionResponse) {
+        const id = part.functionResponse.id;
+        if (!id || !validCallIds.has(id)) {
           const name = part.functionResponse.name || "unknown_tool";
           const responseObj = part.functionResponse.response || {};
 
