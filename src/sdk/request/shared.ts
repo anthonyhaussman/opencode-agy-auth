@@ -2,6 +2,7 @@ import { AGY_GENERATIVE_LANGUAGE_ENDPOINT } from "../../constants";
 
 const REQUEST_MODEL_FALLBACKS: Record<string, string> = {
   "gemini-2.5-flash-image": "gemini-2.5-flash",
+  "gemini-3.1-pro-high": "gemini-pro-agent",
 };
 const GENERATIVE_LANGUAGE_HOST = new URL(AGY_GENERATIVE_LANGUAGE_ENDPOINT).host;
 const CODE_ASSIST_HOST_SUFFIX = "cloudcode-pa.googleapis.com";
