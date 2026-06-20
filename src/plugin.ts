@@ -4,8 +4,9 @@ import { agyFetch } from './fetch';
 import { createOAuthAuthorizeMethod } from './plugin/oauth-authorize';
 import { accessTokenExpired, isOAuthAuth, parseRefreshParts } from './plugin/auth';
 import { resolveCachedAuth, initDiskSignatureCache } from './plugin/cache';
-import { ensureProjectContext, retrieveUserQuota } from './plugin/project';
+import { ensureProjectContext, retrieveUserQuota, retrieveUserQuotaSummary } from './plugin/project';
 import { createAgyQuotaTool, AGY_QUOTA_TOOL_NAME } from './plugin/quota';
+import { createAgyQuotaSummaryTool, AGY_QUOTA_SUMMARY_TOOL_NAME } from './plugin/quota-summary';
 import { maybeShowAgyCapacityToast, maybeShowAgyTestToast } from './plugin/notify';
 import { simulateClientBackgroundTraffic } from './plugin/traffic';
 import { buildAgyCliUserAgent } from './sdk/user-agent';
@@ -39,6 +40,13 @@ const AGY_QUOTA_COMMAND = 'agyquota';
 const AGY_QUOTA_COMMAND_TEMPLATE = `Retrieve Agy Code Assist quota usage for the current authenticated account.
 
 Immediately call \`${AGY_QUOTA_TOOL_NAME}\` with no arguments and return its output verbatim.
+Do not call other tools.
+`;
+
+const AGY_QUOTA_SUMMARY_COMMAND = 'agyquotasummary';
+const AGY_QUOTA_SUMMARY_COMMAND_TEMPLATE = `Retrieve Agy Code Assist quota summary (weekly and 5-hour limits by model group) for the current authenticated account.
+
+Immediately call \`${AGY_QUOTA_SUMMARY_TOOL_NAME}\` with no arguments and return its output verbatim.
 Do not call other tools.
 `;
 let latestAgyAuthResolver: GetAuth | undefined;
@@ -333,6 +341,10 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
         description: 'Show Agy Code Assist quota usage',
         template: AGY_QUOTA_COMMAND_TEMPLATE
       };
+      config.command[AGY_QUOTA_SUMMARY_COMMAND] = {
+        description: 'Show Agy Code Assist quota summary with weekly and 5-hour limits',
+        template: AGY_QUOTA_SUMMARY_COMMAND_TEMPLATE
+      };
 
       // Dynamically registers the google-agy provider config to make it work seamlessly without manual user mapping.
       config.provider = config.provider || {};
@@ -349,6 +361,12 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
     },
     tool: {
       [AGY_QUOTA_TOOL_NAME]: createAgyQuotaTool({
+        client,
+        getAuthResolver: () => latestAgyAuthResolver,
+        getConfiguredProjectId: () => latestAgyConfiguredProjectId,
+        getUserAgentModel: () => latestAgyUserAgentModel
+      }),
+      [AGY_QUOTA_SUMMARY_TOOL_NAME]: createAgyQuotaSummaryTool({
         client,
         getAuthResolver: () => latestAgyAuthResolver,
         getConfiguredProjectId: () => latestAgyConfiguredProjectId,
