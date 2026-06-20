@@ -68,5 +68,3 @@ function normalizeProjectId(value: unknown): string | undefined {
   const trimmed = value.trim();
   return trimmed || undefined;
 }
-
-

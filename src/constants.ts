@@ -15,5 +15,3 @@ export const AGY_SCOPES: readonly string[] = [
 export const AGY_REDIRECT_URI = 'https://antigravity.google/oauth-callback';
 export const AGY_CODE_ASSIST_ENDPOINT = process.env.OPENCODE_AGY_ENDPOINT || 'https://daily-cloudcode-pa.googleapis.com';
 export const AGY_GENERATIVE_LANGUAGE_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta';
-
-

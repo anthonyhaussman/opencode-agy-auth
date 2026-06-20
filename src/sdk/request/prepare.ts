@@ -516,6 +516,3 @@ function applyLatestSignature(contents: any[], latestSig: string | undefined): v
     }
   }
 }
-
-
-
