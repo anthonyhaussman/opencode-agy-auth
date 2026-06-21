@@ -1,4 +1,7 @@
 export function clamp(value: number, min: number, max: number): number {
+  if (Number.isNaN(value)) {
+    return min;
+  }
   if (value < min) {
     return min;
   }
@@ -28,7 +31,7 @@ export function formatRemainingAmount(value: string | undefined): string | undef
   if (!value) {
     return undefined;
   }
-  const parsed = Number.parseInt(value, 10);
+  const parsed = Number(value);
   if (!Number.isFinite(parsed)) {
     return value;
   }

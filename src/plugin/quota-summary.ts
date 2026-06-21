@@ -97,7 +97,8 @@ function windowLabel(window: string | undefined): string {
 
 function formatSummaryBucket(bucket: QuotaSummaryBucket, indent: string): string[] {
   if (bucket.disabled) {
-    const desc = bucket.description?.trim() || "weekly limit exhausted";
+    const defaultDesc = `${windowLabel(bucket.window).toLowerCase()} exhausted`;
+    const desc = bucket.description?.trim() || defaultDesc;
     return [`${indent}Disabled: ${desc}`];
   }
 
@@ -126,7 +127,10 @@ function formatSummaryBucket(bucket: QuotaSummaryBucket, indent: string): string
 
   const resetLabel = formatRelativeResetTime(bucket.resetTime);
   if (resetLabel) {
-    lines.push(`${indent}${resetLabel.replace("resets in ", "Refreshes in ")}`);
+    const formattedReset = resetLabel.startsWith("resets in ")
+      ? resetLabel.replace("resets in ", "Refreshes in ")
+      : resetLabel.charAt(0).toUpperCase() + resetLabel.slice(1);
+    lines.push(`${indent}${formattedReset}`);
   }
 
   return lines;
@@ -183,7 +187,8 @@ function formatSummaryGroup(group: QuotaSummaryGroup): string[] {
         lines.push("");
       }
       for (const bucket of windowBuckets) {
-        const label = windowLabel(bucket.window);
+        const baseLabel = windowLabel(bucket.window);
+        const label = bucket.displayName ? `${baseLabel} (${bucket.displayName})` : baseLabel;
         lines.push(`  ${label}`);
         lines.push(...formatSummaryBucket(bucket, "    "));
         firstWindow = false;
@@ -204,7 +209,8 @@ function formatTopLevelBuckets(buckets: QuotaSummaryBucket[]): string[] {
       lines.push("");
     }
     for (const bucket of windowBuckets) {
-      const label = windowLabel(bucket.window);
+      const baseLabel = windowLabel(bucket.window);
+      const label = bucket.displayName ? `${baseLabel} (${bucket.displayName})` : baseLabel;
       lines.push(label);
       lines.push(...formatSummaryBucket(bucket, "  "));
       firstWindow = false;
@@ -231,7 +237,6 @@ function formatAgyQuotaSummaryOutput(
         continue;
       }
       if (i > 0) {
-        lines.push("");
         lines.push("");
       }
       lines.push(...formatSummaryGroup(group));
