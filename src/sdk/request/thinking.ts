@@ -591,10 +591,10 @@ export function cacheThinkingSignaturesFromResponse(
 }
 
 /**
- * Transforms a single line of streaming SSE returned data, triggering thought chain caching and incremental deduplication here
+ * Transforms a single complete SSE event, triggering thought chain caching and incremental deduplication here
  */
-export function transformSseLine(
-  line: string,
+export function transformSseEvent(
+  eventText: string,
   signatureStore: SignatureStore,
   thoughtBuffer: ThoughtBuffer,
   sentThinkingBuffer: ThoughtBuffer,
@@ -602,16 +602,29 @@ export function transformSseLine(
   options: StreamingOptions,
   debugState: { injected: boolean },
 ): string {
-  if (!line.startsWith("data:")) {
-    return line;
+  // Extract all data from data: lines
+  const dataLines: string[] = [];
+  const lines = eventText.split(/\r?\n/);
+  let isDataEvent = false;
+
+  for (const line of lines) {
+    if (line.startsWith("data:")) {
+      isDataEvent = true;
+      dataLines.push(line.slice(5).trim());
+    }
   }
-  const json = line.slice(5).trim();
-  if (!json) {
-    return line;
+
+  if (!isDataEvent) {
+    return eventText;
+  }
+
+  const jsonString = dataLines.join("\n").trim();
+  if (!jsonString) {
+    return eventText;
   }
 
   try {
-    const parsed = JSON.parse(json) as { response?: unknown };
+    const parsed = JSON.parse(jsonString) as { response?: unknown };
     if (parsed.response !== undefined) {
       // Extract and write to cache
       if (options.cacheSignatures && options.signatureSessionKey) {
@@ -643,7 +656,7 @@ export function transformSseLine(
       return `data: ${JSON.stringify(transformed)}`;
     }
   } catch (_) {}
-  return line;
+  return eventText;
 }
 
 /**
@@ -669,16 +682,17 @@ export function createStreamingTransformer(
     transform(chunk, controller) {
       buffer += decoder.decode(chunk, { stream: true });
 
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
+      const events = buffer.split(/\r?\n\r?\n/);
+      buffer = events.pop() || "";
 
-      for (const line of lines) {
-        if (line.includes("usageMetadata")) {
+      for (const event of events) {
+        if (!event.trim()) continue; // Skip empty events if any
+        if (event.includes("usageMetadata")) {
           hasSeenUsageMetadata = true;
         }
 
-        const transformedLine = transformSseLine(
-          line,
+        const transformedEvent = transformSseEvent(
+          event,
           signatureStore,
           thoughtBuffer,
           sentThinkingBuffer,
@@ -686,17 +700,17 @@ export function createStreamingTransformer(
           mergedOptions,
           debugState,
         );
-        controller.enqueue(encoder.encode(transformedLine + "\n"));
+        controller.enqueue(encoder.encode(transformedEvent + "\n\n"));
       }
     },
     flush(controller) {
       buffer += decoder.decode();
 
-      if (buffer) {
+      if (buffer.trim()) {
         if (buffer.includes("usageMetadata")) {
           hasSeenUsageMetadata = true;
         }
-        const transformedLine = transformSseLine(
+        const transformedEvent = transformSseEvent(
           buffer,
           signatureStore,
           thoughtBuffer,
@@ -705,26 +719,24 @@ export function createStreamingTransformer(
           mergedOptions,
           debugState,
         );
-        controller.enqueue(encoder.encode(transformedLine));
+        controller.enqueue(encoder.encode(transformedEvent + "\n\n"));
       }
 
       // Fallback strategy: If no token usage metadata was generated at the end, forcibly inject a 0-count fallback to ensure VS Code statistics compatibility
       if (!hasSeenUsageMetadata) {
         const syntheticUsage = {
-          response: {
-            candidates: [
-              {
-                finishReason: "STOP",
-              },
-            ],
-            usageMetadata: {
-              promptTokenCount: 0,
-              candidatesTokenCount: 0,
-              totalTokenCount: 0,
+          candidates: [
+            {
+              finishReason: "STOP",
             },
+          ],
+          usageMetadata: {
+            promptTokenCount: 0,
+            candidatesTokenCount: 0,
+            totalTokenCount: 0,
           },
         };
-        controller.enqueue(encoder.encode(`\ndata: ${JSON.stringify(syntheticUsage)}\n\n`));
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(syntheticUsage)}\n\n`));
       }
     },
   });
