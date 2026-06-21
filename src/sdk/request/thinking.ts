@@ -624,8 +624,8 @@ export function transformSseEvent(
   }
 
   try {
-    const parsed = JSON.parse(jsonString) as { response?: unknown };
-    if (parsed.response !== undefined) {
+    const parsed = JSON.parse(jsonString) as Record<string, unknown> | null;
+    if (parsed && typeof parsed === "object" && parsed.response !== undefined) {
       // Extract and write to cache
       if (options.cacheSignatures && options.signatureSessionKey) {
         cacheThinkingSignaturesFromResponse(
