@@ -1,4 +1,4 @@
-export { retrieveUserQuota } from "../../sdk/fetch_quota";
+export { retrieveUserQuota, retrieveUserQuotaSummary } from "../../sdk/fetch_quota";
 export {
   ensureProjectContext,
   invalidateProjectContextCache,

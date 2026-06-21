@@ -56,6 +56,30 @@ export interface RetrieveUserQuotaResponse {
   buckets?: RetrieveUserQuotaBucket[];
 }
 
+export interface QuotaSummaryBucket {
+  bucketId?: string;
+  displayName?: string;
+  description?: string;
+  window?: string;
+  remaining?: string;
+  remainingFraction?: number;
+  remainingAmount?: string;
+  disabled?: boolean;
+  resetTime?: string;
+}
+
+export interface QuotaSummaryGroup {
+  displayName?: string;
+  description?: string;
+  buckets?: QuotaSummaryBucket[];
+}
+
+export interface RetrieveUserQuotaSummaryResponse {
+  groups?: QuotaSummaryGroup[];
+  buckets?: QuotaSummaryBucket[];
+  description?: string;
+}
+
 /**
  * Thrown during Gemini enablement if the required Google Cloud project is missing.
  */
