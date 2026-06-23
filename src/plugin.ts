@@ -4,6 +4,7 @@ import { agyFetch } from './fetch';
 import { createOAuthAuthorizeMethod } from './plugin/oauth-authorize';
 import { accessTokenExpired, isOAuthAuth, parseRefreshParts } from './plugin/auth';
 import { resolveCachedAuth, initDiskSignatureCache } from './plugin/cache';
+import { initTurnStateTracker, shutdownTurnStateTracker } from './sdk/request/turn-state-tracker';
 import { ensureProjectContext, retrieveUserQuota, retrieveUserQuotaSummary } from './plugin/project';
 import { createAgyQuotaTool, AGY_QUOTA_TOOL_NAME } from './plugin/quota';
 import { createAgyQuotaSummaryTool, AGY_QUOTA_SUMMARY_TOOL_NAME } from './plugin/quota-summary';
@@ -321,6 +322,8 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
     disk_ttl_seconds: 86400,
     write_interval_seconds: 30
   });
+
+  initTurnStateTracker();
 
   const resolveLatestConfiguredProjectId = async (provider?: Provider): Promise<string | undefined> => {
     const configProjectId = (await resolveConfiguredProjectIdFromClient(client)) ?? latestAgyConfiguredProjectId;

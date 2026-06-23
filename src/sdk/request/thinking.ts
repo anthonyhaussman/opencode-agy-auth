@@ -38,12 +38,10 @@ export interface SignatureStore {
  * Custom callback functions for the streaming phase
  */
 export interface StreamingCallbacks {
-  /** Triggered when the latest thought chain and signature are cached */
   onCacheSignature?: (sessionKey: string, text: string, signature: string) => void;
-  /** Triggered when debugging instructions (e.g., quota overrun warnings) need injection into the stream */
   onInjectDebug?: (response: unknown, debugText: string) => unknown;
-  /** Method to transform custom thought chain parts */
   transformThinkingParts?: (parts: unknown) => unknown;
+  onTurnStateUpdate?: (sessionKey: string, state: { turnHasThinking: boolean; lastModelHasToolCalls: boolean }) => void;
 }
 
 /**
@@ -133,15 +131,14 @@ export const defaultSignatureStore = createSignatureStore();
 // Hashing Helper
 // ============================================================================
 
+const THINKING_HASH_HEX_LEN = 16;
+
 /**
- * Generates a fast string hash (DJB2 algorithm) to deduplicate already output thought chain blocks
+ * Generates a SHA-256 hash of the thought chain content, truncated to 16 hex characters.
+ * Consistent with the signature cache hash width in cache.ts.
  */
 function hashString(str: string): string {
-  let hash = 5381;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) + hash) + str.charCodeAt(i);
-  }
-  return (hash >>> 0).toString(16);
+  return createHash("sha256").update(str, "utf8").digest("hex").slice(0, THINKING_HASH_HEX_LEN);
 }
 
 // ============================================================================
@@ -674,6 +671,8 @@ export function createStreamingTransformer(
   const sentThinkingBuffer = createThoughtBuffer();
   const debugState = { injected: false };
   let hasSeenUsageMetadata = false;
+  let streamHasThinking = false;
+  let streamHasToolCalls = false;
 
   const displayedThinkingHashes = options.displayedThinkingHashes ?? new Set<string>();
   const mergedOptions = { ...options, displayedThinkingHashes };
@@ -689,6 +688,12 @@ export function createStreamingTransformer(
         if (!event.trim()) continue; // Skip empty events if any
         if (event.includes("usageMetadata")) {
           hasSeenUsageMetadata = true;
+        }
+        if (!streamHasThinking) {
+          streamHasThinking = event.includes('"thought":true') || event.includes('"type":"thinking"');
+        }
+        if (!streamHasToolCalls) {
+          streamHasToolCalls = event.includes('"functionCall"');
         }
 
         const transformedEvent = transformSseEvent(
@@ -709,6 +714,12 @@ export function createStreamingTransformer(
       if (buffer.trim()) {
         if (buffer.includes("usageMetadata")) {
           hasSeenUsageMetadata = true;
+        }
+        if (!streamHasThinking) {
+          streamHasThinking = buffer.includes('"thought":true') || buffer.includes('"type":"thinking"');
+        }
+        if (!streamHasToolCalls) {
+          streamHasToolCalls = buffer.includes('"functionCall"');
         }
         const transformedEvent = transformSseEvent(
           buffer,
@@ -737,6 +748,13 @@ export function createStreamingTransformer(
           },
         };
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(syntheticUsage)}\n\n`));
+      }
+
+      if (callbacks.onTurnStateUpdate && options.signatureSessionKey) {
+        callbacks.onTurnStateUpdate(options.signatureSessionKey, {
+          turnHasThinking: streamHasThinking,
+          lastModelHasToolCalls: streamHasToolCalls,
+        });
       }
     },
   });

@@ -8,3 +8,5 @@ export { prepareAgyRequest } from "./prepare";
 export type { ThinkingConfigDefaults } from "./prepare";
 export { transformAgyResponse } from "./response";
 export { isGenerativeLanguageRequest, parseGenerativeLanguageRequest } from "./shared";
+export { initTurnStateTracker, getTurnStateTracker, shutdownTurnStateTracker, TurnStateTracker } from "./turn-state-tracker";
+export type { TurnState } from "./turn-state-tracker";

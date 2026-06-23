@@ -9,8 +9,11 @@ import {
 } from "./helpers";
 import { classifyQuotaResponse, retryInternals } from "./quota";
 import { agyFetch } from "../../fetch";
+import { CooldownStore, loadCooldowns } from "./cooldown-store";
 
-const retryCooldownByKey = new Map<string, number>();
+const retryCooldownByKey = loadCooldowns();
+const cooldownStore = new CooldownStore();
+cooldownStore.bind(retryCooldownByKey);
 const RETRY_IN_FLIGHT_LOG_INTERVAL_MS = 5000;
 const MODEL_CAPACITY_COOLDOWN_MS = 8000;
 
@@ -120,6 +123,11 @@ function setRetryCooldown(key: string, delayMs: number): void {
   const next = Date.now() + delayMs;
   const current = retryCooldownByKey.get(key) ?? 0;
   retryCooldownByKey.set(key, Math.max(current, next));
+  cooldownStore.markDirty();
+}
+
+export function shutdownRetryCooldowns(): void {
+  cooldownStore.shutdown();
 }
 
 function readRequestUrl(input: RequestInfo): string {

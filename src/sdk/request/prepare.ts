@@ -8,11 +8,8 @@ import { normalizeRequestPayloadIdentifiers, normalizeWrappedIdentifiers } from 
 import { addThoughtSignaturesToFunctionCalls, transformOpenAIToolCalls } from "./openai";
 import { isGenerativeLanguageRequest, parseGenerativeLanguageRequest } from "./shared";
 import { getLatestSignature } from "../../plugin/cache";
-import {
-  analyzeConversationState,
-  needsThinkingRecovery,
-  closeToolLoopForThinking,
-} from "./thinking";
+import { closeToolLoopForThinking } from "./thinking";
+import { getTurnStateTracker } from "./turn-state-tracker";
 
 const STREAM_ACTION = "streamGenerateContent";
 
@@ -171,8 +168,17 @@ function transformRequestBody(
         injectMissingToolCallIds(contents);
         fixOrphanedFunctionResponses(contents);
 
-        const state = analyzeConversationState(contents);
-        if (needsThinkingRecovery(state)) {
+        const tracker = getTurnStateTracker();
+        let needsRecovery = false;
+        if (sessionId && tracker) {
+          const existing = tracker.getState(sessionId);
+          if (existing) {
+            needsRecovery = existing.inToolLoop && !existing.turnHasThinking;
+          } else {
+            needsRecovery = tracker.recoverFromContents(sessionId, contents).inToolLoop && !tracker.getState(sessionId)?.turnHasThinking;
+          }
+        }
+        if (needsRecovery) {
           contents = closeToolLoopForThinking(contents);
         }
 
@@ -207,8 +213,17 @@ function transformRequestBody(
       injectMissingToolCallIds(contents);
       fixOrphanedFunctionResponses(contents);
 
-      const state = analyzeConversationState(contents);
-      if (needsThinkingRecovery(state)) {
+      const tracker = getTurnStateTracker();
+      let needsRecovery = false;
+      if (sessionId && tracker) {
+        const existing = tracker.getState(sessionId);
+        if (existing) {
+          needsRecovery = existing.inToolLoop && !existing.turnHasThinking;
+        } else {
+          needsRecovery = tracker.recoverFromContents(sessionId, contents).inToolLoop && !tracker.getState(sessionId)?.turnHasThinking;
+        }
+      }
+      if (needsRecovery) {
         contents = closeToolLoopForThinking(contents);
       }
 
