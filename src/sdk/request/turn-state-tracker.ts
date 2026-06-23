@@ -104,9 +104,13 @@ export class TurnStateTracker {
   private dirty = false;
   private lastWriteTime = 0;
   private writeTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly diskEnabled: boolean;
 
-  constructor() {
-    this.entries = loadTurnStatesFromDisk();
+  constructor(diskEnabled = true) {
+    this.diskEnabled = diskEnabled;
+    if (diskEnabled) {
+      this.entries = loadTurnStatesFromDisk();
+    }
   }
 
   getState(sessionId: string): TurnState | undefined {
@@ -149,13 +153,14 @@ export class TurnStateTracker {
 
   shutdown(): void {
     this.clearWriteTimer();
-    if (this.dirty) {
+    if (this.dirty && this.diskEnabled) {
       saveTurnStatesToDisk(this.entries);
       this.dirty = false;
     }
   }
 
   private scheduleThrottledWrite(): void {
+    if (!this.diskEnabled) return;
     if (this.writeTimer) {
       return;
     }
@@ -189,7 +194,11 @@ let trackerInstance: TurnStateTracker | null = null;
 
 export function initTurnStateTracker(): TurnStateTracker {
   if (!trackerInstance) {
-    trackerInstance = new TurnStateTracker();
+    try {
+      trackerInstance = new TurnStateTracker(true);
+    } catch {
+      trackerInstance = new TurnStateTracker(false);
+    }
   }
   return trackerInstance;
 }

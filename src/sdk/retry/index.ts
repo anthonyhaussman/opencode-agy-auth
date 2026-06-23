@@ -11,10 +11,25 @@ import { classifyQuotaResponse, retryInternals } from "./quota";
 import { agyFetch } from "../../fetch";
 import { CooldownStore, loadCooldowns } from "./cooldown-store";
 
-const retryCooldownByKey = loadCooldowns();
+const retryCooldownByKey = new Map<string, number>();
 const cooldownStore = new CooldownStore();
-cooldownStore.bind(retryCooldownByKey);
-const RETRY_IN_FLIGHT_LOG_INTERVAL_MS = 5000;
+let cooldownPersistenceInitialized = false;
+
+function initCooldownPersistence(): void {
+  if (cooldownPersistenceInitialized) return;
+  cooldownPersistenceInitialized = true;
+  try {
+    const persisted = loadCooldowns();
+    for (const [key, expiresAt] of persisted.entries()) {
+      retryCooldownByKey.set(key, expiresAt);
+    }
+    cooldownStore.bind(retryCooldownByKey);
+  } catch {
+    cooldownStore.bind(retryCooldownByKey);
+  }
+}
+
+export { initCooldownPersistence };
 const MODEL_CAPACITY_COOLDOWN_MS = 8000;
 
 /**
@@ -24,6 +39,7 @@ export async function fetchWithRetry(
   input: RequestInfo,
   init: RequestInit | undefined,
 ): Promise<Response> {
+  if (!cooldownPersistenceInitialized) initCooldownPersistence();
   if (!canRetryRequest(init)) {
     return agyFetch(input, init);
   }
@@ -120,6 +136,7 @@ async function waitForRetryCooldown(key: string, signal?: AbortSignal | null): P
 }
 
 function setRetryCooldown(key: string, delayMs: number): void {
+  if (!cooldownPersistenceInitialized) initCooldownPersistence();
   const next = Date.now() + delayMs;
   const current = retryCooldownByKey.get(key) ?? 0;
   retryCooldownByKey.set(key, Math.max(current, next));
@@ -127,7 +144,9 @@ function setRetryCooldown(key: string, delayMs: number): void {
 }
 
 export function shutdownRetryCooldowns(): void {
-  cooldownStore.shutdown();
+  if (cooldownPersistenceInitialized) {
+    cooldownStore.shutdown();
+  }
 }
 
 function readRequestUrl(input: RequestInfo): string {
