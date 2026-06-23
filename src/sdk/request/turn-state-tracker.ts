@@ -196,6 +196,11 @@ export function initTurnStateTracker(): TurnStateTracker {
   if (!trackerInstance) {
     try {
       trackerInstance = new TurnStateTracker(true);
+      if (typeof process !== "undefined") {
+        process.on("exit", () => {
+          trackerInstance?.shutdown();
+        });
+      }
     } catch {
       trackerInstance = new TurnStateTracker(false);
     }

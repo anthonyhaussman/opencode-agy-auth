@@ -171,12 +171,8 @@ function transformRequestBody(
         const tracker = getTurnStateTracker();
         let needsRecovery = false;
         if (sessionId && tracker) {
-          const existing = tracker.getState(sessionId);
-          if (existing) {
-            needsRecovery = existing.inToolLoop && !existing.turnHasThinking;
-          } else {
-            needsRecovery = tracker.recoverFromContents(sessionId, contents).inToolLoop && !tracker.getState(sessionId)?.turnHasThinking;
-          }
+          const state = tracker.getState(sessionId) ?? tracker.recoverFromContents(sessionId, contents);
+          needsRecovery = state.inToolLoop && !state.turnHasThinking;
         }
         if (needsRecovery) {
           contents = closeToolLoopForThinking(contents);
@@ -216,12 +212,8 @@ function transformRequestBody(
       const tracker = getTurnStateTracker();
       let needsRecovery = false;
       if (sessionId && tracker) {
-        const existing = tracker.getState(sessionId);
-        if (existing) {
-          needsRecovery = existing.inToolLoop && !existing.turnHasThinking;
-        } else {
-          needsRecovery = tracker.recoverFromContents(sessionId, contents).inToolLoop && !tracker.getState(sessionId)?.turnHasThinking;
-        }
+        const state = tracker.getState(sessionId) ?? tracker.recoverFromContents(sessionId, contents);
+        needsRecovery = state.inToolLoop && !state.turnHasThinking;
       }
       if (needsRecovery) {
         contents = closeToolLoopForThinking(contents);

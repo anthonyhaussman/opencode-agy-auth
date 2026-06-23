@@ -24,6 +24,11 @@ function initCooldownPersistence(): void {
       retryCooldownByKey.set(key, expiresAt);
     }
     cooldownStore.bind(retryCooldownByKey);
+    if (typeof process !== "undefined") {
+      process.on("exit", () => {
+        cooldownStore.shutdown();
+      });
+    }
   } catch {
     cooldownStore.bind(retryCooldownByKey);
   }
