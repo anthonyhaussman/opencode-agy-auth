@@ -4,6 +4,8 @@ import { agyFetch } from './fetch';
 import { createOAuthAuthorizeMethod } from './plugin/oauth-authorize';
 import { accessTokenExpired, isOAuthAuth, parseRefreshParts } from './plugin/auth';
 import { resolveCachedAuth, initDiskSignatureCache } from './plugin/cache';
+import { initTurnStateTracker } from './sdk/request/turn-state-tracker';
+import { initCooldownPersistence } from './sdk/retry';
 import { ensureProjectContext, retrieveUserQuota, retrieveUserQuotaSummary } from './plugin/project';
 import { createAgyQuotaTool, AGY_QUOTA_TOOL_NAME } from './plugin/quota';
 import { createAgyQuotaSummaryTool, AGY_QUOTA_SUMMARY_TOOL_NAME } from './plugin/quota-summary';
@@ -315,12 +317,28 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
     return STATIC_MODELS;
   };
 
-  initDiskSignatureCache({
-    enabled: true,
-    memory_ttl_seconds: 3600,
-    disk_ttl_seconds: 86400,
-    write_interval_seconds: 30
-  });
+  try {
+    initDiskSignatureCache({
+      enabled: true,
+      memory_ttl_seconds: 3600,
+      disk_ttl_seconds: 86400,
+      write_interval_seconds: 30
+    });
+  } catch (e) {
+    console.warn(`[Agy Auth] initDiskSignatureCache failed, running without signature disk cache: ${e instanceof Error ? e.message : e}`);
+  }
+
+  try {
+    initTurnStateTracker();
+  } catch (e) {
+    console.warn(`[Agy Auth] initTurnStateTracker failed, running without turn-state tracking: ${e instanceof Error ? e.message : e}`);
+  }
+
+  try {
+    initCooldownPersistence();
+  } catch (e) {
+    console.warn(`[Agy Auth] initCooldownPersistence failed, running without cooldown disk persistence: ${e instanceof Error ? e.message : e}`);
+  }
 
   const resolveLatestConfiguredProjectId = async (provider?: Provider): Promise<string | undefined> => {
     const configProjectId = (await resolveConfiguredProjectIdFromClient(client)) ?? latestAgyConfiguredProjectId;

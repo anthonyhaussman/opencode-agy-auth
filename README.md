@@ -56,6 +56,33 @@ Additionally, you can quickly check your quota using the `/agyquota` slash comma
 
 This calls the injected `agy_quota` tool to give you a real-time table of your current usage, tokens remaining, and reset times.
 
+### Disk Persistence
+
+The plugin persists turn-state and retry-cooldown data to disk so that it survives OpenCode restarts. Files are stored under `~/.config/opencode/` (or `%APPDATA%\opencode\` on Windows):
+
+- `antigravity-turn-states.json` - tracks thinking/reasoning state across request turns, with a 24-hour TTL and 5-second throttled writes using atomic tmp+rename.
+- Retry cooldowns are persisted via `CooldownStore` with the same atomic-write pattern.
+
+Both stores initialize lazily at runtime - no filesystem reads occur at import time.
+
+#### `diskEnabled` Parameter
+
+`TurnStateTracker` accepts a `diskEnabled` constructor parameter (defaults to `true`):
+
+```ts
+import { TurnStateTracker } from "@anthonyhaussman/opencode-agy-auth/sdk/request/turn-state-tracker";
+
+// Disk persistence enabled (default)
+const tracker = new TurnStateTracker(true);
+
+// Memory-only mode - no filesystem reads or writes
+const tracker = new TurnStateTracker(false);
+```
+
+When `diskEnabled` is `false`, the tracker operates entirely in memory. All state is lost when the process exits. This is useful in restricted environments (containers, read-only filesystems) where disk access is unavailable or undesirable.
+
+If disk initialization fails at runtime (permission error, corrupt file, etc.), the plugin automatically falls back to memory-only mode and logs a warning. No configuration is needed for normal use - disk persistence works out of the box.
+
 ## Local Testing
 
 To test and develop the plugin locally with OpenCode before publishing:

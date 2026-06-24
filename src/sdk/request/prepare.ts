@@ -8,11 +8,8 @@ import { normalizeRequestPayloadIdentifiers, normalizeWrappedIdentifiers } from 
 import { addThoughtSignaturesToFunctionCalls, transformOpenAIToolCalls } from "./openai";
 import { isGenerativeLanguageRequest, parseGenerativeLanguageRequest } from "./shared";
 import { getLatestSignature } from "../../plugin/cache";
-import {
-  analyzeConversationState,
-  needsThinkingRecovery,
-  closeToolLoopForThinking,
-} from "./thinking";
+import { closeToolLoopForThinking } from "./thinking";
+import { getTurnStateTracker } from "./turn-state-tracker";
 
 const STREAM_ACTION = "streamGenerateContent";
 
@@ -171,8 +168,13 @@ function transformRequestBody(
         injectMissingToolCallIds(contents);
         fixOrphanedFunctionResponses(contents);
 
-        const state = analyzeConversationState(contents);
-        if (needsThinkingRecovery(state)) {
+        const tracker = getTurnStateTracker();
+        let needsRecovery = false;
+        if (sessionId && tracker) {
+          const state = tracker.getState(sessionId) ?? tracker.recoverFromContents(sessionId, contents);
+          needsRecovery = state.inToolLoop && !state.turnHasThinking;
+        }
+        if (needsRecovery) {
           contents = closeToolLoopForThinking(contents);
         }
 
@@ -207,8 +209,13 @@ function transformRequestBody(
       injectMissingToolCallIds(contents);
       fixOrphanedFunctionResponses(contents);
 
-      const state = analyzeConversationState(contents);
-      if (needsThinkingRecovery(state)) {
+      const tracker = getTurnStateTracker();
+      let needsRecovery = false;
+      if (sessionId && tracker) {
+        const state = tracker.getState(sessionId) ?? tracker.recoverFromContents(sessionId, contents);
+        needsRecovery = state.inToolLoop && !state.turnHasThinking;
+      }
+      if (needsRecovery) {
         contents = closeToolLoopForThinking(contents);
       }
 

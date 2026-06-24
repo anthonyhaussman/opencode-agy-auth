@@ -9,6 +9,7 @@ import {
 import { injectResponseIdFromTrace } from "./shared";
 import { cacheSignature } from "../../plugin/cache";
 import { createStreamingTransformer, defaultSignatureStore } from "./thinking";
+import { getTurnStateTracker, type TurnState } from "./turn-state-tracker";
 import type { ChatLogger } from "../chat-logger";
 
 /**
@@ -129,6 +130,17 @@ function transformStreamingPayloadStream(
   const callbacks = {
     onCacheSignature: (sessionKey: string, text: string, signature: string) => {
       cacheSignature(sessionKey, text, signature);
+    },
+    onTurnStateUpdate: (sessionKey: string, state: { turnHasThinking: boolean; lastModelHasToolCalls: boolean }) => {
+      const tracker = getTurnStateTracker();
+      if (tracker) {
+        tracker.updateAfterResponse(sessionKey, {
+          inToolLoop: state.lastModelHasToolCalls,
+          turnHasThinking: state.turnHasThinking,
+          lastModelHasThinking: state.turnHasThinking,
+          lastModelHasToolCalls: state.lastModelHasToolCalls,
+        });
+      }
     },
     transformThinkingParts: (response: unknown) => {
       if (response && typeof response === "object") {
