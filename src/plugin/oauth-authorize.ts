@@ -6,6 +6,7 @@ import { resolveProjectContextFromAccessToken } from './project';
 import { resolveConfiguredProjectId } from './provider';
 import { formatRefreshParts } from './auth';
 import type { OAuthAuthDetails, PluginClient } from './types';
+import { formatHyperlink } from '../sdk/terminal-hyperlink';
 
 /**
  * Builds the OAuth authorization callback for the plugin authentication method.
@@ -91,7 +92,7 @@ export function createOAuthAuthorizeMethod(options?: {
     return {
       url: authorization.url,
       instructions:
-        'Please complete Google account authorization in your browser. After authorization, the page will redirect to https://antigravity.google/oauth-callback?code=... . Please copy the full redirect URL from your browser address bar, or just the code parameter value, and paste it into the input box below:',
+        `Please complete Google account authorization in your browser. After authorization, the page will redirect to ${formatHyperlink('https://antigravity.google/oauth-callback?code=...')}. Please copy the full redirect URL from your browser address bar, or just the code parameter value, and paste it into the input box below:`,
       method: 'code',
       callback: async (callbackUrl: string): Promise<AgyTokenExchangeResult> => {
         try {
