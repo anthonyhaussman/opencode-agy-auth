@@ -2,6 +2,7 @@ import { AGY_CODE_ASSIST_ENDPOINT } from '../constants';
 import { agyFetch } from '../fetch';
 import { createAgyActivityRequestId } from './activity-request-id';
 import { buildAgyCliUserAgent } from './user-agent';
+import { formatHyperlink } from './terminal-hyperlink';
 import {
   FREE_TIER_ID,
   type LoadCodeAssistPayload,
@@ -28,7 +29,7 @@ export async function loadManagedProject(
 
     const url = `${AGY_CODE_ASSIST_ENDPOINT}/v1internal:loadCodeAssist`;
     if (process.env.OPENCODE_AGY_VERBOSE_LOGS === "1") {
-      console.warn(`[Agy Auth] loadManagedProject calling URL: ${url} with project: ${projectId || 'none'}`);
+      console.warn(`[Agy Auth] loadManagedProject calling URL: ${formatHyperlink(url)} with project: ${projectId || 'none'}`);
     }
     const headers = buildCodeAssistHeaders(accessToken, userAgentModel);
 
@@ -40,7 +41,7 @@ export async function loadManagedProject(
 
     if (!response.ok) {
       if (response.status === 403 || response.status === 404) {
-        console.warn(`[Agy Auth] loadManagedProject failed with ${response.status} (possible Cloud API mismatch/unauthorized). URL: ${url}, Project: ${projectId}`);
+        console.warn(`[Agy Auth] loadManagedProject failed with ${response.status} (possible Cloud API mismatch/unauthorized). URL: ${formatHyperlink(url)}, Project: ${projectId}`);
         const responseText = await readResponseTextIfNeeded(response, true);
         if (responseText && isVpcScError(responseText)) {
            console.warn(`[Agy Auth] loadManagedProject: Detected VPC Service Controls block`);
@@ -87,7 +88,7 @@ export async function onboardManagedProject(
   const baseUrl = `${AGY_CODE_ASSIST_ENDPOINT}/v1internal`;
   const onboardUrl = `${baseUrl}:onboardUser`;
   if (process.env.OPENCODE_AGY_VERBOSE_LOGS === "1") {
-    console.warn(`[Agy Auth] onboardManagedProject calling URL: ${onboardUrl} with project: ${projectId || 'none'}`);
+    console.warn(`[Agy Auth] onboardManagedProject calling URL: ${formatHyperlink(onboardUrl)} with project: ${projectId || 'none'}`);
   }
 
   try {
