@@ -7,6 +7,7 @@ import { resolveConfiguredProjectId } from './provider';
 import { formatRefreshParts } from './auth';
 import type { OAuthAuthDetails, PluginClient } from './types';
 
+
 /**
  * Builds the OAuth authorization callback for the plugin authentication method.
  */
