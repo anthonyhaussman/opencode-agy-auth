@@ -2,12 +2,11 @@ const OSC8_OPEN = '\x1b]8;;';
 const OSC8_CLOSE = '\x07';
 
 export function supportsOsc8Hyperlinks(): boolean {
-  if (
-    process.env.SSH_CONNECTION ||
-    process.env.SSH_CLIENT ||
-    process.env.SSH_TTY ||
-    process.env.OPENCODE_HEADLESS
-  ) {
+  if (process.stdout && !process.stdout.isTTY) {
+    return false;
+  }
+
+  if (process.env.OPENCODE_HEADLESS) {
     return false;
   }
 
@@ -48,5 +47,5 @@ export function formatHyperlink(url: string, text?: string): string {
 }
 
 export function stripOsc8(text: string): string {
-  return text.replace(/\x1b\]8;;[^\x07]*\x07/g, '');
+  return text.replace(/\x1b\]8;[^;]*;[^\x07\x1b]*(?:\x07|\x1b\\)/g, '');
 }
