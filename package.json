@@ -1,6 +1,6 @@
 {
   "name": "@anthonyhaussman/opencode-agy-auth",
-  "version": "1.0.13",
+  "version": "1.0.14-alpha.0",
   "author": "antigravity",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
