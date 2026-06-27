@@ -118,7 +118,7 @@ const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
   }
 };
 
-const TIER_MAPPING: Record<string, { low: string; high: string; medium?: string } & Record<string, string>> = {
+const TIER_MAPPING: Record<string, { low: string; high: string; medium?: string } & Record<string, string | undefined>> = {
   'gemini-3.5-flash': {
     low: 'gemini-3.5-flash-extra-low',
     medium: 'gemini-3.5-flash-low',
@@ -138,7 +138,7 @@ const buildModelFromSimple = (modelId: string, simple: SimpleStaticModel): Provi
   if (TIER_MAPPING[modelId]) {
     variants = {
       'low': { id: 'low', name: 'low', displayName: 'low', title: 'low', label: 'low', options: { name: 'low' }, headers: { 'x-agy-tier': 'low' } },
-      ...('medium' in TIER_MAPPING[modelId] ? { 'medium': { id: 'medium', name: 'medium', displayName: 'medium', title: 'medium', label: 'medium', options: { name: 'medium' }, headers: { 'x-agy-tier': 'medium' } } } : {}),
+      ...(TIER_MAPPING[modelId].medium !== undefined ? { 'medium': { id: 'medium', name: 'medium', displayName: 'medium', title: 'medium', label: 'medium', options: { name: 'medium' }, headers: { 'x-agy-tier': 'medium' } } } : {}),
       'high': { id: 'high', name: 'high', displayName: 'high', title: 'high', label: 'high', options: { name: 'high' }, headers: { 'x-agy-tier': 'high' } }
     };
   }
