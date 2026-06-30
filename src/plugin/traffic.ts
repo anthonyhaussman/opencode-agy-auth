@@ -2,7 +2,26 @@ import { randomUUID } from 'node:crypto';
 import * as os from 'node:os';
 import { AGY_CODE_ASSIST_ENDPOINT } from '../constants';
 import { agyFetch } from '../fetch';
+import { isRetryableStatus, getExponentialDelayWithJitter, wait } from '../sdk/retry/helpers';
 import { getAgyCliVersion, buildAgyCliUserAgent } from '../sdk/user-agent';
+
+const MAX_SEND_ATTEMPTS = 2;
+
+async function sendWithRetry(label: string, url: string, init: RequestInit): Promise<void> {
+  for (let attempt = 0; attempt < MAX_SEND_ATTEMPTS; attempt++) {
+    const response = await agyFetch(url, init);
+    if (response.ok) return;
+    if (!isRetryableStatus(response.status) || attempt === MAX_SEND_ATTEMPTS - 1) {
+      if (response.status >= 500 && response.status < 600) {
+        console.debug(`[Agy] ${label} failed: ${response.status} (transient, suppressed)`);
+      } else {
+        console.warn(`[Agy] ${label} failed: ${response.status}`);
+      }
+      return;
+    }
+    await wait(getExponentialDelayWithJitter(attempt));
+  }
+}
 
 let lastTrafficTime = 0;
 const TRAFFIC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
@@ -31,7 +50,7 @@ async function sendListExperiments(accessToken: string, userAgentModel?: string)
   const url = `${AGY_CODE_ASSIST_ENDPOINT}/v1internal:listExperiments`;
   const userAgent = buildAgyCliUserAgent(userAgentModel);
 
-  const response = await agyFetch(url, {
+  await sendWithRetry('listExperiments', url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -40,9 +59,6 @@ async function sendListExperiments(accessToken: string, userAgentModel?: string)
     },
     body: '{}'
   });
-  if (!response.ok) {
-    console.warn(`[Agy] listExperiments failed: ${response.status}`);
-  }
 }
 
 async function sendCodeAssistMetrics(accessToken: string, projectId: string, userAgentModel?: string) {
@@ -97,7 +113,7 @@ async function sendCodeAssistMetrics(accessToken: string, projectId: string, use
     ]
   };
 
-  const response = await agyFetch(url, {
+  await sendWithRetry('recordCodeAssistMetrics', url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -106,10 +122,6 @@ async function sendCodeAssistMetrics(accessToken: string, projectId: string, use
     },
     body: JSON.stringify(body)
   });
-
-  if (!response.ok) {
-    console.warn(`[Agy] recordCodeAssistMetrics failed: ${response.status}`);
-  }
 }
 
 async function sendTrajectoryAnalytics(accessToken: string, userAgentModel?: string) {
@@ -135,7 +147,7 @@ async function sendTrajectoryAnalytics(accessToken: string, userAgentModel?: str
 
   const body = buildTrajectoryAnalyticsBody(randomUUID(), platform);
 
-  const response = await agyFetch(url, {
+  await sendWithRetry('recordTrajectoryAnalytics', url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -144,10 +156,6 @@ async function sendTrajectoryAnalytics(accessToken: string, userAgentModel?: str
     },
     body: JSON.stringify(body)
   });
-
-  if (!response.ok) {
-    console.warn(`[Agy] recordTrajectoryAnalytics failed: ${response.status}`);
-  }
 }
 
 export function buildTrajectoryAnalyticsBody(cascadeId = randomUUID(), platform = 'DARWIN_AMD64') {
