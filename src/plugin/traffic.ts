@@ -9,17 +9,24 @@ const MAX_SEND_ATTEMPTS = 2;
 
 async function sendWithRetry(label: string, url: string, init: RequestInit): Promise<void> {
   for (let attempt = 0; attempt < MAX_SEND_ATTEMPTS; attempt++) {
-    const response = await agyFetch(url, init);
-    if (response.ok) return;
-    if (!isRetryableStatus(response.status) || attempt === MAX_SEND_ATTEMPTS - 1) {
-      if (response.status >= 500 && response.status < 600) {
-        console.debug(`[Agy] ${label} failed: ${response.status} (transient, suppressed)`);
-      } else {
-        console.warn(`[Agy] ${label} failed: ${response.status}`);
+    try {
+      const response = await agyFetch(url, init);
+      if (response.ok) return;
+      if (!isRetryableStatus(response.status) || attempt === MAX_SEND_ATTEMPTS - 1) {
+        if (response.status >= 500 && response.status < 600) {
+          console.debug(`[Agy] ${label} failed: ${response.status} (transient, suppressed)`);
+        } else {
+          console.warn(`[Agy] ${label} failed: ${response.status}`);
+        }
+        return;
       }
-      return;
+    } catch (error) {
+      if (attempt === MAX_SEND_ATTEMPTS - 1) {
+        console.debug(`[Agy] ${label} failed with network error: ${error} (suppressed)`);
+        return;
+      }
     }
-    await wait(getExponentialDelayWithJitter(attempt));
+    await wait(getExponentialDelayWithJitter(attempt + 1));
   }
 }
 
