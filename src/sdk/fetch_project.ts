@@ -1,5 +1,6 @@
 import { AGY_CODE_ASSIST_ENDPOINT } from '../constants';
 import { agyFetch } from '../fetch';
+import { fetchWithRetry } from './retry';
 import { createAgyActivityRequestId } from './activity-request-id';
 import { buildAgyCliUserAgent } from './user-agent';
 import { formatHyperlink } from './terminal-hyperlink';
@@ -33,7 +34,7 @@ export async function loadManagedProject(
     }
     const headers = buildCodeAssistHeaders(accessToken, userAgentModel);
 
-    const response = await agyFetch(url, {
+    const response = await fetchWithRetry(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody)
@@ -49,7 +50,11 @@ export async function loadManagedProject(
         throw new ProjectAccessDeniedError(projectId, responseText);
       } else {
         const cleanStatusText = response.statusText.replace(/[\r\n]+/g, ' ').trim();
-        console.warn(`[Agy Auth] loadManagedProject failed with ${response.status} ${cleanStatusText}`);
+        if (response.status === 429) {
+          console.warn(`[Agy Auth] loadManagedProject failed with 429 ${cleanStatusText} (rate limited after retries; see Retry-After / quota exhaustion). URL: ${formatHyperlink(url)}, Project: ${projectId}`);
+        } else {
+          console.warn(`[Agy Auth] loadManagedProject failed with ${response.status} ${cleanStatusText}`);
+        }
       }
       return null;
     }
