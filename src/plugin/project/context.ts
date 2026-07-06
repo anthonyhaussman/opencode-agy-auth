@@ -73,6 +73,11 @@ export async function resolveProjectContextFromAccessToken(
 
   if (!loadPayload) {
     console.warn(`[Agy Auth] loadManagedProject returned null for project: ${projectId || 'none'} (possible 429 rate limit / quota exhaustion / transient backend error - not necessarily a missing project config)`);
+    if (projectId) {
+      throw new Error(
+        `Failed to load project context for '${projectId}'. This may be due to a rate limit, quota exhaustion, or transient backend error. Please try again later.`
+      );
+    }
     throw new ProjectIdRequiredError();
   }
 

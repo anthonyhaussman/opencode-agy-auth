@@ -62,6 +62,9 @@ export async function loadManagedProject(
     const responseJson = await response.json();
     return responseJson as LoadCodeAssistPayload;
   } catch (error) {
+    if (error instanceof ProjectAccessDeniedError) {
+      throw error;
+    }
     const errStr = error instanceof Error ? error.stack || error.message : String(error);
     console.warn(`[Agy Auth] Failed to load code assist project: ${errStr}`);
     return null;
