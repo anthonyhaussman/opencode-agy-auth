@@ -20,6 +20,7 @@
   "type": "module",
   "scripts": {
     "build": "tsup",
+    "typecheck": "tsc",
     "smoke:node-import": "node -e \"import('./dist/index.js').then(() => console.log('ok')).catch((error) => { console.error(error); process.exit(1); })\"",
     "prepack": "npm run build"
   },
