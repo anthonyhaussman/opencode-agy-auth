@@ -91,8 +91,9 @@ export function createOAuthAuthorizeMethod(options?: {
 
     return {
       url: authorization.url,
-      instructions:
-        'Please complete Google account authorization in your browser. After authorization, the page will redirect to https://antigravity.google/oauth-callback?code=... . Please copy the full redirect URL from your browser address bar, or just the code parameter value, and paste it into the input box below:',
+      instructions: isHeadless
+        ? 'Headless/SSH environment detected. Browser auto-open skipped. Please manually open the following URL in a browser on your local machine to authorize:\n\n' + authorization.url + '\n\nAfter authorization, the page will redirect to https://antigravity.google/oauth-callback?code=... . Copy the full redirect URL from your browser address bar, or just the code parameter value, and paste it into the input box below.\n\nNote: If you are not in a headless environment, unset OPENCODE_HEADLESS or run without SSH to enable browser auto-open.'
+        : 'Please complete Google account authorization in your browser. After authorization, the page will redirect to https://antigravity.google/oauth-callback?code=... . Please copy the full redirect URL from your browser address bar, or just the code parameter value, and paste it into the input box below:',
       method: 'code',
       callback: async (callbackUrl: string): Promise<AgyTokenExchangeResult> => {
         try {
