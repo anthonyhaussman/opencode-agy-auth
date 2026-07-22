@@ -331,7 +331,7 @@ function getImplicitThinkingConfigForModel(modelId: string): unknown {
   }
 
   return {
-    thinkingBudget: normalizedModelId.includes("extra-low") ? 1000 : 10001,
+    thinkingBudget: normalizedModelId.endsWith("-low") ? 1000 : 10001,
     includeThoughts: true,
   };
 }
