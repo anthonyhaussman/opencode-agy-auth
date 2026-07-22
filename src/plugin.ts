@@ -78,7 +78,15 @@ const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
     maxOutputTokens: 65536,
     toolCall: true,
     reasoning: true,
-    attachment: true
+    attachment: true,
+    cost: {
+      input: 1.5,
+      output: 9,
+      cache: {
+        read: 0.15,
+        write: 0
+      }
+    }
   },
   'gemini-3.1-pro': {
     name: 'Gemini 3.1 Pro',
@@ -87,7 +95,15 @@ const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
     maxOutputTokens: 65535,
     toolCall: true,
     reasoning: true,
-    attachment: true
+    attachment: true,
+    cost: {
+      input: 2,
+      output: 12,
+      cache: {
+        read: 0.2,
+        write: 0.375
+      }
+    }
   },
   'claude-sonnet-4-6': {
     name: 'Claude Sonnet 4.6 (Thinking)',
@@ -96,7 +112,15 @@ const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
     maxOutputTokens: 64000,
     toolCall: true,
     reasoning: true,
-    attachment: true
+    attachment: true,
+    cost: {
+      input: 3,
+      output: 15,
+      cache: {
+        read: 0.3,
+        write: 3.75
+      }
+    }
   },
   'claude-opus-4-6-thinking': {
     name: 'Claude Opus 4.6 (Thinking)',
@@ -105,7 +129,15 @@ const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
     maxOutputTokens: 64000,
     toolCall: true,
     reasoning: true,
-    attachment: true
+    attachment: true,
+    cost: {
+      input: 5,
+      output: 25,
+      cache: {
+        read: 0.5,
+        write: 6.25
+      }
+    }
   },
   'gpt-oss-120b-medium': {
     name: 'GPT-OSS 120B (Medium)',
