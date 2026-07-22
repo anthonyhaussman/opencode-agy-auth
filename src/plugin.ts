@@ -134,9 +134,9 @@ const TIER_MAPPING: Record<string, { low: string; high: string; medium?: string 
     high: 'gemini-3.6-flash-high'
   },
   'gemini-3.5-flash': {
-    low: 'gemini-3.5-flash-low',
-    medium: 'gemini-3.5-flash-medium',
-    high: 'gemini-3.5-flash-high'
+    low: 'gemini-3.5-flash-extra-low',
+    medium: 'gemini-3.5-flash-low',
+    high: 'gemini-3-flash-agent'
   },
   'gemini-3.1-pro': {
     low: 'gemini-3.1-pro-low',
