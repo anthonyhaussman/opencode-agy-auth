@@ -328,7 +328,7 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
   let latestConfig: Config | undefined;
 
   // Dynamically update STATIC_MODELS with latest pricing from models.dev
-  await updateStaticModelsWithPricing(STATIC_MODELS);
+  updateStaticModelsWithPricing(STATIC_MODELS);
 
   const getModelsList = (provider: ProviderV2): Record<string, ProviderModel> => {
     const userModels = provider.models || {};
