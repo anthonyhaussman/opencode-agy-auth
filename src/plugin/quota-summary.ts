@@ -16,68 +16,68 @@ interface AgyQuotaSummaryToolDependencies {
   getUserAgentModel: () => string | undefined;
 }
 
-export function createAgyQuotaSummaryTool({
-  client,
-  getAuthResolver,
-  getConfiguredProjectId,
-  getUserAgentModel,
-}: AgyQuotaSummaryToolDependencies) {
+export async function executeAgyQuotaSummaryNatively(dependencies: AgyQuotaSummaryToolDependencies): Promise<string> {
+  const { client, getAuthResolver, getConfiguredProjectId, getUserAgentModel } = dependencies;
+  const getAuth = getAuthResolver();
+  if (!getAuth) {
+    return "Agy quota summary is unavailable before Google auth is initialized. Authenticate with the Google provider and retry.";
+  }
+
+  const auth = await getAuth();
+  if (!isOAuthAuth(auth)) {
+    return "Agy quota summary requires OAuth with Google. Run `opencode auth login` and choose `Google OAuth (Antigravity CLI)` or `Google OAuth (Gemini CLI)`.";
+  }
+
+  let authRecord = resolveCachedAuth(auth);
+  if (accessTokenExpired(authRecord)) {
+    const refreshed = await refreshAccessToken(authRecord, client);
+    if (!refreshed?.access) {
+      return "Agy quota summary lookup failed because the access token could not be refreshed. Re-authenticate and retry.";
+    }
+    authRecord = refreshed;
+  }
+
+  if (!authRecord.access) {
+    return "Agy quota summary lookup failed because no access token is available. Re-authenticate and retry.";
+  }
+
+  try {
+    const projectContext = await ensureProjectContext(
+      authRecord,
+      client,
+      getConfiguredProjectId(),
+      getUserAgentModel(),
+    );
+    if (!projectContext.effectiveProjectId) {
+      return "Agy quota summary lookup failed because no Google Cloud project could be resolved.";
+    }
+
+    const summary = await retrieveUserQuotaSummary(
+      authRecord.access,
+      projectContext.effectiveProjectId,
+      getUserAgentModel(),
+    );
+    if (!summary) {
+      return `No Agy quota summary available for project \`${projectContext.effectiveProjectId}\`.`;
+    }
+
+    return formatAgyQuotaSummaryOutput(
+      projectContext.effectiveProjectId,
+      summary,
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown error";
+    return `Agy quota summary lookup failed: ${message}`;
+  }
+}
+
+export function createAgyQuotaSummaryTool(dependencies: AgyQuotaSummaryToolDependencies) {
   return tool({
     description:
       "Retrieve Agy Code Assist quota summary with weekly and 5-hour limits grouped by model family.",
     args: {},
     async execute() {
-      const getAuth = getAuthResolver();
-      if (!getAuth) {
-        return "Agy quota summary is unavailable before Google auth is initialized. Authenticate with the Google provider and retry.";
-      }
-
-      const auth = await getAuth();
-      if (!isOAuthAuth(auth)) {
-        return "Agy quota summary requires OAuth with Google. Run `opencode auth login` and choose `Google OAuth (Antigravity CLI)` or `Google OAuth (Gemini CLI)`.";
-      }
-
-      let authRecord = resolveCachedAuth(auth);
-      if (accessTokenExpired(authRecord)) {
-        const refreshed = await refreshAccessToken(authRecord, client);
-        if (!refreshed?.access) {
-          return "Agy quota summary lookup failed because the access token could not be refreshed. Re-authenticate and retry.";
-        }
-        authRecord = refreshed;
-      }
-
-      if (!authRecord.access) {
-        return "Agy quota summary lookup failed because no access token is available. Re-authenticate and retry.";
-      }
-
-      try {
-        const projectContext = await ensureProjectContext(
-          authRecord,
-          client,
-          getConfiguredProjectId(),
-          getUserAgentModel(),
-        );
-        if (!projectContext.effectiveProjectId) {
-          return "Agy quota summary lookup failed because no Google Cloud project could be resolved.";
-        }
-
-        const summary = await retrieveUserQuotaSummary(
-          authRecord.access,
-          projectContext.effectiveProjectId,
-          getUserAgentModel(),
-        );
-        if (!summary) {
-          return `No Agy quota summary available for project \`${projectContext.effectiveProjectId}\`.`;
-        }
-
-        return formatAgyQuotaSummaryOutput(
-          projectContext.effectiveProjectId,
-          summary,
-        );
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "unknown error";
-        return `Agy quota summary lookup failed: ${message}`;
-      }
+      return executeAgyQuotaSummaryNatively(dependencies);
     },
   });
 }

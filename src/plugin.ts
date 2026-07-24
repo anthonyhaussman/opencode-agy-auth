@@ -7,8 +7,8 @@ import { resolveCachedAuth, initDiskSignatureCache } from './plugin/cache';
 import { initTurnStateTracker } from './sdk/request/turn-state-tracker';
 import { initCooldownPersistence } from './sdk/retry';
 import { ensureProjectContext, retrieveUserQuota, retrieveUserQuotaSummary } from './plugin/project';
-import { createAgyQuotaTool, AGY_QUOTA_TOOL_NAME } from './plugin/quota';
-import { createAgyQuotaSummaryTool, AGY_QUOTA_SUMMARY_TOOL_NAME } from './plugin/quota-summary';
+import { createAgyQuotaTool, AGY_QUOTA_TOOL_NAME, executeAgyQuotaNatively } from './plugin/quota';
+import { createAgyQuotaSummaryTool, AGY_QUOTA_SUMMARY_TOOL_NAME, executeAgyQuotaSummaryNatively } from './plugin/quota-summary';
 import { maybeShowAgyCapacityToast, maybeShowAgyTestToast } from './plugin/notify';
 import { simulateClientBackgroundTraffic } from './plugin/traffic';
 import { buildAgyCliUserAgent } from './sdk/user-agent';
@@ -39,18 +39,7 @@ import type {
 } from './plugin/types';
 
 const AGY_QUOTA_COMMAND = 'agyquota';
-const AGY_QUOTA_COMMAND_TEMPLATE = `Retrieve Agy Code Assist quota usage for the current authenticated account.
-
-Immediately call \`${AGY_QUOTA_TOOL_NAME}\` with no arguments and return its output verbatim.
-Do not call other tools.
-`;
-
 const AGY_QUOTA_SUMMARY_COMMAND = 'agyquotasummary';
-const AGY_QUOTA_SUMMARY_COMMAND_TEMPLATE = `Retrieve Agy Code Assist quota summary (weekly and 5-hour limits by model group) for the current authenticated account.
-
-Immediately call \`${AGY_QUOTA_SUMMARY_TOOL_NAME}\` with no arguments and return its output verbatim.
-Do not call other tools.
-`;
 let latestAgyAuthResolver: GetAuth | undefined;
 let latestAgyConfiguredProjectId: string | undefined;
 let latestAgyUserAgentModel: string | undefined;
@@ -370,11 +359,11 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
       config.command = config.command || {};
       config.command[AGY_QUOTA_COMMAND] = {
         description: 'Show Agy Code Assist quota usage',
-        template: AGY_QUOTA_COMMAND_TEMPLATE
+        template: ''
       };
       config.command[AGY_QUOTA_SUMMARY_COMMAND] = {
         description: 'Show Agy Code Assist quota summary with weekly and 5-hour limits',
-        template: AGY_QUOTA_SUMMARY_COMMAND_TEMPLATE
+        template: ''
       };
 
       // Dynamically registers the google-agy provider config to make it work seamlessly without manual user mapping.
@@ -389,6 +378,37 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
 
       // Provides a hardcoded static model list by default.
       config.provider[AGY_PROVIDER_ID].models = STATIC_MODELS;
+    },
+    'chat.message': async (input, output) => {
+      const textPart = (output.parts || []).find((p: any) => p.type === 'text');
+      const text = textPart && typeof textPart === 'object' && 'text' in textPart ? String(textPart.text).trim() : '';
+
+      if (text.startsWith(`/${AGY_QUOTA_COMMAND}`) || text.startsWith(`/${AGY_QUOTA_SUMMARY_COMMAND}`)) {
+        try {
+          let result = '';
+          if (text.startsWith(`/${AGY_QUOTA_SUMMARY_COMMAND}`)) {
+            result = await executeAgyQuotaSummaryNatively({
+              client,
+              getAuthResolver: () => latestAgyAuthResolver,
+              getConfiguredProjectId: () => latestAgyConfiguredProjectId,
+              getUserAgentModel: () => latestAgyUserAgentModel
+            });
+          } else {
+            result = await executeAgyQuotaNatively({
+              client,
+              getAuthResolver: () => latestAgyAuthResolver,
+              getConfiguredProjectId: () => latestAgyConfiguredProjectId,
+              getUserAgentModel: () => latestAgyUserAgentModel
+            });
+          }
+          console.log(result);
+          // Bypass LLM by clearing the parts array
+          output.parts = [];
+        } catch (e) {
+          console.error(`[Agy Auth] Native quota execution failed: ${e instanceof Error ? e.message : String(e)}`);
+          output.parts = [];
+        }
+      }
     },
     tool: {
       [AGY_QUOTA_TOOL_NAME]: createAgyQuotaTool({
