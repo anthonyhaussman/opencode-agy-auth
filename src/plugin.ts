@@ -339,19 +339,19 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
         tool_call: (existing as any).tool_call ?? (modelDetails as any).tool_call,
         temperature: (existing as any).temperature ?? (modelDetails as any).temperature,
         modalities: {
-          ...((existing as any).modalities || {}),
-          ...((modelDetails as any).modalities || {})
+          ...((modelDetails as any).modalities || {}),
+          ...((existing as any).modalities || {})
         },
         capabilities: {
-          ...(existing.capabilities || {}),
           ...(modelDetails.capabilities || {}),
+          ...(existing.capabilities || {}),
           input: {
-            ...(existing.capabilities?.input || {}),
-            ...(modelDetails.capabilities?.input || {})
+            ...(modelDetails.capabilities?.input || {}),
+            ...(existing.capabilities?.input || {})
           },
           output: {
-            ...(existing.capabilities?.output || {}),
-            ...(modelDetails.capabilities?.output || {})
+            ...(modelDetails.capabilities?.output || {}),
+            ...(existing.capabilities?.output || {})
           }
         }
       } as ProviderModel;
