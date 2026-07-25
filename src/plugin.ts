@@ -327,11 +327,13 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
   let latestConfig: Config | undefined;
 
   const getModelsList = (provider: ProviderV2): Record<string, ProviderModel> => {
-    provider.models = provider.models || {};
+    const userModels = provider.models || {};
     const clonedStaticModels = JSON.parse(JSON.stringify(STATIC_MODELS));
+    const strictModels: Record<string, ProviderModel> = {};
+    
     for (const [modelId, modelDetails] of Object.entries(clonedStaticModels as Record<string, ProviderModel>)) {
-      const existing = (provider.models[modelId] || {}) as Partial<ProviderModel>;
-      provider.models[modelId] = {
+      const existing = (userModels[modelId] || {}) as Partial<ProviderModel>;
+      strictModels[modelId] = {
         ...modelDetails,
         ...existing,
         reasoning: (existing as any).reasoning ?? (modelDetails as any).reasoning,
@@ -356,6 +358,8 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
         }
       } as ProviderModel;
     }
+
+    provider.models = strictModels;
 
     if (latestConfig && latestConfig.provider && latestConfig.provider[AGY_PROVIDER_ID]) {
       latestConfig.provider[AGY_PROVIDER_ID].models = provider.models;
