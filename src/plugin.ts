@@ -619,7 +619,14 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
           };
         }
 
-        return getModelsList(provider);
+        const models = getModelsList(provider);
+        // Ensure dynamic pricing costs are strictly enforced to override any cached $0 fallbacks
+        for (const [modelId, model] of Object.entries(models)) {
+          if (STATIC_MODELS[modelId] && STATIC_MODELS[modelId].cost) {
+            model.cost = STATIC_MODELS[modelId].cost;
+          }
+        }
+        return models;
       }
     } as any
   };
