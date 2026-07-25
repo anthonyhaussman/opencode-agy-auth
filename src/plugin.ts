@@ -422,8 +422,8 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
         ...config.provider[AGY_PROVIDER_ID]
       };
 
-      // Provides a hardcoded static model list by default.
-      config.provider[AGY_PROVIDER_ID].models = JSON.parse(JSON.stringify(STATIC_MODELS));
+      // Merge custom config from the user with the static defaults
+      config.provider[AGY_PROVIDER_ID].models = getModelsList(config.provider[AGY_PROVIDER_ID] as ProviderV2);
     },
     tool: {
       [AGY_QUOTA_TOOL_NAME]: createAgyQuotaTool({
