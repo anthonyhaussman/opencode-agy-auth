@@ -1,3 +1,4 @@
+import { updateStaticModelsWithPricing } from './plugin/pricing';
 import type { Config } from './plugin/types';
 import { AGY_PROVIDER_ID } from './constants';
 import { agyFetch } from './fetch';
@@ -326,6 +327,9 @@ function resolveModelTier(baseModelId: string, init?: RequestInit): string {
 export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<PluginResult> => {
   let latestConfig: Config | undefined;
 
+  // Dynamically update STATIC_MODELS with latest pricing from models.dev
+  updateStaticModelsWithPricing(STATIC_MODELS);
+
   const getModelsList = (provider: ProviderV2): Record<string, ProviderModel> => {
     const userModels = provider.models || {};
     const clonedStaticModels = JSON.parse(JSON.stringify(STATIC_MODELS));
@@ -615,7 +619,14 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
           };
         }
 
-        return getModelsList(provider);
+        const models = getModelsList(provider);
+        // Ensure dynamic pricing costs are strictly enforced to override any cached $0 fallbacks
+        for (const [modelId, model] of Object.entries(models)) {
+          if (STATIC_MODELS[modelId] && STATIC_MODELS[modelId].cost) {
+            model.cost = STATIC_MODELS[modelId].cost;
+          }
+        }
+        return models;
       }
     } as any
   };
