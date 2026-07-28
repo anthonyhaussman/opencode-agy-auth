@@ -305,11 +305,12 @@ function normalizeThinking(
     requestPayload.thinkingConfig,
     rawGenerationConfig?.thinkingConfig,
   );
-  const normalizedThinkingConfig = normalizeThinkingConfig(mergedThinkingConfig);
 
   if (Object.prototype.hasOwnProperty.call(requestPayload, "thinkingConfig")) {
     delete requestPayload.thinkingConfig;
   }
+
+  const normalizedThinkingConfig = normalizeThinkingConfig(mergedThinkingConfig);
 
   if (!normalizedThinkingConfig) {
     if (rawGenerationConfig) {
