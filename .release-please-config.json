@@ -1,0 +1,27 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "include-component-in-tag": false,
+      "tag-separator": "",
+      "prerelease": true,
+      "prerelease-type": "alpha",
+      "changelog-path": "CHANGELOG.md",
+      "skip-github-release": false,
+      "include-v-in-tag": false
+    }
+  },
+  "changelog-types": [
+    { "type": "feat",     "section": "Features",                 "hidden": false },
+    { "type": "fix",      "section": "Bug Fixes",                "hidden": false },
+    { "type": "perf",     "section": "Performance",              "hidden": false },
+    { "type": "refactor", "section": "Refactor",                 "hidden": false },
+    { "type": "revert",   "section": "Reverts",                   "hidden": false },
+    { "type": "docs",     "section": "Documentation",             "hidden": false },
+    { "type": "test",     "section": "Tests",                     "hidden": false },
+    { "type": "build",    "section": "Build System",              "hidden": false },
+    { "type": "ci",       "section": "Continuous Integration",    "hidden": false },
+    { "type": "chore",    "section": "Miscellaneous Chores",      "hidden": true  },
+    { "type": "style",    "section": "Styles",                    "hidden": true  }
+  ]
+}
