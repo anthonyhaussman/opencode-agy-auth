@@ -10,7 +10,38 @@ permissions:
   id-token: write
 
 jobs:
+  check-version-change:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Diff package.json version
+        id: diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          current=$(node -p "require('./package.json').version")
+          previous=""
+          if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+            prev_pkg=$(git show HEAD~1:package.json 2>/dev/null || echo "{}")
+            previous=$(node -p \
+              "JSON.parse(require('fs').readFileSync(0,'utf8')).version" \
+              <<<"$prev_pkg" || echo "")
+          fi
+          if [ -z "$previous" ] || [ "$current" != "$previous" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Version changed: $previous -> $current"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Version unchanged: $current"
+          fi
+
   release-please:
+    needs: check-version-change
+    if: ${{ needs.check-version-change.outputs.changed == 'true' }}
     runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release-please.outputs.release_created }}
