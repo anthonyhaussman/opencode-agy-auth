@@ -103,11 +103,14 @@ export function prepareAgyRequest(
 }
 
 function getModelEnum(modelName: string): string {
+  const deprecated = (modelsJson as any).deprecatedModelIds;
+  if (deprecated && deprecated[modelName] && deprecated[modelName].newModelEnum) {
+    return deprecated[modelName].newModelEnum;
+  }
   const models = (modelsJson as any).models;
   if (models && models[modelName] && models[modelName].model) {
     return models[modelName].model;
   }
-  const deprecated = (modelsJson as any).deprecatedModelIds;
   if (deprecated && deprecated[modelName] && deprecated[modelName].oldModelEnum) {
     return deprecated[modelName].oldModelEnum;
   }

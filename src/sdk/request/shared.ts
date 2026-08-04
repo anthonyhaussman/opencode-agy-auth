@@ -1,16 +1,13 @@
 import { AGY_GENERATIVE_LANGUAGE_ENDPOINT } from "../../constants";
 
 const REQUEST_MODEL_FALLBACKS: Record<string, string> = {
-  "gemini-2.5-flash-image": "gemini-2.5-flash",
+  // gemini-3.1-pro-high still appears in `agy models` output but its backend
+  // enum (MODEL_PLACEHOLDER_M37) was deprecated server-side in favor of
+  // gemini-pro-agent (MODEL_PLACEHOLDER_M16). See models.json
+  // deprecatedModelIds entry. Rewrite the model id before getModelEnum
+  // resolves the deprecated enum, so both body.model and labels.model_enum
+  // use the live canonical id and enum.
   "gemini-3.1-pro-high": "gemini-pro-agent",
-  // Safety net: the gemini-3.5-flash-low/medium/high tier ids no longer
-  // exist server-side. If any stale URL still contains them, remap to the
-  // current live ids. Primary fix is TIER_MAPPING in plugin.ts.
-  //   medium -> gemini-3.5-flash-low        (enum M20,  display "Gemini 3.5 Flash (Medium)")
-  //   high   -> gemini-3-flash-agent        (enum M84,  display "Gemini 3.5 Flash (High)")
-  //   low    -> gemini-3.5-flash-extra-low  (enum M187, display "Gemini 3.5 Flash (Low)")
-  "gemini-3.5-flash-medium": "gemini-3.5-flash-low",
-  "gemini-3.5-flash-high": "gemini-3-flash-agent",
 };
 const GENERATIVE_LANGUAGE_HOST = new URL(AGY_GENERATIVE_LANGUAGE_ENDPOINT).host;
 const CODE_ASSIST_HOST_SUFFIX = "cloudcode-pa.googleapis.com";
