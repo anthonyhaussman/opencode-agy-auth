@@ -1,6 +1,14 @@
 import { AGY_GENERATIVE_LANGUAGE_ENDPOINT } from "../../constants";
 
-const REQUEST_MODEL_FALLBACKS: Record<string, string> = {};
+const REQUEST_MODEL_FALLBACKS: Record<string, string> = {
+  // gemini-3.1-pro-high still appears in `agy models` output but its backend
+  // enum (MODEL_PLACEHOLDER_M37) was deprecated server-side in favor of
+  // gemini-pro-agent (MODEL_PLACEHOLDER_M16). See models.json
+  // deprecatedModelIds entry. Rewrite the model id before getModelEnum
+  // resolves the deprecated enum, so both body.model and labels.model_enum
+  // use the live canonical id and enum.
+  "gemini-3.1-pro-high": "gemini-pro-agent",
+};
 const GENERATIVE_LANGUAGE_HOST = new URL(AGY_GENERATIVE_LANGUAGE_ENDPOINT).host;
 const CODE_ASSIST_HOST_SUFFIX = "cloudcode-pa.googleapis.com";
 const MODEL_ACTION_PATTERN = /\/models\/[^:]+:\w+/;
