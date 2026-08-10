@@ -18,25 +18,50 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - name: Diff package.json version
+      - name: Detect release-triggering changes
         id: diff
         shell: bash
         run: |
           set -euo pipefail
           current=$(node -p "require('./package.json').version")
           previous=""
+          version_changed=false
           if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
             prev_pkg=$(git show HEAD~1:package.json 2>/dev/null || echo "{}")
             previous=$(node -p \
               "JSON.parse(require('fs').readFileSync(0,'utf8')).version" \
               <<<"$prev_pkg" || echo "")
+            if [ "$current" != "$previous" ]; then
+              version_changed=true
+            fi
+          else
+            version_changed=true
           fi
-          if [ -z "$previous" ] || [ "$current" != "$previous" ]; then
+          release_files_changed=false
+          if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+            changed_files=$(git diff --name-only HEAD~1 HEAD)
+            while IFS= read -r f; do
+              case "$f" in
+                package.json|.release-please-manifest.json|CHANGELOG.md)
+                  release_files_changed=true
+                  break
+                  ;;
+              esac
+            done <<<"$changed_files"
+          else
+            release_files_changed=true
+          fi
+          if [ "$version_changed" = "true" ] || \
+             [ "$release_files_changed" = "true" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "Version changed: $previous -> $current"
+            echo "Release trigger:" \
+              "version_changed=$version_changed" \
+              "release_files_changed=$release_files_changed" \
+              "(version $previous -> $current)"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "Version unchanged: $current"
+            echo "No release trigger: version unchanged ($current)" \
+              "and no release-please files changed"
           fi
 
   release-please:
