@@ -1,6 +1,6 @@
 {
   "name": "@anthonyhaussman/opencode-agy-auth",
-  "version": "1.1.11",
+  "version": "1.1.12",
   "author": "antigravity",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -21,18 +21,19 @@
   "scripts": {
     "build": "tsup && tsc -p tsconfig.build.json",
     "typecheck": "tsc",
+    "models:refresh": "node scripts/fetch-models.mjs",
     "smoke:node-import": "node -e \"import('./dist/index.js').then(() => console.log('ok')).catch((error) => { console.error(error); process.exit(1); })\"",
     "prepack": "npm run build"
   },
   "devDependencies": {
-    "@opencode-ai/sdk": "^1.18.15",
+    "@opencode-ai/sdk": "^1.18.16",
     "@types/node": "^26.2.0",
     "tsup": "^8.5.1",
     "typescript": "^7.0.2"
   },
   "dependencies": {
-    "@ai-sdk/google": "^4.0.39",
+    "@ai-sdk/google": "^4.0.41",
     "@openauthjs/openauth": "^0.4.3",
-    "@opencode-ai/plugin": "^1.18.15"
+    "@opencode-ai/plugin": "^1.18.16"
   }
 }
