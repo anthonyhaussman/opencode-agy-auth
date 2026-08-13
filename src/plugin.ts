@@ -72,6 +72,15 @@ interface SimpleStaticModel {
 }
 
 const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
+  'gemini-3.7-flash': {
+    name: 'Gemini 3.7 Flash',
+    description: 'Gemini 3.7 Flash base model. Select tier at runtime.',
+    maxTokens: 1048576,
+    maxOutputTokens: 65536,
+    toolCall: true,
+    reasoning: true,
+    attachment: true
+  },
   'gemini-3.6-flash': {
     name: 'Gemini 3.6 Flash',
     description: 'Gemini 3.6 Flash base model. Select tier at runtime.',
@@ -129,6 +138,11 @@ const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
 };
 
 const TIER_MAPPING: Record<string, { low: string; high: string; medium?: string } & Record<string, string | undefined>> = {
+  'gemini-3.7-flash': {
+    low: 'gemini-3.7-flash-low',
+    medium: 'gemini-3.7-flash-medium',
+    high: 'gemini-3.7-flash-high'
+  },
   'gemini-3.6-flash': {
     minimal: 'gemini-3.6-flash-low',
     low: 'gemini-3.6-flash-low',
@@ -346,7 +360,7 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
     const userModels = provider.models || {};
     const clonedStaticModels = JSON.parse(JSON.stringify(STATIC_MODELS));
     const strictModels: Record<string, ProviderModel> = {};
-    
+
     for (const [modelId, modelDetails] of Object.entries(clonedStaticModels as Record<string, ProviderModel>)) {
       const existing = (userModels[modelId] || {}) as Partial<ProviderModel>;
       strictModels[modelId] = {
