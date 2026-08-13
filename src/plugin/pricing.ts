@@ -129,7 +129,7 @@ export function updateStaticModelsWithPricing(
       const apiModel = pricingData[provider].models[lookupId];
       if (apiModel && apiModel.cost) {
         const apiCost = apiModel.cost;
-        
+
         modelObj.cost = {
           input: apiCost.input ?? modelObj.cost?.input ?? 0,
           output: apiCost.output ?? modelObj.cost?.output ?? 0,
