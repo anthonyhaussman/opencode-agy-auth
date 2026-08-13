@@ -42,7 +42,7 @@ jobs:
             changed_files=$(git diff --name-only HEAD~1 HEAD)
             while IFS= read -r f; do
               case "$f" in
-                package.json|.release-please-manifest.json|CHANGELOG.md)
+                package.json|.release-please-manifest.json|.release-please-config.json|CHANGELOG.md)
                   release_files_changed=true
                   break
                   ;;
