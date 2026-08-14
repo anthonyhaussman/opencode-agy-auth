@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.13](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.13-alpha.1...1.1.13) (2026-08-14)
+
+
+### Features
+
+* **release-please:** configure release 1.1.13 ([474e317](https://github.com/anthonyhaussman/opencode-agy-auth/commit/474e31787b51bddccc83aac18e7b6a47a4944f37))
+
 ## [1.1.13-alpha.1](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.13-alpha.0...1.1.13-alpha.1) (2026-08-14)
 
 
