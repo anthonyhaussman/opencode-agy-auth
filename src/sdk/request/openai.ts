@@ -7,6 +7,8 @@
  * allowing the plugin to simply call and forward standard OpenAI formatted requests and response streams.
  */
 
+import type { ToolMapper } from "./tool-mapper";
+
 interface GeminiFunctionCallPart {
   functionCall?: {
     id?: string;
@@ -37,7 +39,7 @@ interface OpenAIMessage {
 /**
  * Converts OpenAI's `tool_calls` into Gemini's `functionCall` sections.
  */
-export function transformOpenAIToolCalls(requestPayload: Record<string, unknown>): void {
+export function transformOpenAIToolCalls(requestPayload: Record<string, unknown>, toolMapper?: ToolMapper): void {
   const messages = requestPayload.messages;
   if (!messages || !Array.isArray(messages)) {
     return;
@@ -69,11 +71,12 @@ export function transformOpenAIToolCalls(requestPayload: Record<string, unknown>
         continue;
       }
 
-      const name = fn.name;
+      const rawName = fn.name ?? "";
+      const name = toolMapper ? toolMapper.toGemini(rawName) : rawName;
       const args = parseJsonObject(fn.arguments);
 
       const functionCallPart: NonNullable<GeminiFunctionCallPart['functionCall']> = {
-        name: name ?? "",
+        name,
         args,
       };
 

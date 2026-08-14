@@ -10,6 +10,7 @@ import { isGenerativeLanguageRequest, parseGenerativeLanguageRequest } from "./s
 import { getLatestSignature } from "../../plugin/cache";
 import { closeToolLoopForThinking } from "./thinking";
 import { getTurnStateTracker } from "./turn-state-tracker";
+import { getToolMapper, sanitizeToolName, type ToolMapper } from "./tool-mapper";
 
 const STREAM_ACTION = "streamGenerateContent";
 
@@ -142,9 +143,13 @@ function transformRequestBody(
       }
 
       const { userPromptId, sessionId, requestId } = normalizeWrappedIdentifiers(wrappedBody);
+      const toolMapper = getToolMapper(sessionId);
 
       const requestPayloadInside = wrappedBody.request as Record<string, unknown> | undefined;
       if (requestPayloadInside) {
+        toolMapper.registerFromFunctionDeclarations(requestPayloadInside.tools);
+        toolMapper.registerFromContents(requestPayloadInside.contents);
+
         normalizeThinking(
           requestPayloadInside,
           resolveDefaultThinkingConfig(thinkingConfigDefaults, requestedModel, effectiveModel),
@@ -163,11 +168,15 @@ function transformRequestBody(
       }
 
       if (requestPayloadInside && Array.isArray(requestPayloadInside.tools)) {
-        normalizeToolSchemaTypes(requestPayloadInside.tools);
+        normalizeToolSchemaTypes(requestPayloadInside.tools, toolMapper);
+      }
+      if (requestPayloadInside) {
+        normalizeToolConfig(requestPayloadInside, toolMapper);
       }
       if (requestPayloadInside && Array.isArray(requestPayloadInside.contents)) {
         let contents = requestPayloadInside.contents;
 
+        normalizeToolNamesInContents(contents, toolMapper);
         injectMissingToolCallIds(contents);
         fixOrphanedFunctionResponses(contents);
 
@@ -192,10 +201,18 @@ function transformRequestBody(
     }
 
     const requestPayload = { ...parsedBody };
+    const { userPromptId, sessionId, requestId } = normalizeRequestPayloadIdentifiers(requestPayload);
+    const toolMapper = getToolMapper(sessionId);
+
+    toolMapper.registerFromOpenAITools(requestPayload.tools);
+    toolMapper.registerFromFunctionDeclarations(requestPayload.tools);
+    toolMapper.registerFromContents(requestPayload.contents);
+
     if (Array.isArray(requestPayload.tools)) {
-      normalizeToolSchemaTypes(requestPayload.tools);
+      normalizeToolSchemaTypes(requestPayload.tools, toolMapper);
     }
-    transformOpenAIToolCalls(requestPayload);
+    normalizeToolConfig(requestPayload, toolMapper);
+    transformOpenAIToolCalls(requestPayload, toolMapper);
     addThoughtSignaturesToFunctionCalls(requestPayload);
     normalizeThinking(
       requestPayload,
@@ -205,10 +222,9 @@ function transformRequestBody(
     normalizeSystemInstruction(requestPayload);
     normalizeCachedContent(requestPayload);
 
-    const { userPromptId, sessionId, requestId } = normalizeRequestPayloadIdentifiers(requestPayload);
-
     let contents = requestPayload.contents as any[];
     if (Array.isArray(contents)) {
+      normalizeToolNamesInContents(contents, toolMapper);
       injectMissingToolCallIds(contents);
       fixOrphanedFunctionResponses(contents);
 
@@ -360,7 +376,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
-function normalizeToolSchemaTypes(tools: unknown): void {
+function normalizeToolSchemaTypes(tools: unknown, toolMapper?: ToolMapper): void {
   if (!Array.isArray(tools)) return;
 
   const validSchemaKeys = new Set([
@@ -412,7 +428,7 @@ function normalizeToolSchemaTypes(tools: unknown): void {
     if (tool && Array.isArray(tool.functionDeclarations)) {
       for (const fn of tool.functionDeclarations) {
         if (fn && typeof fn.name === "string") {
-          fn.name = fn.name.replace(/[^a-zA-Z0-9_]/g, "_");
+          fn.name = toolMapper ? toolMapper.toGemini(fn.name) : sanitizeToolName(fn.name);
         }
         if (fn) {
           if (!fn.parameters) {
@@ -420,6 +436,41 @@ function normalizeToolSchemaTypes(tools: unknown): void {
           }
           sanitizeSchema(fn.parameters);
         }
+      }
+    }
+  }
+}
+
+function normalizeToolConfig(requestPayload: Record<string, unknown>, toolMapper: ToolMapper): void {
+  const toolConfig = (requestPayload.toolConfig ?? requestPayload.tool_config) as Record<string, unknown> | undefined;
+  if (!toolConfig || typeof toolConfig !== "object") return;
+
+  const fnCallingConfig = (toolConfig.functionCallingConfig ?? toolConfig.function_calling_config) as Record<string, unknown> | undefined;
+  if (!fnCallingConfig || typeof fnCallingConfig !== "object") return;
+
+  const allowedNames = (fnCallingConfig.allowedFunctionNames ?? fnCallingConfig.allowed_function_names) as string[] | undefined;
+  if (Array.isArray(allowedNames)) {
+    const mapped = allowedNames.map((name) => (typeof name === "string" ? toolMapper.toGemini(name) : name));
+    if (fnCallingConfig.allowedFunctionNames) {
+      fnCallingConfig.allowedFunctionNames = mapped;
+    }
+    if (fnCallingConfig.allowed_function_names) {
+      fnCallingConfig.allowed_function_names = mapped;
+    }
+  }
+}
+
+function normalizeToolNamesInContents(contents: any[], toolMapper: ToolMapper): void {
+  if (!Array.isArray(contents)) return;
+  for (const msg of contents) {
+    if (!msg || typeof msg !== "object" || !Array.isArray(msg.parts)) continue;
+    for (const part of msg.parts) {
+      if (!part || typeof part !== "object") continue;
+      if (part.functionCall && typeof part.functionCall.name === "string") {
+        part.functionCall.name = toolMapper.toGemini(part.functionCall.name);
+      }
+      if (part.functionResponse && typeof part.functionResponse.name === "string") {
+        part.functionResponse.name = toolMapper.toGemini(part.functionResponse.name);
       }
     }
   }
