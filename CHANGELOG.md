@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.14-alpha.0](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.13...1.1.14-alpha.0) (2026-08-14)
+
+
+### Features
+
+* **request:** map tool name schemas for gemini api ([#51](https://github.com/anthonyhaussman/opencode-agy-auth/issues/51)) ([227877b](https://github.com/anthonyhaussman/opencode-agy-auth/commit/227877b09fdf2ad86b336dd9c5de37a59a31c8b0))
+
 ## [1.1.13](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.13-alpha.1...1.1.13) (2026-08-14)
 
 
