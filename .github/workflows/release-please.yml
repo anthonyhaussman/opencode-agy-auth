@@ -95,13 +95,15 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run smoke:node-import
-      - name: Publish (prerelease)
-        if: ${{ needs.release-please.outputs.prerelease == 'true' }}
-        run: npm publish --tag alpha
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Publish (stable latest)
-        if: ${{ needs.release-please.outputs.prerelease != 'true' }}
-        run: npm publish
+      - name: Publish to npm
+        run: |
+          TAG=$(node -p "const m = require('./package.json').version.match(/-([a-zA-Z]+)/); m ? m[1] : ''")
+          if [ -n "$TAG" ]; then
+            echo "Publishing prerelease tag: $TAG"
+            npm publish --tag "$TAG"
+          else
+            echo "Publishing latest release"
+            npm publish
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
