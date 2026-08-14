@@ -4,12 +4,12 @@
       "release-type": "node",
       "include-component-in-tag": false,
       "tag-separator": "",
-      "prerelease": false,
+      "prerelease": true,
       "prerelease-type": "alpha",
       "changelog-path": "CHANGELOG.md",
       "skip-github-release": false,
       "include-v-in-tag": false,
-      "release-as": "1.1.13"
+      "release-as": "1.1.13-alpha.1"
     }
   },
   "changelog-types": [
