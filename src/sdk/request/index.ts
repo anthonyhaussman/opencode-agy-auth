@@ -10,3 +10,10 @@ export { transformAgyResponse } from "./response";
 export { isGenerativeLanguageRequest, parseGenerativeLanguageRequest } from "./shared";
 export { initTurnStateTracker, getTurnStateTracker, shutdownTurnStateTracker, TurnStateTracker } from "./turn-state-tracker";
 export type { TurnState } from "./turn-state-tracker";
+export {
+  ToolMapper,
+  getToolMapper,
+  sanitizeToolName,
+  restoreToolNamesInResponse,
+  clearToolMapper,
+} from "./tool-mapper";

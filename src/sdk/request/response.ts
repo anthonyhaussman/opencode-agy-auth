@@ -11,6 +11,7 @@ import { cacheSignature } from "../../plugin/cache";
 import { createStreamingTransformer, defaultSignatureStore } from "./thinking";
 import { getTurnStateTracker, type TurnState } from "./turn-state-tracker";
 import type { ChatLogger } from "../chat-logger";
+import { getToolMapper, restoreToolNamesInResponse } from "./tool-mapper";
 
 /**
  * Normalizes Gemini/Agy responses, preserving request metadata and usage counters.
@@ -80,6 +81,11 @@ export async function transformAgyResponse(
         ? injectResponseIdFromTrace(effectiveBodyRaw as Record<string, unknown>)
         : effectiveBodyRaw;
 
+    if (effectiveBody) {
+      const toolMapper = getToolMapper(sessionId);
+      restoreToolNamesInResponse(effectiveBody, toolMapper);
+    }
+
     attachUsageHeaders(headers, effectiveBody);
 
     if (!parsed) {
@@ -144,6 +150,8 @@ function transformStreamingPayloadStream(
     },
     transformThinkingParts: (response: unknown) => {
       if (response && typeof response === "object") {
+        const toolMapper = getToolMapper(sessionId);
+        restoreToolNamesInResponse(response, toolMapper);
         return injectResponseIdFromTrace(response as Record<string, unknown>);
       }
       return response;
