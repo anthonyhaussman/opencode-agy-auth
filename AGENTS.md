@@ -13,7 +13,7 @@ When a new `agy` CLI release lands (check `https://github.com/google-antigravity
 5. Update `.release-please-config.json` (`"release-as"` field) to the new version. Do **not** touch `.release-please-manifest.json`; release-please manages it automatically on PR merge.
 6. Run `npm outdated` and bump dependencies to latest semver-compatible. `@ai-sdk/google` is never imported by the plugin; it is only referenced as a literal npm-name string in `src/plugin.ts:179` and `src/plugin.ts:438`, so version bumps are zero-risk.
 7. Refresh `models.json` from a live `fetchAvailableModels` call (see below).
-8. Run `npm install && npm run typecheck && npm run build && npm run smoke:node-import`.
+8. Run `npm install && npm run test:coverage && npm run typecheck && npm run build && npm run smoke:node-import`.
 
 Prior bump commits follow a consistent pattern. Run `git log --oneline | grep "bump agy cli"` for examples.
 
@@ -99,10 +99,38 @@ When reconciling agy CLI release notes against this plugin's code surface, check
 
 ```bash
 npm install          # updates package-lock.json
+npm test             # run unit test suite
+npm run test:coverage # run tests with v8 code coverage enforcement
 npm run typecheck    # tsc type check
 npm run build        # tsup bundle + tsc declaration emit
 npm run smoke:node-import  # verify dist/index.js loads without error
 ```
+
+## Testing & Code Coverage
+
+The repository uses [Vitest](https://vitest.dev/) with `@vitest/coverage-v8` for unit testing and code coverage enforcement.
+
+### Test Commands
+
+- `npm test`: Runs test suite once (`vitest run`).
+- `npm run test:watch`: Runs tests in interactive watch mode (`vitest`).
+- `npm run test:coverage`: Runs full suite and enforces code coverage thresholds (`vitest run --coverage`).
+
+### Coverage Standards
+
+- Minimum thresholds configured in `vitest.config.ts`:
+  - **Lines**: >= 95%
+  - **Functions**: >= 95%
+  - **Statements**: >= 94%
+  - **Branches**: >= 85%
+- CI executes `npm run test:coverage` on every push and pull request. All new features and refactors must include unit tests maintaining >= 95% overall line and function coverage.
+
+### Test Suite Organization
+
+All tests are located in `test/` and organized by module:
+
+- `test/sdk-*` & `test/sdk/`: Tests for request transformations, thinking configs, thought signatures, SSE streaming, retry backoff, quota error parsing, user-agent formatting, and OAuth helpers.
+- `test/plugin-*` & `test/plugin/`: Tests for plugin lifecycle, authentication loading/refreshing, project context resolution, pricing updates, toast notifications, background traffic simulation, and the `agy_quota` / `agy_quota_summary` tools.
 
 Validate `models.json` is well-formed JSON:
 

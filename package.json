@@ -19,6 +19,9 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
     "build": "tsup && tsc -p tsconfig.build.json",
     "typecheck": "tsc",
     "models:refresh": "node scripts/fetch-models.mjs",
@@ -28,8 +31,10 @@
   "devDependencies": {
     "@opencode-ai/sdk": "^1.18.18",
     "@types/node": "^26.2.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "tsup": "^8.5.1",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.44",
