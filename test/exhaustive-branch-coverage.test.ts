@@ -21,6 +21,7 @@ describe('Exhaustive Branch Coverage Suite', () => {
     const originalStdout = process.stdout.isTTY;
 
     try {
+      delete process.env.OPENCODE_HEADLESS;
       (process.stdout as any).isTTY = true;
       process.env.TERM_PROGRAM = 'iterm.app';
       expect(supportsOsc8Hyperlinks()).toBe(true);

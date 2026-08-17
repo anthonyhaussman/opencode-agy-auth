@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   createOAuthAuthorizeMethod,
 } from '../../src/plugin/oauth-authorize.js';
@@ -6,6 +6,9 @@ import * as oauthSdk from '../../src/sdk/oauth.js';
 import * as projectModule from '../../src/plugin/project/index.js';
 
 describe('oauth-authorize', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   it('creates authorize method and performs code callback exchange', async () => {
     vi.spyOn(oauthSdk, 'authorizeAgy').mockResolvedValue({
       url: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=123',
