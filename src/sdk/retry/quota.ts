@@ -1,3 +1,6 @@
+import { retrieveUserQuotaSummary } from "../fetch_quota";
+import type { QuotaSummaryBucket, RetrieveUserQuotaSummaryResponse } from "../../plugin/project/types";
+
 interface GoogleRpcErrorInfo {
   "@type"?: string;
   reason?: string;
@@ -223,7 +226,96 @@ function normalizeErrorEnvelope(parsed: unknown): Record<string, unknown> | null
   return isObject(parsed) ? parsed : null;
 }
 
+export const MAX_QUOTA_RESET_WAIT_MS = 7_200_000; // 7200 seconds (2 hours)
+
+export function findResetTimeForModel(
+  summary: RetrieveUserQuotaSummaryResponse | null | undefined,
+  model?: string,
+): string | null {
+  if (!summary) return null;
+
+  const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const modelNorm = model ? normalize(model) : "";
+
+  let targetGroups = summary.groups ?? [];
+  if (modelNorm && targetGroups.length > 0) {
+    const matched = targetGroups.filter((g) => {
+      const gName = normalize(g.displayName ?? "");
+      return gName.includes(modelNorm) || modelNorm.includes(gName);
+    });
+    if (matched.length > 0) {
+      targetGroups = matched;
+    }
+  }
+
+  const allBuckets: QuotaSummaryBucket[] = [];
+  for (const group of targetGroups) {
+    if (group.buckets) {
+      allBuckets.push(...group.buckets);
+    }
+  }
+  if (allBuckets.length === 0 && summary.buckets) {
+    allBuckets.push(...summary.buckets);
+  }
+
+  const now = Date.now();
+  const validResetBuckets = allBuckets.filter((b) => {
+    if (!b.resetTime) return false;
+    const t = new Date(b.resetTime).getTime();
+    return !Number.isNaN(t) && t > now;
+  });
+
+  if (validResetBuckets.length === 0) {
+    return null;
+  }
+
+  const exhaustedFiveHour = validResetBuckets.find(
+    (b) => (b.remainingFraction === 0 || b.disabled) && b.window?.toUpperCase() === "FIVE_HOUR",
+  );
+  if (exhaustedFiveHour?.resetTime) return exhaustedFiveHour.resetTime;
+
+  const exhaustedAny = validResetBuckets.find((b) => b.remainingFraction === 0 || b.disabled);
+  if (exhaustedAny?.resetTime) return exhaustedAny.resetTime;
+
+  const fiveHour = validResetBuckets.find((b) => b.window?.toUpperCase() === "FIVE_HOUR");
+  if (fiveHour?.resetTime) return fiveHour.resetTime;
+
+  validResetBuckets.sort(
+    (a, b) => new Date(a.resetTime!).getTime() - new Date(b.resetTime!).getTime(),
+  );
+  return validResetBuckets[0]?.resetTime ?? null;
+}
+
+export async function resolveQuotaResetDelay(
+  accessToken: string,
+  projectId: string,
+  model?: string,
+  userAgentModel?: string,
+): Promise<{ waitMs: number; resetTime: string } | null> {
+  try {
+    const summary = await retrieveUserQuotaSummary(accessToken, projectId, userAgentModel);
+    if (!summary) return null;
+
+    const resetTime = findResetTimeForModel(summary, model);
+    if (!resetTime) return null;
+
+    const resetTimestamp = new Date(resetTime).getTime();
+    if (Number.isNaN(resetTimestamp)) return null;
+
+    const waitMs = resetTimestamp - Date.now() + 1000;
+    if (waitMs <= 0 || waitMs > MAX_QUOTA_RESET_WAIT_MS) {
+      return null;
+    }
+
+    return { waitMs, resetTime };
+  } catch {
+    return null;
+  }
+}
+
 export const retryInternals = {
   parseRetryDelayValue,
   parseRetryDelayFromMessage,
+  findResetTimeForModel,
+  resolveQuotaResetDelay,
 };

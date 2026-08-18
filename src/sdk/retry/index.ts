@@ -7,7 +7,12 @@ import {
   resolveRetryDelayMs,
   wait,
 } from "./helpers";
-import { classifyQuotaResponse, retryInternals } from "./quota";
+import {
+  classifyQuotaResponse,
+  MAX_QUOTA_RESET_WAIT_MS,
+  resolveQuotaResetDelay,
+  retryInternals,
+} from "./quota";
 import { agyFetch } from "../../fetch";
 import { CooldownStore, loadCooldowns } from "./cooldown-store";
 
@@ -53,6 +58,7 @@ export async function fetchWithRetry(
   const throttleKey = buildRetryThrottleKey(input, retryInit);
   await waitForRetryCooldown(throttleKey, retryInit.signal);
   let attempt = 1;
+  let hasRetriedQuotaReset = false;
   const url = readRequestUrl(input);
 
   while (attempt <= DEFAULT_MAX_ATTEMPTS) {
@@ -82,7 +88,29 @@ export async function fetchWithRetry(
       if (quotaContext.reason === "MODEL_CAPACITY_EXHAUSTED") {
         const cooldownMs = quotaContext.retryDelayMs ?? MODEL_CAPACITY_COOLDOWN_MS;
         setRetryCooldown(throttleKey, cooldownMs);
+        return response;
       }
+
+      if (quotaContext.reason === "QUOTA_EXHAUSTED" && !hasRetriedQuotaReset && !retryInit.signal?.aborted) {
+        const body = typeof retryInit.body === "string" ? safeParseBody(retryInit.body) : null;
+        const project = readString(body?.project);
+        const model = readString(body?.model);
+        const token = extractAuthToken(retryInit.headers);
+
+        if (token && project) {
+          const resetInfo = await resolveQuotaResetDelay(token, project, model);
+          if (resetInfo && resetInfo.waitMs > 0 && resetInfo.waitMs <= MAX_QUOTA_RESET_WAIT_MS) {
+            hasRetriedQuotaReset = true;
+            setRetryCooldown(throttleKey, resetInfo.waitMs);
+            await wait(resetInfo.waitMs);
+            if (retryInit.signal?.aborted) {
+              return response;
+            }
+            continue;
+          }
+        }
+      }
+
       return response;
     }
 
@@ -185,6 +213,15 @@ function safeParseBody(body: string): Record<string, unknown> | null {
 
 function readString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function extractAuthToken(headers?: HeadersInit): string | undefined {
+  if (!headers) return undefined;
+  const h = new Headers(headers);
+  const auth = h.get("authorization") || h.get("Authorization");
+  if (!auth) return undefined;
+  const match = auth.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() || auth.trim();
 }
 
 export { retryInternals };
