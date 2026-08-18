@@ -13,7 +13,7 @@ describe('Final 95% Target Booster Suite', () => {
     const cache = new signatureCacheModule.SignatureCache({
       enabled: true,
       cache_file: tmpCache,
-      memory_ttl_seconds: 0.001, // 1ms TTL for instant expiry
+      memory_ttl_seconds: 0.05, // 50ms TTL
       disk_ttl_seconds: 3600,
       write_interval_seconds: 0.05
     });
@@ -22,7 +22,7 @@ describe('Final 95% Target Booster Suite', () => {
     expect(cache.has('expiring-key-1')).toBe(true);
 
     // Wait for memory TTL to expire
-    await new Promise(r => setTimeout(r, 20));
+    await new Promise(r => setTimeout(r, 70));
 
     // Call private cleanupExpired method via any
     (cache as any).cleanupExpired();

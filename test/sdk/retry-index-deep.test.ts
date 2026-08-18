@@ -144,5 +144,144 @@ describe('retry index and error delay deep coverage', () => {
     it('handles shutdownRetryCooldowns gracefully', () => {
       expect(() => retryModule.shutdownRetryCooldowns()).not.toThrow();
     });
+
+    it('waits for quota reset and retries on 429 QUOTA_EXHAUSTED', async () => {
+      const waitSpy = vi.spyOn(helpersModule, 'wait').mockResolvedValue();
+      const quotaResetSpy = vi.spyOn(quotaModule, 'resolveQuotaResetDelay').mockResolvedValue({
+        waitMs: 5000,
+        resetTime: new Date(Date.now() + 5000).toISOString(),
+      });
+      const fetchSpy = vi.spyOn(fetchModule, 'agyFetch')
+        .mockResolvedValueOnce(new Response(JSON.stringify({
+          error: {
+            details: [
+              {
+                '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+                domain: 'cloudcode-pa.googleapis.com',
+                reason: 'QUOTA_EXHAUSTED',
+              },
+            ],
+          },
+        }), { status: 429 }))
+        .mockResolvedValueOnce(new Response('{"success":true}', { status: 200 }));
+
+      const res = await retryModule.fetchWithRetry('https://daily-cloudcode-pa.googleapis.com/v1internal:test-quota', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer test-token' },
+        body: JSON.stringify({ project: 'test-project', model: 'gemini-2.5-pro' }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(quotaResetSpy).toHaveBeenCalledWith('test-token', 'test-project', 'gemini-2.5-pro');
+      expect(waitSpy).toHaveBeenCalledWith(5000);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('extracts headers from Headers instance or Request object during quota reset', async () => {
+      vi.spyOn(helpersModule, 'wait').mockResolvedValue();
+      const quotaResetSpy = vi.spyOn(quotaModule, 'resolveQuotaResetDelay').mockResolvedValue(null);
+      vi.spyOn(fetchModule, 'agyFetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({
+          error: {
+            details: [
+              {
+                '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+                domain: 'cloudcode-pa.googleapis.com',
+                reason: 'QUOTA_EXHAUSTED',
+              },
+            ],
+          },
+        }), { status: 429 })
+      );
+
+      const headers = new Headers();
+      headers.set('authorization', 'Bearer header-inst-token');
+
+      const req = new Request('https://daily-cloudcode-pa.googleapis.com/v1internal:test-req', {
+        method: 'POST',
+        headers,
+      });
+
+      const res = await retryModule.fetchWithRetry(req, {
+        headers: [['authorization', 'Bearer array-token']],
+        body: JSON.stringify({ project: 'req-proj' }),
+      });
+
+      expect(res.status).toBe(429);
+      expect(quotaResetSpy).toHaveBeenCalled();
+    });
+
+    it('does not retry quota reset more than once', async () => {
+      vi.spyOn(helpersModule, 'wait').mockResolvedValue();
+      const quotaResetSpy = vi.spyOn(quotaModule, 'resolveQuotaResetDelay').mockResolvedValue({
+        waitMs: 2000,
+        resetTime: new Date(Date.now() + 2000).toISOString(),
+      });
+      vi.spyOn(fetchModule, 'agyFetch')
+        .mockResolvedValueOnce(new Response(JSON.stringify({
+          error: {
+            details: [
+              {
+                '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+                domain: 'cloudcode-pa.googleapis.com',
+                reason: 'QUOTA_EXHAUSTED',
+              },
+            ],
+          },
+        }), { status: 429 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify({
+          error: {
+            details: [
+              {
+                '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+                domain: 'cloudcode-pa.googleapis.com',
+                reason: 'QUOTA_EXHAUSTED',
+              },
+            ],
+          },
+        }), { status: 429 }));
+
+      const res = await retryModule.fetchWithRetry('https://daily-cloudcode-pa.googleapis.com/v1internal:test-quota2', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer token' },
+        body: JSON.stringify({ project: 'proj' }),
+      });
+
+      expect(res.status).toBe(429);
+      expect(quotaResetSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns 429 response if signal is aborted during quota reset wait', async () => {
+      const controller = new AbortController();
+      vi.spyOn(helpersModule, 'wait').mockImplementation(async () => {
+        controller.abort();
+      });
+      vi.spyOn(quotaModule, 'resolveQuotaResetDelay').mockResolvedValue({
+        waitMs: 10000,
+        resetTime: new Date(Date.now() + 10000).toISOString(),
+      });
+      vi.spyOn(fetchModule, 'agyFetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({
+          error: {
+            details: [
+              {
+                '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+                domain: 'cloudcode-pa.googleapis.com',
+                reason: 'QUOTA_EXHAUSTED',
+              },
+            ],
+          },
+        }), { status: 429 })
+      );
+
+      const res = await retryModule.fetchWithRetry('https://daily-cloudcode-pa.googleapis.com/v1internal:test-abort', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer token' },
+        body: JSON.stringify({ project: 'proj' }),
+        signal: controller.signal,
+      });
+
+      expect(res.status).toBe(429);
+    });
   });
 });

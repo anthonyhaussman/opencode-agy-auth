@@ -1,5 +1,14 @@
-import { describe, it, expect } from "vitest";
-import { classifyQuotaResponse, parseRetryDelayFromBody, retryInternals } from "../src/sdk/retry/quota";
+import { describe, it, expect, vi } from "vitest";
+import {
+  classifyQuotaResponse,
+  parseRetryDelayFromBody,
+  findResetTimeForModel,
+  resolveQuotaResetDelay,
+  MAX_QUOTA_RESET_WAIT_MS,
+  retryInternals,
+} from "../src/sdk/retry/quota";
+import * as fetchQuotaModule from "../src/sdk/fetch_quota";
+import type { RetrieveUserQuotaSummaryResponse } from "../src/plugin/project/types";
 
 describe("sdk/retry/quota", () => {
   it("parses retry delay values correctly", () => {
@@ -244,5 +253,137 @@ describe("sdk/retry/quota", () => {
       { status: 429 }
     );
     expect((await classifyQuotaResponse(resArrayEnvelope))?.reason).toBe("RATE_LIMIT_EXCEEDED");
+  });
+
+  describe("findResetTimeForModel", () => {
+    it("returns null if summary is null or undefined", () => {
+      expect(findResetTimeForModel(null)).toBeNull();
+      expect(findResetTimeForModel(undefined)).toBeNull();
+    });
+
+    it("returns null if no buckets have future reset times", () => {
+      const pastSummary: RetrieveUserQuotaSummaryResponse = {
+        buckets: [
+          { resetTime: new Date(Date.now() - 100000).toISOString(), window: "FIVE_HOUR" },
+          { resetTime: "invalid-date", window: "FIVE_HOUR" },
+          { window: "FIVE_HOUR" },
+        ],
+      };
+      expect(findResetTimeForModel(pastSummary)).toBeNull();
+    });
+
+    it("prioritizes exhausted FIVE_HOUR bucket matching model", () => {
+      const futureReset = new Date(Date.now() + 300000).toISOString();
+      const futureOther = new Date(Date.now() + 600000).toISOString();
+      const summary: RetrieveUserQuotaSummaryResponse = {
+        groups: [
+          {
+            displayName: "Claude Opus 3.5",
+            buckets: [
+              { resetTime: futureOther, window: "FIVE_HOUR", remainingFraction: 1 },
+            ],
+          },
+          {
+            displayName: "Gemini 2.5 Pro",
+            buckets: [
+              { resetTime: futureReset, window: "FIVE_HOUR", remainingFraction: 0 },
+            ],
+          },
+        ],
+      };
+
+      expect(findResetTimeForModel(summary, "gemini-2.5-pro")).toBe(futureReset);
+    });
+
+    it("falls back to exhausted bucket if not FIVE_HOUR", () => {
+      const futureReset = new Date(Date.now() + 300000).toISOString();
+      const summary: RetrieveUserQuotaSummaryResponse = {
+        groups: [
+          {
+            displayName: "Gemini Flash",
+            buckets: [
+              { resetTime: futureReset, window: "WEEKLY", remainingFraction: 0, disabled: true },
+            ],
+          },
+        ],
+      };
+
+      expect(findResetTimeForModel(summary, "gemini-flash")).toBe(futureReset);
+    });
+
+    it("falls back to non-exhausted FIVE_HOUR bucket", () => {
+      const futureReset = new Date(Date.now() + 300000).toISOString();
+      const summary: RetrieveUserQuotaSummaryResponse = {
+        groups: [
+          {
+            displayName: "Default",
+            buckets: [
+              { resetTime: futureReset, window: "FIVE_HOUR", remainingFraction: 0.5 },
+            ],
+          },
+        ],
+      };
+
+      expect(findResetTimeForModel(summary)).toBe(futureReset);
+    });
+
+    it("falls back to earliest valid bucket when no FIVE_HOUR or exhausted buckets exist", () => {
+      const earlier = new Date(Date.now() + 100000).toISOString();
+      const later = new Date(Date.now() + 500000).toISOString();
+      const summary: RetrieveUserQuotaSummaryResponse = {
+        buckets: [
+          { resetTime: later, window: "DAILY", remainingFraction: 0.5 },
+          { resetTime: earlier, window: "DAILY", remainingFraction: 0.5 },
+        ],
+      };
+
+      expect(findResetTimeForModel(summary)).toBe(earlier);
+    });
+  });
+
+  describe("resolveQuotaResetDelay", () => {
+    it("returns waitMs and resetTime if within MAX_QUOTA_RESET_WAIT_MS", async () => {
+      const futureDate = new Date(Date.now() + 60000); // 60s
+      vi.spyOn(fetchQuotaModule, "retrieveUserQuotaSummary").mockResolvedValueOnce({
+        buckets: [
+          { resetTime: futureDate.toISOString(), window: "FIVE_HOUR", remainingFraction: 0 },
+        ],
+      });
+
+      const result = await resolveQuotaResetDelay("token", "proj", "gemini-pro");
+      expect(result).not.toBeNull();
+      expect(result?.resetTime).toBe(futureDate.toISOString());
+      expect(result?.waitMs).toBeGreaterThan(50000);
+      expect(result?.waitMs).toBeLessThanOrEqual(62000);
+    });
+
+    it("returns null if summary fetch returns null or throws", async () => {
+      vi.spyOn(fetchQuotaModule, "retrieveUserQuotaSummary").mockResolvedValueOnce(null);
+      expect(await resolveQuotaResetDelay("token", "proj")).toBeNull();
+
+      vi.spyOn(fetchQuotaModule, "retrieveUserQuotaSummary").mockRejectedValueOnce(new Error("network error"));
+      expect(await resolveQuotaResetDelay("token", "proj")).toBeNull();
+    });
+
+    it("returns null if waitMs exceeds MAX_QUOTA_RESET_WAIT_MS", async () => {
+      const farFuture = new Date(Date.now() + MAX_QUOTA_RESET_WAIT_MS + 100000);
+      vi.spyOn(fetchQuotaModule, "retrieveUserQuotaSummary").mockResolvedValueOnce({
+        buckets: [
+          { resetTime: farFuture.toISOString(), window: "FIVE_HOUR", remainingFraction: 0 },
+        ],
+      });
+
+      expect(await resolveQuotaResetDelay("token", "proj")).toBeNull();
+    });
+
+    it("returns null if resetTime is invalid or in the past", async () => {
+      vi.spyOn(fetchQuotaModule, "retrieveUserQuotaSummary").mockResolvedValueOnce({
+        buckets: [
+          { resetTime: "invalid-date", window: "FIVE_HOUR" },
+        ],
+      });
+
+      expect(await resolveQuotaResetDelay("token", "proj")).toBeNull();
+    });
   });
 });
