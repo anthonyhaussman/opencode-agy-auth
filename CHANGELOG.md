@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.14-alpha.3](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.14-alpha.2...1.1.14-alpha.3) (2026-08-18)
+
+
+### Features
+
+* bump agy cli to 1.1.14 ([#58](https://github.com/anthonyhaussman/opencode-agy-auth/issues/58)) ([b8d7ec5](https://github.com/anthonyhaussman/opencode-agy-auth/commit/b8d7ec52e8a5057516066cc12cefbbc7a74a3f7b))
+* **release-please:** configure prerelease alpha version 1.1.14-alpha.3 ([fd2bb00](https://github.com/anthonyhaussman/opencode-agy-auth/commit/fd2bb00b70581d2855c579c9cd0e41b5c17b0409))
+
 ## [1.1.14-alpha.2](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.14-alpha.1...1.1.14-alpha.2) (2026-08-18)
 
 
