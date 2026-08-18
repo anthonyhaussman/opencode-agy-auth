@@ -582,7 +582,7 @@ function applyLatestSignature(contents: any[], latestSig: string | undefined): v
     if (content && typeof content === "object" && Array.isArray(content.parts)) {
       for (const part of content.parts) {
         if (part && typeof part === "object" && part.functionCall) {
-          allFunctionCalls.push(part);
+          allFunctionCalls.push(part.functionCall);
         }
       }
     }

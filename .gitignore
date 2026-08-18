@@ -1,5 +1,7 @@
 node_modules/
 dist/
+coverage/
+agy_chat_log/
 .env
 docs/superpowers
 

@@ -706,7 +706,7 @@ function resolveThinkingConfigDefaults(provider: Provider): ThinkingConfigDefaul
   const providerThinkingConfig = providerOptions?.thinkingConfig;
 
   const modelThinkingConfigByModel: Record<string, unknown> = {};
-  for (const [modelId, model] of Object.entries(provider.models ?? {})) {
+  for (const [modelId, model] of Object.entries(provider?.models ?? {})) {
     if (!model || typeof model !== 'object') {
       continue;
     }
