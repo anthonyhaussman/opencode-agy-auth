@@ -576,23 +576,30 @@ function injectMissingToolCallIds(contents: any[]): void {
 }
 
 function applyLatestSignature(contents: any[], latestSig: string | undefined): void {
-  // Collect all function calls in chronological order
-  const allFunctionCalls: any[] = [];
+  // Collect all function call parts in chronological order
+  const allFunctionParts: any[] = [];
   for (const content of contents) {
     if (content && typeof content === "object" && Array.isArray(content.parts)) {
       for (const part of content.parts) {
         if (part && typeof part === "object" && part.functionCall) {
-          allFunctionCalls.push(part.functionCall);
+          // If thoughtSignature was mistakenly placed inside functionCall, migrate or clean it up
+          if (part.functionCall.thoughtSignature) {
+            if (!part.thoughtSignature || part.thoughtSignature === "skip_thought_signature_validator") {
+              part.thoughtSignature = part.functionCall.thoughtSignature;
+            }
+            delete part.functionCall.thoughtSignature;
+          }
+          allFunctionParts.push(part);
         }
       }
     }
   }
 
-  // Only apply the latest signature to the VERY LAST function call
-  if (allFunctionCalls.length > 0 && latestSig) {
-    const lastFunctionCall = allFunctionCalls[allFunctionCalls.length - 1];
-    if (!lastFunctionCall.thoughtSignature || lastFunctionCall.thoughtSignature === "skip_thought_signature_validator") {
-      lastFunctionCall.thoughtSignature = latestSig;
+  // Only apply the latest signature to the VERY LAST function call part
+  if (allFunctionParts.length > 0 && latestSig) {
+    const lastPart = allFunctionParts[allFunctionParts.length - 1];
+    if (!lastPart.thoughtSignature || lastPart.thoughtSignature === "skip_thought_signature_validator") {
+      lastPart.thoughtSignature = latestSig;
     }
   }
 }
