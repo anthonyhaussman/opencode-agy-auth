@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.14-alpha.1](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.14-alpha.0...1.1.14-alpha.1) (2026-08-18)
+
+
+### Features
+
+* **release-please:** configure prerelease alpha version 1.1.14-alpha.1 ([7aa9ba5](https://github.com/anthonyhaussman/opencode-agy-auth/commit/7aa9ba59e5eeeb26e4fa6961f86e2a7424428ba8))
+* **retry:** wait for quota reset on exhaustion ([#54](https://github.com/anthonyhaussman/opencode-agy-auth/issues/54)) ([81e41a3](https://github.com/anthonyhaussman/opencode-agy-auth/commit/81e41a3724ce1387445601c17feb3e378e00ec32))
+
 ## [1.1.14-alpha.0](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.13...1.1.14-alpha.0) (2026-08-14)
 
 
