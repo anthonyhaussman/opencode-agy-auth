@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.14-alpha.2](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.14-alpha.1...1.1.14-alpha.2) (2026-08-18)
+
+
+### Features
+
+* **release-please:** configure prerelease alpha version 1.1.14-alpha.2 ([cf6dfb9](https://github.com/anthonyhaussman/opencode-agy-auth/commit/cf6dfb97ac02fc00574bdd4a54098238ab9c8fde))
+
+
+### Bug Fixes
+
+* **request:** attach thoughtSignature to part instead of functionCall ([#56](https://github.com/anthonyhaussman/opencode-agy-auth/issues/56)) ([eb73910](https://github.com/anthonyhaussman/opencode-agy-auth/commit/eb739103d77f7e101edfe0616ad3e481d21deee7))
+
 ## [1.1.14-alpha.1](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.14-alpha.0...1.1.14-alpha.1) (2026-08-18)
 
 
