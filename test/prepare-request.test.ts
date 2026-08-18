@@ -290,10 +290,10 @@ describe("prepareAgyRequest Comprehensive Suite", () => {
           role: "model",
           parts: [
             {
+              thoughtSignature: "skip_thought_signature_validator",
               functionCall: {
                 id: "call-1",
                 name: "toolA",
-                thoughtSignature: "skip_thought_signature_validator",
               },
             },
             {
@@ -310,7 +310,41 @@ describe("prepareAgyRequest Comprehensive Suite", () => {
     const result = prepareAgyRequest(input, { method: "POST", body }, token, project);
     const parsed = JSON.parse(result.init.body as string);
     const parts = parsed.request.contents[0].parts;
-    expect(parts[1].functionCall.thoughtSignature).toBe(sig);
+    expect(parts[1].thoughtSignature).toBe(sig);
+    expect(parts[1].functionCall.thoughtSignature).toBeUndefined();
+    expect(parts[0].thoughtSignature).toBe("skip_thought_signature_validator");
+    expect(parts[0].functionCall.thoughtSignature).toBeUndefined();
+  });
+
+  it("migrates thoughtSignature if mistakenly placed in functionCall", () => {
+    const sessionId = "session-migrate-test";
+    const sig = "migrated-sig-123";
+    cacheSignature(sessionId, "thought-text", sig);
+
+    const input = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
+    const body = JSON.stringify({
+      sessionId: sessionId,
+      contents: [
+        {
+          role: "model",
+          parts: [
+            {
+              functionCall: {
+                id: "call-1",
+                name: "toolA",
+                thoughtSignature: "skip_thought_signature_validator",
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = prepareAgyRequest(input, { method: "POST", body }, token, project);
+    const parsed = JSON.parse(result.init.body as string);
+    const parts = parsed.request.contents[0].parts;
+    expect(parts[0].thoughtSignature).toBe(sig);
+    expect(parts[0].functionCall.thoughtSignature).toBeUndefined();
   });
 
   it("recovers thinking when state tracker indicates in tool loop without thinking", () => {
