@@ -7,7 +7,11 @@ OpenCode plugin that adds the Google Gemini Antigravity CLI (`agy`) OAuth provid
 When a new `agy` CLI release lands (check `https://github.com/google-antigravity/antigravity-cli/releases`):
 
 1. Install or upgrade the CLI locally so `agy --version` matches the target release.
-2. Read the release notes at `https://github.com/google-antigravity/antigravity-cli/releases/tag/<VERSION>` and reconcile every item against the plugin's surface. Most agy CLI releases are client-only UI/UX work (Vim mode, artifact rendering, terminal hyperlinks) or local filesystem fixes (atomic config writes, keyring timeouts) and require no plugin change.
+2. Read the release notes and changelog at `https://github.com/google-antigravity/antigravity-cli/releases/tag/<VERSION>`:
+   - **Audit changelog for plugin improvements**: Identify upstream bug fixes, protocol changes, new request parameters, error handling adjustments, or server-side capabilities that can be ported or integrated into this plugin.
+   - **Report analysis findings**: Explain whether actionable features or bug fixes exist to implement in this plugin, or clearly state that none apply (e.g., client-only changes).
+   - **Implement relevant changes**: If actionable fixes or features are found, implement and test them alongside the version bump.
+   - **Reconcile surface**: Most agy CLI releases are client-only UI/UX work (Vim mode, artifact rendering, terminal hyperlinks) or local filesystem fixes (atomic config writes, keyring timeouts) that require no plugin change, but always audit backend/protocol additions.
 3. Update `src/sdk/agy-cli-version.ts` to the new version. This single constant feeds `buildAgyCliUserAgent()` in `src/sdk/user-agent.ts`, which sets the `User-Agent` header on every Code Assist API request the plugin makes. Aligning it with the installed CLI keeps server-side attribution consistent.
 4. Update `package.json` line 3 (`"version"`) to the new version.
 5. Update `.release-please-config.json` (`"release-as"` field) to the new version. Do **not** touch `.release-please-manifest.json`; release-please manages it automatically on PR merge.
