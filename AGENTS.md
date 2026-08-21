@@ -7,7 +7,7 @@ OpenCode plugin that adds the Google Gemini Antigravity CLI (`agy`) OAuth provid
 When a new `agy` CLI release lands (check `https://github.com/google-antigravity/antigravity-cli/releases`):
 
 1. Install or upgrade the CLI locally so `agy --version` matches the target release.
-2. Read the release notes and changelog at `https://github.com/google-antigravity/antigravity-cli/releases/tag/<VERSION>`:
+2. Read the release notes and changelog at `https://github.com/google-antigravity/antigravity-cli/releases/tag/<VERSION>` (note: the tag is `<version>` without the "v" prefix, e.g. `0.1.2`, not `v0.1.2`):
    - **Audit changelog for plugin improvements**: Identify upstream bug fixes, protocol changes, new request parameters, error handling adjustments, or server-side capabilities that can be ported or integrated into this plugin.
    - **Report analysis findings**: Explain whether actionable features or bug fixes exist to implement in this plugin, or clearly state that none apply (e.g., client-only changes).
    - **Implement relevant changes**: If actionable fixes or features are found, implement and test them alongside the version bump.
