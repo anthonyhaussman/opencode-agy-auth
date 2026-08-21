@@ -13,11 +13,10 @@ When a new `agy` CLI release lands (check `https://github.com/google-antigravity
    - **Implement relevant changes**: If actionable fixes or features are found, implement and test them alongside the version bump.
    - **Reconcile surface**: Most agy CLI releases are client-only UI/UX work (Vim mode, artifact rendering, terminal hyperlinks) or local filesystem fixes (atomic config writes, keyring timeouts) that require no plugin change, but always audit backend/protocol additions.
 3. Update `src/sdk/agy-cli-version.ts` to the new version. This single constant feeds `buildAgyCliUserAgent()` in `src/sdk/user-agent.ts`, which sets the `User-Agent` header on every Code Assist API request the plugin makes. Aligning it with the installed CLI keeps server-side attribution consistent.
-4. Update `package.json` line 3 (`"version"`) to the new version.
-5. Update `.release-please-config.json` (`"release-as"` field) to the new version. Do **not** touch `.release-please-manifest.json`; release-please manages it automatically on PR merge.
-6. Run `npm outdated` and bump dependencies to latest semver-compatible. `@ai-sdk/google` is never imported by the plugin; it is only referenced as a literal npm-name string in `src/plugin.ts:179` and `src/plugin.ts:438`, so version bumps are zero-risk.
-7. Refresh `models.json` from a live `fetchAvailableModels` call (see below).
-8. Run `npm install && npm run test:coverage && npm run typecheck && npm run build && npm run smoke:node-import`.
+4. Update `.release-please-config.json` (`"release-as"` field) to the new version. Do **not** touch `.release-please-manifest.json`; release-please manages it automatically on PR merge. Note: `package.json` version bumps are handled by Renovate / release-please automatically.
+5. Run `npm outdated` and bump dependencies to latest semver-compatible. `@ai-sdk/google` is never imported by the plugin; it is only referenced as a literal npm-name string in `src/plugin.ts:179` and `src/plugin.ts:438`, so version bumps are zero-risk.
+6. Refresh `models.json` from a live `fetchAvailableModels` call (see below).
+7. Run `npm install && npm run test:coverage && npm run typecheck && npm run build && npm run smoke:node-import`.
 
 Prior bump commits follow a consistent pattern. Run `git log --oneline | grep "bump agy cli"` for examples.
 
