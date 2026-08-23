@@ -14,7 +14,7 @@ When a new `agy` CLI release lands (check `https://github.com/google-antigravity
    - **Report analysis findings**: Explain whether actionable features or bug fixes exist to implement in this plugin, or clearly state that none apply (e.g., client-only changes).
    - **Implement relevant changes**: If actionable fixes or features are found, implement and test them alongside the version bump.
    - **Reconcile surface**: Most agy CLI releases are client-only UI/UX work (Vim mode, artifact rendering, terminal hyperlinks) or local filesystem fixes (atomic config writes, keyring timeouts) that require no plugin change, but always audit backend/protocol additions.
-3. Update `src/sdk/agy-cli-version.ts` to the new version. This single constant feeds `buildAgyCliUserAgent()` in `src/sdk/user-agent.ts`, which sets the `User-Agent` header on every Code Assist API request the plugin makes. Aligning it with the installed CLI keeps server-side attribution consistent.
+3. Update `src/sdk/agy-cli-version.ts` and `scripts/fetch-models.mjs` (`AGY_API_VERSION`) to the new version. This constant feeds `buildAgyCliUserAgent()` in `src/sdk/user-agent.ts` and `scripts/fetch-models.mjs`, setting the `User-Agent` header on every Code Assist API request. Aligning it with the installed CLI keeps server-side attribution consistent.
 4. Update `.release-please-config.json` (`"release-as"` field) to the new version. Do **not** touch `.release-please-manifest.json`; release-please manages it automatically on PR merge. Note: `package.json` version bumps are handled by Renovate / release-please automatically.
 5. Run `npm outdated` and bump dependencies to latest semver-compatible. `@ai-sdk/google` is never imported by the plugin; it is only referenced as a literal npm-name string in `src/plugin.ts:179` and `src/plugin.ts:438`, so version bumps are zero-risk.
 6. Refresh `models.json` from a live `fetchAvailableModels` call (see below).
@@ -70,6 +70,7 @@ Always verify that `.deprecatedModelIds` for `gemini-3.1-pro-high` (mapping to `
 When reconciling agy CLI release notes against this plugin's code surface, check:
 
 - `src/sdk/agy-cli-version.ts` - version constant
+- `scripts/fetch-models.mjs` - `AGY_API_VERSION` constant
 - `src/constants.ts` - client ID/secret, endpoints, OAuth scopes
 - `src/sdk/user-agent.ts` - User-Agent builder using `AGY_CLI_VERSION`
 - `src/sdk/request/prepare.ts` - request body transformation, `getModelEnum` reads from `models.json`
