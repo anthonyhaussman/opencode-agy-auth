@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.19](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.18...1.1.19) (2026-08-23)
+
+
+### Features
+
+* **models:** canonicalize and sort json keys on refresh ([#69](https://github.com/anthonyhaussman/opencode-agy-auth/issues/69)) ([a353a3a](https://github.com/anthonyhaussman/opencode-agy-auth/commit/a353a3a60d06fd130c529722c4e8fda8939a68cf))
+* **sdk:** bump agy cli to 1.1.19 ([#70](https://github.com/anthonyhaussman/opencode-agy-auth/issues/70)) ([17e4861](https://github.com/anthonyhaussman/opencode-agy-auth/commit/17e48618861df5452d700e927426e9a4c8682562))
+
 ## [1.1.18](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.17...1.1.18) (2026-08-22)
 
 
