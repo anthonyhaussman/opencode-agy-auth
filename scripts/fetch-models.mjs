@@ -71,6 +71,20 @@ function findRepoRoot(startDir) {
   return startDir;
 }
 
+function canonicalize(value) {
+  if (value === null || typeof value !== 'object') {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map(canonicalize);
+  }
+  const sorted = {};
+  for (const key of Object.keys(value).sort()) {
+    sorted[key] = canonicalize(value[key]);
+  }
+  return sorted;
+}
+
 function logVerbose(args, ...msg) {
   if (args.verbose) console.error(...msg);
 }
@@ -185,7 +199,7 @@ async function main() {
   logVerbose(args, `[fetch-models] received ${modelCount} models, writing to ${outputPath}`);
 
   try {
-    writeFileSync(outputPath, JSON.stringify(data, null, 2) + '\n', 'utf8');
+    writeFileSync(outputPath, JSON.stringify(canonicalize(data), null, 2) + '\n', 'utf8');
   } catch (err) {
     console.error(`Failed to write ${outputPath}: ${err.message}`);
     process.exit(3);
