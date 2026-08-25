@@ -37,7 +37,7 @@ describe('provider helpers', () => {
       })
     ).toBe('p-env');
 
-    expect(resolveConfiguredProjectId()).toBeUndefined();
+    expect(resolveConfiguredProjectId({ env: {} })).toBeUndefined();
   });
 
   it('resolves configured project ID from client', async () => {
