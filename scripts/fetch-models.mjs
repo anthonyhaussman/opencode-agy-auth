@@ -33,7 +33,7 @@ import { fileURLToPath } from 'node:url';
 const AGY_CLIENT_ID = '1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com';
 const AGY_CLIENT_SECRET = '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';
 const DEFAULT_ENDPOINT = 'https://daily-cloudcode-pa.googleapis.com';
-const AGY_API_VERSION = '1.1.21';
+const AGY_API_VERSION = '1.1.22';
 
 function parseArgs(argv) {
   const args = { endpoint: null, output: null, verbose: false };

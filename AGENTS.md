@@ -4,21 +4,22 @@ OpenCode plugin that adds the Google Gemini Antigravity CLI (`agy`) OAuth provid
 
 ## agy CLI bump workflow
 
-When a new `agy` CLI release lands (check `https://github.com/google-antigravity/antigravity-cli/releases`):
+When a new `agy` CLI release lands (check `https://github.com/google-antigravity/antigravity-cli/releases`), execute every step in sequence without skipping.
 
-1. Install or upgrade the CLI locally so `agy --version` matches the target release.
-2. Read the release notes and changelog at `https://github.com/google-antigravity/antigravity-cli/releases/tag/<VERSION>` (note: the tag is `<version>` without the "v" prefix, e.g. `0.1.2`, not `v0.1.2`):
-   - **Audit changelog for plugin improvements**: Identify upstream bug fixes, protocol changes, new request parameters, error handling adjustments, or server-side capabilities that can be ported or integrated into this plugin.
-   - **Inspect local agy binary**: GitHub releases primarily track client UX. Use `strings` on the installed `antigravity` binary to discover internal RPC routes, header adjustments, or payload changes (`strings $(readlink -f $(which agy)) | grep -E 'v1internal|daily-cloudcode|CodeAssist'`). Diffing binary strings against the previous installed version reveals unannounced backend protocol changes.
-   - **Inspect server response payloads & error structures**: Check live HTTP error payloads and retry headers (`retry-after-ms`, `error.details[]` structures like `type.googleapis.com/google.rpc.RetryInfo` or `QuotaFailure`) to adjust plugin parsing or retry strategies when upstream error shapes evolve.
-   - **Report analysis findings**: Explain whether actionable features or bug fixes exist to implement in this plugin, or clearly state that none apply (e.g., client-only changes).
-   - **Implement relevant changes**: If actionable fixes or features are found, implement and test them alongside the version bump.
-   - **Reconcile surface**: Most agy CLI releases are client-only UI/UX work (Vim mode, artifact rendering, terminal hyperlinks) or local filesystem fixes (atomic config writes, keyring timeouts) that require no plugin change, but always audit backend/protocol additions.
-3. Update `src/sdk/agy-cli-version.ts` and `scripts/fetch-models.mjs` (`AGY_API_VERSION`) to the new version. This constant feeds `buildAgyCliUserAgent()` in `src/sdk/user-agent.ts` and `scripts/fetch-models.mjs`, setting the `User-Agent` header on every Code Assist API request. Aligning it with the installed CLI keeps server-side attribution consistent.
-4. Update `.release-please-config.json` (`"release-as"` field) to the new version. Do **not** touch `.release-please-manifest.json`; release-please manages it automatically on PR merge. Note: `package.json` version bumps are handled by Renovate / release-please automatically.
-5. Run `npm outdated` and bump dependencies to latest semver-compatible. `@ai-sdk/google` is never imported by the plugin; it is only referenced as a literal npm-name string in `src/plugin.ts:179` and `src/plugin.ts:438`, so version bumps are zero-risk.
-6. Refresh `models.json` from a live `fetchAvailableModels` call (see below).
-7. Run `npm install && npm run test:coverage && npm run typecheck && npm run build && npm run smoke:node-import`.
+**CRITICAL MANDATE**: Always audit backend and protocol additions. Upstream release notes primarily highlight user-facing UI changes, but minor/patch releases frequently introduce unannounced backend protocol updates, internal RPC routes, header adjustments, or payload schema changes. Never assume a bump is client-only without performing the full binary and server inspection.
+
+1. **Install or upgrade CLI locally**: Ensure `agy --version` matches the target release.
+2. **Audit changelog & release notes**: Read `https://github.com/google-antigravity/antigravity-cli/releases/tag/<VERSION>` (note: tag is `<version>` without "v" prefix, e.g. `0.1.2`). Identify upstream bug fixes, protocol changes, new request parameters, error handling adjustments, or server-side capabilities.
+3. **Inspect local agy binary**: Run `strings $(readlink -f $(which agy)) | grep -E 'v1internal|daily-cloudcode|CodeAssist'` to discover internal RPC routes, header adjustments, or payload changes. Diffing binary strings against the previous version reveals unannounced backend protocol changes.
+4. **Inspect server response payloads & error structures**: Check live HTTP error payloads and retry headers (`retry-after-ms`, `error.details[]` structures like `type.googleapis.com/google.rpc.RetryInfo` or `QuotaFailure`). Test live quota calls with the `agy_quota` and `agy_quota_summary` tools to confirm server schema compatibility.
+5. **Reconcile against surface review checklist**: Systematically cross-reference the [Surface review checklist](#surface-review-checklist) to verify whether any plugin component requires updates for new capabilities, endpoints, or error codes.
+6. **Report analysis findings**: Explicitly report findings to the user. State clearly whether actionable features or protocol adjustments exist to implement, or confirm with evidence that all upstream changes are client-only (e.g. CLI UI, terminal rendering, keyring handling).
+7. **Implement relevant plugin adjustments**: If actionable backend fixes or protocol changes were discovered in steps 2-6, implement and test them before bumping constants.
+8. **Update version constants**: Update `src/sdk/agy-cli-version.ts` (`AGY_CLI_VERSION`) and `scripts/fetch-models.mjs` (`AGY_API_VERSION`) to the new version. This sets the `User-Agent` header on every Code Assist API request.
+9. **Update release config**: Update `.release-please-config.json` (`"release-as"` field) to the new version. Do **not** touch `.release-please-manifest.json`; release-please manages it automatically on PR merge.
+10. **Check dependencies**: Run `npm outdated` and bump dependencies to latest semver-compatible. (`@ai-sdk/google` is only a literal string reference in `src/plugin.ts`, so version bumps are zero-risk).
+11. **Refresh model catalog**: Run `npm run models:refresh` and verify diff (see [Refreshing models.json](#refreshing-modelsjson)).
+12. **Run full verification suite**: Execute `npm install && npm run test:coverage && npm run typecheck && npm run build && npm run smoke:node-import`. All tests and quality gates must pass cleanly.
 
 Prior bump commits follow a consistent pattern. Run `git log --oneline | grep "bump agy cli"` for examples.
 
