@@ -191,6 +191,7 @@ function transformRequestBody(
         }
 
         contents = normalizeContentsSequence(contents);
+        contents = ensureTrailingUserTurn(contents);
 
         const latestSig = getLatestSignature(sessionId);
         applyLatestSignature(contents, latestSig);
@@ -239,6 +240,7 @@ function transformRequestBody(
       }
 
       contents = normalizeContentsSequence(contents);
+      contents = ensureTrailingUserTurn(contents);
 
       const latestSig = getLatestSignature(sessionId);
       applyLatestSignature(contents, latestSig);
@@ -511,6 +513,17 @@ function normalizeCachedContent(requestPayload: Record<string, unknown>): void {
 }
 
 
+
+export function ensureTrailingUserTurn(contents: any[]): any[] {
+  if (!Array.isArray(contents) || contents.length === 0) {
+    return contents;
+  }
+  const last = contents[contents.length - 1];
+  if (last && (last.role === "model" || last.role === "assistant")) {
+    return [...contents, { role: "user", parts: [{ text: "[Continue]" }] }];
+  }
+  return contents;
+}
 
 function normalizeContentsSequence(contents: any[]): any[] {
   const merged: any[] = [];
