@@ -207,10 +207,12 @@ describe("prepareAgyRequest Comprehensive Suite", () => {
 
     const result = prepareAgyRequest(input, { method: "POST", body }, token, project);
     const parsed = JSON.parse(result.init.body as string);
-    expect(parsed.request.contents).toHaveLength(2);
+    expect(parsed.request.contents).toHaveLength(3);
     expect(parsed.request.contents[0].role).toBe("user");
     expect(parsed.request.contents[0].parts).toEqual([{ text: "part 1" }, { text: "part 2" }]);
     expect(parsed.request.contents[1].role).toBe("model");
+    expect(parsed.request.contents[2].role).toBe("user");
+    expect(parsed.request.contents[2].parts).toEqual([{ text: "[Continue]" }]);
   });
 
   it("injects missing tool call IDs and links corresponding tool responses", () => {
@@ -400,6 +402,108 @@ describe("prepareAgyRequest Comprehensive Suite", () => {
     const parsed = JSON.parse(result.init.body as string);
     expect(parsed.request.generationConfig.thinkingConfig.thinkingBudget).toBe(2000);
     expect(parsed.request.thinkingConfig).toBeUndefined();
+  });
+
+  describe("ensureTrailingUserTurn normalization", () => {
+    it("appends trailing user continue turn when request ends with role 'model'", () => {
+      const input = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
+      const body = JSON.stringify({
+        sessionId: "no-tracker-session-1",
+        contents: [
+          { role: "user", parts: [{ text: "Hello" }] },
+          { role: "model", parts: [{ text: "Hi there!" }] },
+        ],
+      });
+
+      const result = prepareAgyRequest(input, { method: "POST", body }, token, project);
+      const parsed = JSON.parse(result.init.body as string);
+      const contents = parsed.request.contents;
+
+      expect(contents.length).toBe(3);
+      expect(contents[contents.length - 1]).toEqual({
+        role: "user",
+        parts: [{ text: "[Continue]" }],
+      });
+    });
+
+    it("appends trailing user continue turn when request ends with role 'assistant'", () => {
+      const input = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
+      const body = JSON.stringify({
+        sessionId: "no-tracker-session-2",
+        contents: [
+          { role: "user", parts: [{ text: "Hello" }] },
+          { role: "assistant", parts: [{ text: "Assistant response" }] },
+        ],
+      });
+
+      const result = prepareAgyRequest(input, { method: "POST", body }, token, project);
+      const parsed = JSON.parse(result.init.body as string);
+      const contents = parsed.request.contents;
+
+      expect(contents.length).toBe(3);
+      expect(contents[contents.length - 1]).toEqual({
+        role: "user",
+        parts: [{ text: "[Continue]" }],
+      });
+    });
+
+    it("leaves contents unchanged when request ends with role 'user'", () => {
+      const input = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
+      const body = JSON.stringify({
+        sessionId: "no-tracker-session-3",
+        contents: [
+          { role: "user", parts: [{ text: "Hello" }] },
+          { role: "model", parts: [{ text: "Hi there!" }] },
+          { role: "user", parts: [{ text: "How are you?" }] },
+        ],
+      });
+
+      const result = prepareAgyRequest(input, { method: "POST", body }, token, project);
+      const parsed = JSON.parse(result.init.body as string);
+      const contents = parsed.request.contents;
+
+      expect(contents.length).toBe(3);
+      expect(contents[contents.length - 1]).toEqual({
+        role: "user",
+        parts: [{ text: "How are you?" }],
+      });
+    });
+
+    it("appends trailing user continue turn for wrapped request format ending in model role", () => {
+      const input = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
+      const body = JSON.stringify({
+        project: "existing-project",
+        sessionId: "no-tracker-session-4",
+        request: {
+          contents: [
+            { role: "user", parts: [{ text: "Hello" }] },
+            { role: "model", parts: [{ text: "Model reply" }] },
+          ],
+        },
+      });
+
+      const result = prepareAgyRequest(input, { method: "POST", body }, token, project);
+      const parsed = JSON.parse(result.init.body as string);
+      const contents = parsed.request.contents;
+
+      expect(contents.length).toBe(3);
+      expect(contents[contents.length - 1]).toEqual({
+        role: "user",
+        parts: [{ text: "[Continue]" }],
+      });
+    });
+
+    it("leaves empty contents unchanged", () => {
+      const input = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
+      const body = JSON.stringify({
+        sessionId: "no-tracker-session-5",
+        contents: [],
+      });
+
+      const result = prepareAgyRequest(input, { method: "POST", body }, token, project);
+      const parsed = JSON.parse(result.init.body as string);
+      expect(parsed.request.contents).toEqual([]);
+    });
   });
 
   it("catches malformed JSON gracefully and warns", () => {
