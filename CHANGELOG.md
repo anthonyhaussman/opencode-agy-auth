@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.23](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.22...1.1.23) (2026-09-01)
+
+
+### Features
+
+* **sdk:** bump agy cli to 1.1.23 ([#79](https://github.com/anthonyhaussman/opencode-agy-auth/issues/79)) ([65b1420](https://github.com/anthonyhaussman/opencode-agy-auth/commit/65b142066150d2316ed845c37f12421fd58afe84))
+
+
+### Bug Fixes
+
+* **request:** ensure trailing user turn in request contents ([#78](https://github.com/anthonyhaussman/opencode-agy-auth/issues/78)) ([92142af](https://github.com/anthonyhaussman/opencode-agy-auth/commit/92142afbbb7c07b833ab10446ce6f0242e075ac1))
+
 ## [1.1.22](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.21...1.1.22) (2026-08-27)
 
 
