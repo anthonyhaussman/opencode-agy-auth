@@ -87,6 +87,7 @@ describe('AgyCLIOAuthPlugin', () => {
     expect(configObj.command['agyquota']).toBeDefined();
     expect(configObj.command['agyquotasummary']).toBeDefined();
     expect(configObj.provider[AGY_PROVIDER_ID]).toBeDefined();
+    expect(configObj.provider[AGY_PROVIDER_ID].models['gemini-3.8-flash']).toBeDefined();
     expect(configObj.provider[AGY_PROVIDER_ID].models['gemini-3.7-flash']).toBeDefined();
     expect(configObj.provider[AGY_PROVIDER_ID].models['claude-sonnet-4-6']).toBeDefined();
     expect(configObj.provider[AGY_PROVIDER_ID].models['gpt-oss-120b-medium']).toBeDefined();
