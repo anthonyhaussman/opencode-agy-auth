@@ -18,7 +18,7 @@ When a new `agy` CLI release lands (check `https://github.com/google-antigravity
 8. **Update version constants**: Update `src/sdk/agy-cli-version.ts` (`AGY_CLI_VERSION`) and `scripts/fetch-models.mjs` (`AGY_API_VERSION`) to the new version. This sets the `User-Agent` header on every Code Assist API request.
 9. **Update release config**: Update `.release-please-config.json` (`"release-as"` field) to the new version. Do **not** touch `.release-please-manifest.json`; release-please manages it automatically on PR merge.
 10. **Check dependencies**: Run `npm outdated` and bump dependencies to latest semver-compatible. (`@ai-sdk/google` is only a literal string reference in `src/plugin.ts`, so version bumps are zero-risk).
-11. **Refresh model catalog**: Run `npm run models:refresh` and verify diff (see [Refreshing models.json](#refreshing-modelsjson)).
+11. **Refresh model catalog & register models**: Run `npm run models:refresh` and verify diff (see [Refreshing models.json](#refreshing-modelsjson)). If new models appear (e.g. in `.models` or `agentModelSorts`), register them in `STATIC_MODELS_SIMPLE` and `TIER_MAPPING` in `src/plugin.ts` (see [Registering models in src/plugin.ts](#registering-models-in-srcplugints)).
 12. **Run full verification suite**: Execute `npm install && npm run test:coverage && npm run typecheck && npm run build && npm run smoke:node-import`. All tests and quality gates must pass cleanly.
 
 Prior bump commits follow a consistent pattern. Run `git log --oneline | grep "bump agy cli"` for examples.
@@ -65,6 +65,19 @@ After running `models:refresh`, diff old vs new `models.json` to identify:
 - Changes to `.agentModelSorts[0].groups[0].modelIds` (the user-visible recommended list).
 
 Always verify that `.deprecatedModelIds` for `gemini-3.1-pro-high` (mapping to `gemini-pro-agent` with enum `MODEL_PLACEHOLDER_M16`) is preserved. The plugin's `src/sdk/request/shared.ts:10` hardcodes a fallback rewrite of `gemini-3.1-pro-high` to `gemini-pro-agent`, which depends on this deprecation entry being present in `models.json` so `prepare.ts` `getModelEnum` resolves the correct enum.
+
+## Registering models in src/plugin.ts
+
+When new user-facing models are added to `models.json` (for example, new series entries like `gemini-3.8-flash` or major releases appearing in `agentModelSorts[0].groups[0].modelIds`), register them in `src/plugin.ts` so OpenCode exposes them:
+
+1. **Add to `STATIC_MODELS_SIMPLE`**:
+   - Define model key (e.g. `gemini-3.8-flash`) with `name`, `limit: { context: 1048576, output: 65536 }`, and default fallback `cost`.
+2. **Add to `TIER_MAPPING`**:
+   - Map tier aliases (`low`, `medium`, `high`) to the underlying model ID string (e.g. `low: "gemini-3.8-flash-low"`, `medium: "gemini-3.8-flash-medium"`, `high: "gemini-3.8-flash-high"`).
+3. **Add unit test assertions**:
+   - Update `test/plugin/plugin.test.ts` to assert that the newly registered model ID exists in provider models.
+
+Note: internal preview strings or non-user-facing endpoints (like `chat_*` or internal tab models) should only remain in `models.json` for server enum mapping and do not need registration in `STATIC_MODELS_SIMPLE`.
 
 ## Surface review checklist
 
