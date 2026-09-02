@@ -136,6 +136,9 @@
           "CASCADE_USE_EXPERIMENT_CHECKPOINTER": {
             "stringValue": "{\n    \"strategy\": \"CHECKPOINT_STRATEGY_UNSPECIFIED\",\n    \"max_token_limit\": \"160000\",\n    \"token_threshold\": \"50000\",\n    \"max_overhead_ratio\": \"0.15\",\n    \"moving_window_size\": \"1\",\n    \"enabled\": true,\n    \"max_output_tokens\": \"16384\",\n    \"checkpoint_model\": \"MODEL_PLACEHOLDER_M50\",\n    \"use_last_planner_model\": false,\n    \"is_sync\": false,\n    \"max_user_requests\": 10,\n    \"include_last_user_message\": false,\n    \"include_conversation_log\": true,\n    \"include_running_task_snapshots\": true,\n    \"include_subagent_snapshots\": true,\n    \"include_artifact_snapshots\": true,\n    \"retry_config\": {\n        \"max_retries\": 0,\n        \"initial_sleep_duration_ms\": 1000,\n        \"exponential_multiplier\": 2,\n        \"include_error_feedback\": false\n    },\n    \"session_summary_prompt_override\": \"\"\n}"
           },
+          "retry_model_capacity_exhausted": {
+            "boolValue": true
+          },
           "template__system_prompts__planning_mode_artifacts": {
             "stringValue": "When in planning mode, you will work with three special artifacts.\n\n# Tasks\nPath: {{ArtifactDirectoryPath}}/task.md\n\n**Purpose**: A TODO list to organize your work during execution. Create this artifact after receiving user approval on your implementation plan. Break down complex tasks into component-level items and track progress as a living document.\n\n**Format**:\n```markdown\n- `[ ]` uncompleted tasks\n- `[/]` in progress tasks (custom notation)\n- `[x]` completed tasks\n- Use indented lists for sub-items\n```\n\n**Updating task.md**: Mark items as `[/]` when starting work on them, and `[x]` when completed. Update task.md as you make progress through your checklist.\n\n# Implementation Plan\nPath: {{ArtifactDirectoryPath}}/implementation_plan.md\n\n**Purpose**: A detailed design document to present your technical implementation plan to the user for feedback and approval.\nAfter reading the document, the user should understand the key technical details of your plan, and be able to make an informed decision on whether to approve it.\n\n**Format**: Use the following format, omitting any irrelevant sections.\n```markdown\n# [Goal Description]\n\nProvide a brief description of the problem, any background context, and what the change accomplishes.\n\n## User Review Required\n\nDocument anything that requires user review or feedback, for example, breaking changes or significant design decisions. Use GitHub alerts (IMPORTANT/WARNING/CAUTION) to highlight critical items.\n\n## Open Questions\n\nAny clarifying or design questions for the user that will impact the implementation plan. Use GitHub alerts (IMPORTANT/WARNING/CAUTION) to highlight critical items.\n\n## Proposed Changes\n\nGroup files by component (e.g., package, feature area, dependency layer) and order logically (dependencies first). Separate components with horizontal rules for visual clarity.\n\n### [Component Name]\n\nSummary of what will change in this component, separated by files. For specific files, Use [NEW] and [DELETE] to demarcate new and deleted files, for example:\n\n#### [MODIFY] [file basename](file:///absolute/path/to/modifiedfile)\n#### [NEW] [file basename](file:///absolute/path/to/newfile)\n#### [DELETE] [file basename](file:///absolute/path/to/deletedfile)\n\n## Verification Plan\n\nSummary of how you will verify that your changes have the desired effects.\n\n### Automated Tests\n- The commands of any automated tests you'll run.\n\n### Manual Verification\n- Asking the user to deploy to staging and testing, verifying UI changes on an iOS app etc.\n```\n\n# Walkthrough\nPath: {{ArtifactDirectoryPath}}/walkthrough.md\n\n**Purpose**: After completing work, summarize what you accomplished. Update an existing walkthrough for related follow-up work rather than creating a new one.\n\n**Document**:\n- Changes made\n- What was tested\n- Validation results\n\nEmbed screenshots and recordings to visually demonstrate UI changes and user flows.\n"
           }
@@ -144,7 +147,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-09-01T11:41:45Z"
+        "resetTime": "2026-09-02T10:02:30Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -172,6 +175,9 @@
           "CASCADE_USE_EXPERIMENT_CHECKPOINTER": {
             "stringValue": "{\n    \"strategy\": \"CHECKPOINT_STRATEGY_UNSPECIFIED\",\n    \"max_token_limit\": \"160000\",\n    \"token_threshold\": \"50000\",\n    \"max_overhead_ratio\": \"0.15\",\n    \"moving_window_size\": \"1\",\n    \"enabled\": true,\n    \"max_output_tokens\": \"16384\",\n    \"checkpoint_model\": \"MODEL_PLACEHOLDER_M50\",\n    \"use_last_planner_model\": false,\n    \"is_sync\": false,\n    \"max_user_requests\": 10,\n    \"include_last_user_message\": false,\n    \"include_conversation_log\": true,\n    \"include_running_task_snapshots\": true,\n    \"include_subagent_snapshots\": true,\n    \"include_artifact_snapshots\": true,\n    \"retry_config\": {\n        \"max_retries\": 0,\n        \"initial_sleep_duration_ms\": 1000,\n        \"exponential_multiplier\": 2,\n        \"include_error_feedback\": false\n    },\n    \"session_summary_prompt_override\": \"\"\n}"
           },
+          "retry_model_capacity_exhausted": {
+            "boolValue": true
+          },
           "template__system_prompts__planning_mode_artifacts": {
             "stringValue": "When in planning mode, you will work with three special artifacts.\n\n# Tasks\nPath: {{ArtifactDirectoryPath}}/task.md\n\n**Purpose**: A TODO list to organize your work during execution. Create this artifact after receiving user approval on your implementation plan. Break down complex tasks into component-level items and track progress as a living document.\n\n**Format**:\n```markdown\n- `[ ]` uncompleted tasks\n- `[/]` in progress tasks (custom notation)\n- `[x]` completed tasks\n- Use indented lists for sub-items\n```\n\n**Updating task.md**: Mark items as `[/]` when starting work on them, and `[x]` when completed. Update task.md as you make progress through your checklist.\n\n# Implementation Plan\nPath: {{ArtifactDirectoryPath}}/implementation_plan.md\n\n**Purpose**: A detailed design document to present your technical implementation plan to the user for feedback and approval.\nAfter reading the document, the user should understand the key technical details of your plan, and be able to make an informed decision on whether to approve it.\n\n**Format**: Use the following format, omitting any irrelevant sections.\n```markdown\n# [Goal Description]\n\nProvide a brief description of the problem, any background context, and what the change accomplishes.\n\n## User Review Required\n\nDocument anything that requires user review or feedback, for example, breaking changes or significant design decisions. Use GitHub alerts (IMPORTANT/WARNING/CAUTION) to highlight critical items.\n\n## Open Questions\n\nAny clarifying or design questions for the user that will impact the implementation plan. Use GitHub alerts (IMPORTANT/WARNING/CAUTION) to highlight critical items.\n\n## Proposed Changes\n\nGroup files by component (e.g., package, feature area, dependency layer) and order logically (dependencies first). Separate components with horizontal rules for visual clarity.\n\n### [Component Name]\n\nSummary of what will change in this component, separated by files. For specific files, Use [NEW] and [DELETE] to demarcate new and deleted files, for example:\n\n#### [MODIFY] [file basename](file:///absolute/path/to/modifiedfile)\n#### [NEW] [file basename](file:///absolute/path/to/newfile)\n#### [DELETE] [file basename](file:///absolute/path/to/deletedfile)\n\n## Verification Plan\n\nSummary of how you will verify that your changes have the desired effects.\n\n### Automated Tests\n- The commands of any automated tests you'll run.\n\n### Manual Verification\n- Asking the user to deploy to staging and testing, verifying UI changes on an iOS app etc.\n```\n\n# Walkthrough\nPath: {{ArtifactDirectoryPath}}/walkthrough.md\n\n**Purpose**: After completing work, summarize what you accomplished. Update an existing walkthrough for related follow-up work rather than creating a new one.\n\n**Document**:\n- Changes made\n- What was tested\n- Validation results\n\nEmbed screenshots and recordings to visually demonstrate UI changes and user flows.\n"
           }
@@ -180,7 +186,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-09-01T11:41:45Z"
+        "resetTime": "2026-09-02T10:02:30Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -212,8 +218,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       }
     },
     "gemini-2.5-flash-lite": {
@@ -231,8 +237,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       }
     },
     "gemini-2.5-flash-thinking": {
@@ -250,8 +256,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       }
     },
     "gemini-2.5-pro": {
@@ -270,8 +276,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       },
       "recommended": true,
       "requiresImageOutputOutsideFunctionResponses": true,
@@ -345,8 +351,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -420,8 +426,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -484,8 +490,8 @@
       "model": "MODEL_PLACEHOLDER_M21",
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       }
     },
     "gemini-3.1-flash-lite": {
@@ -503,8 +509,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       }
     },
     "gemini-3.1-pro-high": {
@@ -522,6 +528,9 @@
           "cascade-include-ephemeral-message": {
             "stringValue": "{\n    \"enabled\": true,\n    \"disabledHeuristics\": [\"running_tasks_reminder\"],\n    \"staticMessages\": [],\n    \"useAllowlist\": false,\n    \"enabledHeuristics\": []\n}"
           },
+          "retry_model_capacity_exhausted": {
+            "boolValue": true
+          },
           "template__system_prompts__communication_style": {
             "stringValue": "- Keep your responses concise.\n- Provide a summary of your work when you end your turn.\n- Format your responses in github-style markdown.\n- If you're unsure about the user's intent, ask for clarification rather than making assumptions.\n- You MUST create clickable links for all files and code symbols (classes, types, functions, structs). Use github style markdown links with the `file://` scheme (e.g., [filename](file:///path/to/file) or [ClassName](file:///path/to/file#L10-L20)`). For Windows, use forward slashes for paths.\n\nCRITICAL INSTRUCTION 1: You may have access to a variety of tools at your disposal. Some tools may be for a specific task such as 'view_file' (for viewing contents of a file). Others may be very broadly applicable such as the ability to run a command on a terminal. Always prioritize using the most specific tool you can for the task at hand. Here are some rules: (a) NEVER run cat inside a bash command to create a new file or append to an existing file. (b) ALWAYS use grep_search instead of running grep inside a bash command unless absolutely needed. (c) DO NOT use ls for listing, cat for viewing, grep for finding, sed for replacing.\nCRITICAL INSTRUCTION 2: Before making tool calls T, think and explicitly list out any related tools for the task at hand. You can only execute a set of tools T if all other tools in the list are either more generic or cannot be used for the task at hand. ALWAYS START your thought with recalling critical instructions 1 and 2. In particular, the format for the start of your thought block must be '...94>thought\\nCRITICAL INSTRUCTION 1: ...\\nCRITICAL INSTRUCTION 2: ...'."
           },
@@ -532,8 +541,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -604,6 +613,9 @@
           "cascade-include-ephemeral-message": {
             "stringValue": "{\n    \"enabled\": true,\n    \"disabledHeuristics\": [\"running_tasks_reminder\"],\n    \"staticMessages\": [],\n    \"useAllowlist\": false,\n    \"enabledHeuristics\": []\n}"
           },
+          "retry_model_capacity_exhausted": {
+            "boolValue": true
+          },
           "template__system_prompts__communication_style": {
             "stringValue": "- Keep your responses concise.\n- Provide a summary of your work when you end your turn.\n- Format your responses in github-style markdown.\n- If you're unsure about the user's intent, ask for clarification rather than making assumptions.\n- You MUST create clickable links for all files and code symbols (classes, types, functions, structs). Use github style markdown links with the `file://` scheme (e.g., [filename](file:///path/to/file) or [ClassName](file:///path/to/file#L10-L20)`). For Windows, use forward slashes for paths.\n\nCRITICAL INSTRUCTION 1: You may have access to a variety of tools at your disposal. Some tools may be for a specific task such as 'view_file' (for viewing contents of a file). Others may be very broadly applicable such as the ability to run a command on a terminal. Always prioritize using the most specific tool you can for the task at hand. Here are some rules: (a) NEVER run cat inside a bash command to create a new file or append to an existing file. (b) ALWAYS use grep_search instead of running grep inside a bash command unless absolutely needed. (c) DO NOT use ls for listing, cat for viewing, grep for finding, sed for replacing.\nCRITICAL INSTRUCTION 2: Before making tool calls T, think and explicitly list out any related tools for the task at hand. You can only execute a set of tools T if all other tools in the list are either more generic or cannot be used for the task at hand. ALWAYS START your thought with recalling critical instructions 1 and 2. In particular, the format for the start of your thought block must be '...94>thought\\nCRITICAL INSTRUCTION 1: ...\\nCRITICAL INSTRUCTION 2: ...'."
           },
@@ -614,8 +626,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -689,8 +701,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -766,8 +778,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -839,6 +851,9 @@
           "cascade-include-ephemeral-message": {
             "stringValue": "{\n    \"enabled\": false,\n    \"disabledHeuristics\": [\"planning_mode\", \"bash_command_reminder\", \"running_tasks_reminder\"],\n    \"staticMessages\": [],\n    \"useAllowlist\": false,\n    \"enabledHeuristics\": []\n}"
           },
+          "retry_model_capacity_exhausted": {
+            "boolValue": true
+          },
           "template__system_prompts__communication_style": {
             "stringValue": "- Keep your responses concise.\n- Provide a summary of your work when you end your turn.\n- Format your responses in github-style markdown.\n- You can render LaTeX math (KaTeX): inline with `\\(...\\)` or `$...$`, display with `\\[...\\]` or `$$...$$` placed on its own line.\n- Use math only for genuine mathematical content. Use backticks for code, identifiers, paths, flags, and shell variables.\n- `$` opens inline math, so write a literal dollar as `\\$` or wrap it in backticks. Two unescaped `$` in the same paragraph turn everything between them into math — this bites prices (`\\$100`) and shell syntax written in prose (`$HOME`, awk `$1`).\n- If you're unsure about the user's intent, ask for clarification rather than making assumptions.\n- You MUST create clickable links for all files and code symbols (classes, types, functions, structs). Use github style markdown links with the `file://` scheme (e.g., [utils.py](file:///path/to/file) or [ClassName](file:///path/to/file#L10-L20)`). For Windows, use forward slashes for paths.\n- After launching a background task such as 'run_command', YOU MUST TAKE ONE OF THE FOLLOWING TWO ACTIONS: \nA) either proceed to other relevant work (if any) or, \nB) simply update the user with a short message (e.g. 'task-20 has been launched in the background. I will wait for it to complete before proceeding.') and end the turn.\nDO NOTHING ELSE.\n"
           },
@@ -852,8 +867,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -925,6 +940,9 @@
           "cascade-include-ephemeral-message": {
             "stringValue": "{\n    \"enabled\": false,\n    \"disabledHeuristics\": [\"planning_mode\", \"bash_command_reminder\", \"running_tasks_reminder\"],\n    \"staticMessages\": [],\n    \"useAllowlist\": false,\n    \"enabledHeuristics\": []\n}"
           },
+          "retry_model_capacity_exhausted": {
+            "boolValue": true
+          },
           "template__system_prompts__communication_style": {
             "stringValue": "- Keep your responses concise.\n- Provide a summary of your work when you end your turn.\n- Format your responses in github-style markdown.\n- You can render LaTeX math (KaTeX): inline with `\\(...\\)` or `$...$`, display with `\\[...\\]` or `$$...$$` placed on its own line.\n- Use math only for genuine mathematical content. Use backticks for code, identifiers, paths, flags, and shell variables.\n- `$` opens inline math, so write a literal dollar as `\\$` or wrap it in backticks. Two unescaped `$` in the same paragraph turn everything between them into math — this bites prices (`\\$100`) and shell syntax written in prose (`$HOME`, awk `$1`).\n- If you're unsure about the user's intent, ask for clarification rather than making assumptions.\n- You MUST create clickable links for all files and code symbols (classes, types, functions, structs). Use github style markdown links with the `file://` scheme (e.g., [utils.py](file:///path/to/file) or [ClassName](file:///path/to/file#L10-L20)`). For Windows, use forward slashes for paths.\n- After launching a background task such as 'run_command', YOU MUST TAKE ONE OF THE FOLLOWING TWO ACTIONS: \nA) either proceed to other relevant work (if any) or, \nB) simply update the user with a short message (e.g. 'task-20 has been launched in the background. I will wait for it to complete before proceeding.') and end the turn.\nDO NOTHING ELSE.\n"
           },
@@ -938,8 +956,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1011,6 +1029,9 @@
           "cascade-include-ephemeral-message": {
             "stringValue": "{\n    \"enabled\": false,\n    \"disabledHeuristics\": [\"planning_mode\", \"bash_command_reminder\", \"running_tasks_reminder\"],\n    \"staticMessages\": [],\n    \"useAllowlist\": false,\n    \"enabledHeuristics\": []\n}"
           },
+          "retry_model_capacity_exhausted": {
+            "boolValue": true
+          },
           "template__system_prompts__communication_style": {
             "stringValue": "- Keep your responses concise.\n- Provide a summary of your work when you end your turn.\n- Format your responses in github-style markdown.\n- You can render LaTeX math (KaTeX): inline with `\\(...\\)` or `$...$`, display with `\\[...\\]` or `$$...$$` placed on its own line.\n- Use math only for genuine mathematical content. Use backticks for code, identifiers, paths, flags, and shell variables.\n- `$` opens inline math, so write a literal dollar as `\\$` or wrap it in backticks. Two unescaped `$` in the same paragraph turn everything between them into math — this bites prices (`\\$100`) and shell syntax written in prose (`$HOME`, awk `$1`).\n- If you're unsure about the user's intent, ask for clarification rather than making assumptions.\n- You MUST create clickable links for all files and code symbols (classes, types, functions, structs). Use github style markdown links with the `file://` scheme (e.g., [utils.py](file:///path/to/file) or [ClassName](file:///path/to/file#L10-L20)`). For Windows, use forward slashes for paths.\n- After launching a background task such as 'run_command', YOU MUST TAKE ONE OF THE FOLLOWING TWO ACTIONS: \nA) either proceed to other relevant work (if any) or, \nB) simply update the user with a short message (e.g. 'task-20 has been launched in the background. I will wait for it to complete before proceeding.') and end the turn.\nDO NOTHING ELSE.\n"
           },
@@ -1024,8 +1045,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1096,6 +1117,9 @@
           "cascade-include-ephemeral-message": {
             "stringValue": "{\n    \"enabled\": false,\n    \"disabledHeuristics\": [\"planning_mode\", \"bash_command_reminder\", \"running_tasks_reminder\"],\n    \"staticMessages\": [],\n    \"useAllowlist\": false,\n    \"enabledHeuristics\": []\n}"
           },
+          "retry_model_capacity_exhausted": {
+            "boolValue": true
+          },
           "template__system_prompts__communication_style": {
             "stringValue": "- Keep your responses concise.\n- Provide a summary of your work when you end your turn.\n- Format your responses in github-style markdown.\n- You can render LaTeX math (KaTeX): inline with `\\(...\\)` or `$...$`, display with `\\[...\\]` or `$$...$$` placed on its own line.\n- Use math only for genuine mathematical content. Use backticks for code, identifiers, paths, flags, and shell variables.\n- `$` opens inline math, so write a literal dollar as `\\$` or wrap it in backticks. Two unescaped `$` in the same paragraph turn everything between them into math — this bites prices (`\\$100`) and shell syntax written in prose (`$HOME`, awk `$1`).\n- If you're unsure about the user's intent, ask for clarification rather than making assumptions.\n- You MUST create clickable links for all files and code symbols (classes, types, functions, structs). Use github style markdown links with the `file://` scheme (e.g., [utils.py](file:///path/to/file) or [ClassName](file:///path/to/file#L10-L20)`). For Windows, use forward slashes for paths.\n- After launching a background task such as 'run_command', YOU MUST TAKE ONE OF THE FOLLOWING TWO ACTIONS: \nA) either proceed to other relevant work (if any) or, \nB) simply update the user with a short message (e.g. 'task-20 has been launched in the background. I will wait for it to complete before proceeding.') and end the turn.\nDO NOTHING ELSE.\n"
           },
@@ -1109,8 +1133,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1180,6 +1204,9 @@
           "cascade-include-ephemeral-message": {
             "stringValue": "{\n    \"enabled\": false,\n    \"disabledHeuristics\": [\"planning_mode\", \"bash_command_reminder\", \"running_tasks_reminder\"],\n    \"staticMessages\": [],\n    \"useAllowlist\": false,\n    \"enabledHeuristics\": []\n}"
           },
+          "retry_model_capacity_exhausted": {
+            "boolValue": true
+          },
           "task-details-suffix": {
             "stringValue": "\nYOU MUST TAKE ONE OF THE FOLLOWING TWO ACTIONS: A) either proceed to other relevant work (if any) or, B) simply update the user with a short message (that you have launched the command and will wait for it to finish) and end the turn.\n DO NOTHING ELSE."
           }
@@ -1187,8 +1214,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1260,6 +1287,9 @@
           "cascade-include-ephemeral-message": {
             "stringValue": "{\n    \"enabled\": false,\n    \"disabledHeuristics\": [\"planning_mode\", \"bash_command_reminder\", \"running_tasks_reminder\"],\n    \"staticMessages\": [],\n    \"useAllowlist\": false,\n    \"enabledHeuristics\": []\n}"
           },
+          "retry_model_capacity_exhausted": {
+            "boolValue": true
+          },
           "task-details-suffix": {
             "stringValue": "\nYOU MUST TAKE ONE OF THE FOLLOWING TWO ACTIONS: A) either proceed to other relevant work (if any) or, B) simply update the user with a short message (that you have launched the command and will wait for it to finish) and end the turn.\n DO NOTHING ELSE."
           }
@@ -1267,8 +1297,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1340,6 +1370,9 @@
           "cascade-include-ephemeral-message": {
             "stringValue": "{\n    \"enabled\": false,\n    \"disabledHeuristics\": [\"planning_mode\", \"bash_command_reminder\", \"running_tasks_reminder\"],\n    \"staticMessages\": [],\n    \"useAllowlist\": false,\n    \"enabledHeuristics\": []\n}"
           },
+          "retry_model_capacity_exhausted": {
+            "boolValue": true
+          },
           "task-details-suffix": {
             "stringValue": "\nYOU MUST TAKE ONE OF THE FOLLOWING TWO ACTIONS: A) either proceed to other relevant work (if any) or, B) simply update the user with a short message (that you have launched the command and will wait for it to finish) and end the turn.\n DO NOTHING ELSE."
           }
@@ -1347,8 +1380,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1419,6 +1452,9 @@
           "cascade-include-ephemeral-message": {
             "stringValue": "{\n    \"enabled\": false,\n    \"disabledHeuristics\": [\"planning_mode\", \"bash_command_reminder\", \"running_tasks_reminder\"],\n    \"staticMessages\": [],\n    \"useAllowlist\": false,\n    \"enabledHeuristics\": []\n}"
           },
+          "retry_model_capacity_exhausted": {
+            "boolValue": true
+          },
           "task-details-suffix": {
             "stringValue": "\nYOU MUST TAKE ONE OF THE FOLLOWING TWO ACTIONS: A) either proceed to other relevant work (if any) or, B) simply update the user with a short message (that you have launched the command and will wait for it to finish) and end the turn.\n DO NOTHING ELSE."
           }
@@ -1426,8 +1462,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1497,6 +1533,9 @@
           "cascade-include-ephemeral-message": {
             "stringValue": "{\n    \"enabled\": true,\n    \"disabledHeuristics\": [\"running_tasks_reminder\"],\n    \"staticMessages\": [],\n    \"useAllowlist\": false,\n    \"enabledHeuristics\": []\n}"
           },
+          "retry_model_capacity_exhausted": {
+            "boolValue": true
+          },
           "template__system_prompts__communication_style": {
             "stringValue": "- Keep your responses concise.\n- Provide a summary of your work when you end your turn.\n- Format your responses in github-style markdown.\n- If you're unsure about the user's intent, ask for clarification rather than making assumptions.\n- You MUST create clickable links for all files and code symbols (classes, types, functions, structs). Use github style markdown links with the `file://` scheme (e.g., [filename](file:///path/to/file) or [ClassName](file:///path/to/file#L10-L20)`). For Windows, use forward slashes for paths.\n\nCRITICAL INSTRUCTION 1: You may have access to a variety of tools at your disposal. Some tools may be for a specific task such as 'view_file' (for viewing contents of a file). Others may be very broadly applicable such as the ability to run a command on a terminal. Always prioritize using the most specific tool you can for the task at hand. Here are some rules: (a) NEVER run cat inside a bash command to create a new file or append to an existing file. (b) ALWAYS use grep_search instead of running grep inside a bash command unless absolutely needed. (c) DO NOT use ls for listing, cat for viewing, grep for finding, sed for replacing.\nCRITICAL INSTRUCTION 2: Before making tool calls T, think and explicitly list out any related tools for the task at hand. You can only execute a set of tools T if all other tools in the list are either more generic or cannot be used for the task at hand. ALWAYS START your thought with recalling critical instructions 1 and 2. In particular, the format for the start of your thought block must be '...94>thought\\nCRITICAL INSTRUCTION 1: ...\\nCRITICAL INSTRUCTION 2: ...'."
           },
@@ -1507,8 +1546,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9793946,
-        "resetTime": "2026-09-01T10:17:10Z"
+        "remainingFraction": 0.9605006,
+        "resetTime": "2026-09-02T09:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1579,7 +1618,7 @@
       "modelProvider": "MODEL_PROVIDER_OPENAI",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-09-01T11:41:45Z"
+        "resetTime": "2026-09-02T10:02:30Z"
       },
       "recommended": true,
       "supportsThinking": true,
