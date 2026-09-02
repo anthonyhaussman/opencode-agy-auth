@@ -5,6 +5,9 @@
       "groups": [
         {
           "modelIds": [
+            "gemini-3.8-flash-high",
+            "gemini-3.8-flash-medium",
+            "gemini-3.8-flash-low",
             "gemini-3.7-flash-high",
             "gemini-3.7-flash-medium",
             "gemini-3.7-flash-low",
@@ -30,7 +33,7 @@
   "commitMessageModelIds": [
     "gemini-3.1-flash-lite"
   ],
-  "defaultAgentModelId": "gemini-3.7-flash-high",
+  "defaultAgentModelId": "gemini-3.8-flash-high",
   "deprecatedModelIds": {
     "gemini-3.1-pro-high": {
       "newModelEnum": "MODEL_PLACEHOLDER_M16",
@@ -64,6 +67,8 @@
     106278607,
     106538964,
     106512082,
+    106654026,
+    106654028,
     106380926,
     106281951,
     106264532,
@@ -147,7 +152,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-09-02T10:02:30Z"
+        "resetTime": "2026-09-03T01:15:50Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -186,7 +191,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-09-02T10:02:30Z"
+        "resetTime": "2026-09-03T01:15:50Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -218,8 +223,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       }
     },
     "gemini-2.5-flash-lite": {
@@ -237,8 +242,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       }
     },
     "gemini-2.5-flash-thinking": {
@@ -256,8 +261,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       }
     },
     "gemini-2.5-pro": {
@@ -276,8 +281,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       },
       "recommended": true,
       "requiresImageOutputOutsideFunctionResponses": true,
@@ -351,8 +356,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -426,8 +431,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -490,8 +495,8 @@
       "model": "MODEL_PLACEHOLDER_M21",
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       }
     },
     "gemini-3.1-flash-lite": {
@@ -509,8 +514,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       }
     },
     "gemini-3.1-pro-high": {
@@ -541,8 +546,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -626,8 +631,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -701,8 +706,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -778,8 +783,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -867,8 +872,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -956,8 +961,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1045,8 +1050,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1133,8 +1138,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1214,8 +1219,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1297,8 +1302,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1380,8 +1385,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1462,8 +1467,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1518,6 +1523,255 @@
       "supportsVideo": true,
       "thinkingBudget": -1
     },
+    "gemini-3.8-flash-high": {
+      "apiProvider": "API_PROVIDER_GOOGLE_GEMINI",
+      "displayName": "Gemini 3.8 Flash (High)",
+      "maxOutputTokens": 65536,
+      "maxTokens": 1048576,
+      "minThinkingBudget": 32,
+      "model": "MODEL_PLACEHOLDER_M318",
+      "modelExperiments": {
+        "experiments": {
+          "CASCADE_USE_EXPERIMENT_CHECKPOINTER": {
+            "stringValue": "{\n    \"strategy\": \"CHECKPOINT_STRATEGY_SAME_MODEL\",\n    \"max_token_limit\": \"256000\",\n    \"token_threshold\": \"140000\",\n    \"max_overhead_ratio\": \"0.15\",\n    \"moving_window_size\": \"1\",\n    \"enabled\": true,\n    \"max_output_tokens\": \"16384\",\n    \"checkpoint_model\": \"MODEL_PLACEHOLDER_M50\",\n    \"use_last_planner_model\": true,\n    \"is_sync\": false,\n    \"max_user_requests\": 10,\n    \"include_last_user_message\": false,\n    \"include_conversation_log\": true,\n    \"include_running_task_snapshots\": true,\n    \"include_subagent_snapshots\": true,\n    \"include_artifact_snapshots\": true,\n    \"retry_config\": {\n        \"max_retries\": 0,\n        \"initial_sleep_duration_ms\": 1000,\n        \"exponential_multiplier\": 2,\n        \"include_error_feedback\": false\n    },\n    \"session_summary_prompt_override\": \"\"\n}"
+          },
+          "cascade-include-ephemeral-message": {
+            "stringValue": "{\n    \"enabled\": false,\n    \"disabledHeuristics\": [\"planning_mode\", \"bash_command_reminder\", \"running_tasks_reminder\"],\n    \"staticMessages\": [],\n    \"useAllowlist\": false,\n    \"enabledHeuristics\": []\n}"
+          },
+          "retry_model_capacity_exhausted": {
+            "boolValue": true
+          },
+          "task-details-suffix": {
+            "stringValue": "\nYOU MUST TAKE ONE OF THE FOLLOWING TWO ACTIONS: A) either proceed to other relevant work (if any) or, B) simply update the user with a short message (that you have launched the command and will wait for it to finish) and end the turn.\n DO NOTHING ELSE."
+          }
+        }
+      },
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "quotaInfo": {
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
+      },
+      "recommended": true,
+      "supportedMimeTypes": {
+        "application/json": true,
+        "application/pdf": true,
+        "application/rtf": true,
+        "application/x-ipynb+json": true,
+        "application/x-javascript": true,
+        "application/x-python-code": true,
+        "application/x-typescript": true,
+        "audio/aac": true,
+        "audio/flac": true,
+        "audio/l16": true,
+        "audio/m4a": true,
+        "audio/mp3": true,
+        "audio/mp4": true,
+        "audio/mpeg": true,
+        "audio/ogg": true,
+        "audio/opus": true,
+        "audio/vnd.wave": true,
+        "audio/wav": true,
+        "audio/wave": true,
+        "audio/webm": true,
+        "audio/webm;codecs=opus": true,
+        "audio/x-wav": true,
+        "image/heic": true,
+        "image/heif": true,
+        "image/jpeg": true,
+        "image/png": true,
+        "image/webp": true,
+        "text/css": true,
+        "text/csv": true,
+        "text/html": true,
+        "text/javascript": true,
+        "text/markdown": true,
+        "text/plain": true,
+        "text/rtf": true,
+        "text/x-python": true,
+        "text/x-python-script": true,
+        "text/x-typescript": true,
+        "text/xml": true,
+        "video/audio/s16le": true,
+        "video/audio/wav": true,
+        "video/jpeg2000": true,
+        "video/mp4": true,
+        "video/text/timestamp": true,
+        "video/videoframe/jpeg2000": true,
+        "video/webm": true
+      },
+      "supportsImages": true,
+      "supportsThinking": true,
+      "supportsVideo": true,
+      "tagDescription": "Limited time",
+      "tagTitle": "Fast",
+      "thinkingBudget": -1
+    },
+    "gemini-3.8-flash-low": {
+      "apiProvider": "API_PROVIDER_GOOGLE_GEMINI",
+      "displayName": "Gemini 3.8 Flash (Low)",
+      "maxOutputTokens": 65536,
+      "maxTokens": 1048576,
+      "minThinkingBudget": 32,
+      "model": "MODEL_PLACEHOLDER_M320",
+      "modelExperiments": {
+        "experiments": {
+          "CASCADE_USE_EXPERIMENT_CHECKPOINTER": {
+            "stringValue": "{\n    \"strategy\": \"CHECKPOINT_STRATEGY_SAME_MODEL\",\n    \"max_token_limit\": \"256000\",\n    \"token_threshold\": \"140000\",\n    \"max_overhead_ratio\": \"0.15\",\n    \"moving_window_size\": \"1\",\n    \"enabled\": true,\n    \"max_output_tokens\": \"16384\",\n    \"checkpoint_model\": \"MODEL_PLACEHOLDER_M50\",\n    \"use_last_planner_model\": true,\n    \"is_sync\": false,\n    \"max_user_requests\": 10,\n    \"include_last_user_message\": false,\n    \"include_conversation_log\": true,\n    \"include_running_task_snapshots\": true,\n    \"include_subagent_snapshots\": true,\n    \"include_artifact_snapshots\": true,\n    \"retry_config\": {\n        \"max_retries\": 0,\n        \"initial_sleep_duration_ms\": 1000,\n        \"exponential_multiplier\": 2,\n        \"include_error_feedback\": false\n    },\n    \"session_summary_prompt_override\": \"\"\n}"
+          },
+          "cascade-include-ephemeral-message": {
+            "stringValue": "{\n    \"enabled\": false,\n    \"disabledHeuristics\": [\"planning_mode\", \"bash_command_reminder\", \"running_tasks_reminder\"],\n    \"staticMessages\": [],\n    \"useAllowlist\": false,\n    \"enabledHeuristics\": []\n}"
+          },
+          "retry_model_capacity_exhausted": {
+            "boolValue": true
+          },
+          "task-details-suffix": {
+            "stringValue": "\nYOU MUST TAKE ONE OF THE FOLLOWING TWO ACTIONS: A) either proceed to other relevant work (if any) or, B) simply update the user with a short message (that you have launched the command and will wait for it to finish) and end the turn.\n DO NOTHING ELSE."
+          }
+        }
+      },
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "quotaInfo": {
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
+      },
+      "recommended": true,
+      "supportedMimeTypes": {
+        "application/json": true,
+        "application/pdf": true,
+        "application/rtf": true,
+        "application/x-ipynb+json": true,
+        "application/x-javascript": true,
+        "application/x-python-code": true,
+        "application/x-typescript": true,
+        "audio/aac": true,
+        "audio/flac": true,
+        "audio/l16": true,
+        "audio/m4a": true,
+        "audio/mp3": true,
+        "audio/mp4": true,
+        "audio/mpeg": true,
+        "audio/ogg": true,
+        "audio/opus": true,
+        "audio/vnd.wave": true,
+        "audio/wav": true,
+        "audio/wave": true,
+        "audio/webm": true,
+        "audio/webm;codecs=opus": true,
+        "audio/x-wav": true,
+        "image/heic": true,
+        "image/heif": true,
+        "image/jpeg": true,
+        "image/png": true,
+        "image/webp": true,
+        "text/css": true,
+        "text/csv": true,
+        "text/html": true,
+        "text/javascript": true,
+        "text/markdown": true,
+        "text/plain": true,
+        "text/rtf": true,
+        "text/x-python": true,
+        "text/x-python-script": true,
+        "text/x-typescript": true,
+        "text/xml": true,
+        "video/audio/s16le": true,
+        "video/audio/wav": true,
+        "video/jpeg2000": true,
+        "video/mp4": true,
+        "video/text/timestamp": true,
+        "video/videoframe/jpeg2000": true,
+        "video/webm": true
+      },
+      "supportsImages": true,
+      "supportsThinking": true,
+      "supportsVideo": true,
+      "tagDescription": "Limited time",
+      "tagTitle": "Fast",
+      "thinkingBudget": 1000
+    },
+    "gemini-3.8-flash-medium": {
+      "apiProvider": "API_PROVIDER_GOOGLE_GEMINI",
+      "displayName": "Gemini 3.8 Flash (Medium)",
+      "maxOutputTokens": 65536,
+      "maxTokens": 1048576,
+      "minThinkingBudget": 32,
+      "model": "MODEL_PLACEHOLDER_M319",
+      "modelExperiments": {
+        "experiments": {
+          "CASCADE_USE_EXPERIMENT_CHECKPOINTER": {
+            "stringValue": "{\n    \"strategy\": \"CHECKPOINT_STRATEGY_SAME_MODEL\",\n    \"max_token_limit\": \"256000\",\n    \"token_threshold\": \"140000\",\n    \"max_overhead_ratio\": \"0.15\",\n    \"moving_window_size\": \"1\",\n    \"enabled\": true,\n    \"max_output_tokens\": \"16384\",\n    \"checkpoint_model\": \"MODEL_PLACEHOLDER_M50\",\n    \"use_last_planner_model\": true,\n    \"is_sync\": false,\n    \"max_user_requests\": 10,\n    \"include_last_user_message\": false,\n    \"include_conversation_log\": true,\n    \"include_running_task_snapshots\": true,\n    \"include_subagent_snapshots\": true,\n    \"include_artifact_snapshots\": true,\n    \"retry_config\": {\n        \"max_retries\": 0,\n        \"initial_sleep_duration_ms\": 1000,\n        \"exponential_multiplier\": 2,\n        \"include_error_feedback\": false\n    },\n    \"session_summary_prompt_override\": \"\"\n}"
+          },
+          "cascade-include-ephemeral-message": {
+            "stringValue": "{\n    \"enabled\": false,\n    \"disabledHeuristics\": [\"planning_mode\", \"bash_command_reminder\", \"running_tasks_reminder\"],\n    \"staticMessages\": [],\n    \"useAllowlist\": false,\n    \"enabledHeuristics\": []\n}"
+          },
+          "retry_model_capacity_exhausted": {
+            "boolValue": true
+          },
+          "task-details-suffix": {
+            "stringValue": "\nYOU MUST TAKE ONE OF THE FOLLOWING TWO ACTIONS: A) either proceed to other relevant work (if any) or, B) simply update the user with a short message (that you have launched the command and will wait for it to finish) and end the turn.\n DO NOTHING ELSE."
+          }
+        }
+      },
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "quotaInfo": {
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
+      },
+      "recommended": true,
+      "supportedMimeTypes": {
+        "application/json": true,
+        "application/pdf": true,
+        "application/rtf": true,
+        "application/x-ipynb+json": true,
+        "application/x-javascript": true,
+        "application/x-python-code": true,
+        "application/x-typescript": true,
+        "audio/aac": true,
+        "audio/flac": true,
+        "audio/l16": true,
+        "audio/m4a": true,
+        "audio/mp3": true,
+        "audio/mp4": true,
+        "audio/mpeg": true,
+        "audio/ogg": true,
+        "audio/opus": true,
+        "audio/vnd.wave": true,
+        "audio/wav": true,
+        "audio/wave": true,
+        "audio/webm": true,
+        "audio/webm;codecs=opus": true,
+        "audio/x-wav": true,
+        "image/heic": true,
+        "image/heif": true,
+        "image/jpeg": true,
+        "image/png": true,
+        "image/webp": true,
+        "text/css": true,
+        "text/csv": true,
+        "text/html": true,
+        "text/javascript": true,
+        "text/markdown": true,
+        "text/plain": true,
+        "text/rtf": true,
+        "text/x-python": true,
+        "text/x-python-script": true,
+        "text/x-typescript": true,
+        "text/xml": true,
+        "video/audio/s16le": true,
+        "video/audio/wav": true,
+        "video/jpeg2000": true,
+        "video/mp4": true,
+        "video/text/timestamp": true,
+        "video/videoframe/jpeg2000": true,
+        "video/webm": true
+      },
+      "supportsImages": true,
+      "supportsThinking": true,
+      "supportsVideo": true,
+      "tagDescription": "Limited time",
+      "tagTitle": "Fast",
+      "thinkingBudget": 4000
+    },
     "gemini-pro-agent": {
       "apiProvider": "API_PROVIDER_GOOGLE_GEMINI",
       "displayName": "Gemini 3.1 Pro (High)",
@@ -1546,8 +1800,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9605006,
-        "resetTime": "2026-09-02T09:54:32Z"
+        "remainingFraction": 0.9912594,
+        "resetTime": "2026-09-03T00:54:32Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1618,7 +1872,7 @@
       "modelProvider": "MODEL_PROVIDER_OPENAI",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-09-02T10:02:30Z"
+        "resetTime": "2026-09-03T01:15:50Z"
       },
       "recommended": true,
       "supportsThinking": true,
