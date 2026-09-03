@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.25 (2026-09-03)
+
+**Full Changelog**: https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.25...1.1.25
+
 ## [1.1.25](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.24...1.1.25) (2026-09-03)
 
 
