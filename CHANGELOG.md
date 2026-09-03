@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.25](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.24...1.1.25) (2026-09-03)
+
+
+### Features
+
+* **models:** add and register Gemini 3.8 Flash ([#83](https://github.com/anthonyhaussman/opencode-agy-auth/issues/83)) ([84035c2](https://github.com/anthonyhaussman/opencode-agy-auth/commit/84035c2ff79af9cf0c70e032c54e031eb8fff46a))
+* **sdk:** bump agy cli to 1.1.25 ([#84](https://github.com/anthonyhaussman/opencode-agy-auth/issues/84)) ([6092772](https://github.com/anthonyhaussman/opencode-agy-auth/commit/6092772ae47d6ca6e126f5d173a19cd8696a7291))
+
 ## [1.1.24](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.23...1.1.24) (2026-09-02)
 
 
