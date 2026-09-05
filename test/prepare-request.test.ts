@@ -68,6 +68,10 @@ describe("prepareAgyRequest Comprehensive Suite", () => {
         expectedType: "image_gen",
       },
       {
+        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+        expectedType: "checkpoint",
+      },
+      {
         url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent",
         expectedType: "checkpoint",
       },
