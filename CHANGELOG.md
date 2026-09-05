@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.27](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.26...1.1.27) (2026-09-05)
+
+
+### Features
+
+* **request:** route gemini-3.5-flash-lite to checkpoint ([b73487e](https://github.com/anthonyhaussman/opencode-agy-auth/commit/b73487ede2e956334bab31c303004f7d25617e0b))
+* **sdk:** bump agy cli to 1.1.27 ([4c2f72f](https://github.com/anthonyhaussman/opencode-agy-auth/commit/4c2f72f74c4c9435a044131fabc30e9946ef05d5))
+
 ## [1.1.26](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.25...1.1.26) (2026-09-04)
 
 
