@@ -279,7 +279,10 @@ function transformRequestBody(
 
     if (isImageGen) {
       wrappedBody.requestType = "image_gen";
-    } else if (effectiveModel.includes("gemini-3.1-flash-lite")) {
+    } else if (
+      effectiveModel.includes("gemini-3.5-flash-lite") ||
+      effectiveModel.includes("gemini-3.1-flash-lite")
+    ) {
       wrappedBody.requestType = "checkpoint";
     } else if (effectiveModel.includes("gemini-2.5-flash-lite")) {
       wrappedBody.requestType = "chat";
