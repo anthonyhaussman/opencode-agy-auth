@@ -183,7 +183,7 @@ describe('AgyCLIOAuthPlugin', () => {
     const auth = { type: 'oauth', access: 'expired-access', refresh: 'ref-123', expires: Date.now() - 10000 };
     const loaded = await loader!(async () => auth, { models: {} } as any);
 
-    const res = await loaded.fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent', {
+    const res = await loaded.fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent', {
       method: 'POST',
       body: JSON.stringify({ contents: [] })
     });

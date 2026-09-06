@@ -18,7 +18,7 @@ When a new `agy` CLI release lands (check `https://github.com/google-antigravity
 8. **Update version constants**: Update `src/sdk/agy-cli-version.ts` (`AGY_CLI_VERSION`) and `scripts/fetch-models.mjs` (`AGY_API_VERSION`) to the new version. This sets the `User-Agent` header on every Code Assist API request.
 9. **Update release config**: Update `.release-please-config.json` (`"release-as"` field) to the new version. Do **not** touch `.release-please-manifest.json`; release-please manages it automatically on PR merge.
 10. **Check dependencies**: Run `npm outdated` and bump dependencies to latest semver-compatible. (`@ai-sdk/google` is only a literal string reference in `src/plugin.ts`, so version bumps are zero-risk).
-11. **Refresh model catalog & register models**: Run `npm run models:refresh` and verify diff (see [Refreshing models.json](#refreshing-modelsjson)). If new models appear (e.g. in `.models` or `agentModelSorts`), register them in `STATIC_MODELS_SIMPLE` and `TIER_MAPPING` in `src/plugin.ts` (see [Registering models in src/plugin.ts](#registering-models-in-srcplugints)).
+11. **Refresh model catalog & register models**: Run `npm run models:refresh` and verify diff (see [Refreshing models.json](#refreshing-modelsjson)). If new models appear (e.g. in `.models` or `agentModelSorts`), register them in `STATIC_MODELS_SIMPLE` and `TIER_MAPPING` in `src/plugin.ts` (see [Registering models in src/plugin.ts](#registering-models-in-srcplugints)). Also prune models from `STATIC_MODELS_SIMPLE` and `TIER_MAPPING` that are no longer usable or returned by the upstream `agy models` CLI command.
 12. **Run full verification suite**: Execute `npm install && npm run test:coverage && npm run typecheck && npm run build && npm run smoke:node-import`. All tests and quality gates must pass cleanly.
 
 Prior bump commits follow a consistent pattern. Run `git log --oneline | grep "bump agy cli"` for examples.
@@ -106,6 +106,7 @@ When reconciling agy CLI release notes against this plugin's code surface, check
 - Only `models.json` is used by the plugin at runtime; the `agy models` output is informational and not consumed by the plugin code.
 - `@ai-sdk/google` is never imported; it is only used as a literal npm-name string at `src/plugin.ts:179` and `src/plugin.ts:438`. Version bumps to this package are zero-risk regardless of API changes in the upstream package.
 - The plugin's OAuth token storage lives at `~/.local/share/opencode/auth.json` under the `google-agy` key. The agy CLI itself uses the OS keyring directly; the opencode plugin maintains its own auth storage for portability.
+- **Thinking / CoT Support**: Tiered Gemini models (`gemini-3.7/3.8-flash-high/medium`) currently have thinking suppressed by the upstream Code Assist server over SSE (it performs internal reasoning but does not stream raw `thought: true` parts back to the client, unlike Claude thinking models). When Google enables streaming thoughts for Flash tiers in future Code Assist protocol updates, add client response stream parsing and configuration support for them.
 
 ## Gotchas
 

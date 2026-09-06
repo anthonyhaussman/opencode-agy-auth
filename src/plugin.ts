@@ -99,15 +99,6 @@ const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
     reasoning: true,
     attachment: true
   },
-  'gemini-3.5-flash': {
-    name: 'Gemini 3.5 Flash',
-    description: 'Gemini 3.5 Flash base model. Select tier at runtime.',
-    maxTokens: 1048576,
-    maxOutputTokens: 65536,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
   'gemini-3.1-pro': {
     name: 'Gemini 3.1 Pro',
     description: 'Gemini 3.1 Pro base model. Select tier at runtime.',
@@ -162,12 +153,6 @@ const TIER_MAPPING: Record<string, { low: string; high: string; medium?: string 
     low: 'gemini-3.6-flash-low',
     medium: 'gemini-3.6-flash-medium',
     high: 'gemini-3.6-flash-high'
-  },
-  'gemini-3.5-flash': {
-    minimal: 'gemini-3.5-flash-extra-low',
-    low: 'gemini-3.5-flash-extra-low',
-    medium: 'gemini-3.5-flash-low',
-    high: 'gemini-3-flash-agent'
   },
   'gemini-3.1-pro': {
     low: 'gemini-3.1-pro-low',

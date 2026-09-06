@@ -115,9 +115,9 @@ describe('reach 95% coverage branches', () => {
 
     await plugin.config(configObj as any);
     const models = (configObj.provider['google-agy'] as any).models;
+    expect(models['gemini-3.8-flash']).toBeDefined();
     expect(models['gemini-3.7-flash']).toBeDefined();
     expect(models['gemini-3.6-flash']).toBeDefined();
-    expect(models['gemini-3.5-flash']).toBeDefined();
     expect(models['gemini-3.1-pro']).toBeDefined();
     expect(models['claude-sonnet-4-6']).toBeDefined();
     expect(models['gpt-oss-120b-medium']).toBeDefined();
