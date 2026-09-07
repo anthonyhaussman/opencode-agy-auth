@@ -17,25 +17,6 @@ Install the plugin from npm (or directly using local file configurations if deve
 npm install @anthonyhaussman/opencode-agy-auth
 ```
 
-### Alpha Channel (Pre-release)
-
-To test bleeding-edge features or upcoming changes before official releases, configure the `@alpha` distribution tag:
-
-```bash
-npm install @anthonyhaussman/opencode-agy-auth@alpha
-```
-
-Or configure it directly in your `opencode.json`:
-
-```json
-{
-  "plugin": ["@anthonyhaussman/opencode-agy-auth@alpha"]
-}
-```
-
-> [!WARNING]
-> **Instability Warning**: The `@alpha` release contains experimental features, active development builds, and potential breaking protocol changes. It may be unstable, break unexpectedly, or cause disruptions in session authentication and model requests. Use only for testing and development. For day-to-day work, use the stable release.
-
 ## Configuration
 
 Update your OpenCode configuration file (typically `opencode.json` at the root of your project or globally at `~/.config/opencode/opencode.json`) to register the plugin and specify your Google Cloud Project ID.
@@ -156,3 +137,22 @@ To test and develop the plugin locally with OpenCode before publishing:
 
 3. **Verify the plugin**:
    Launch OpenCode in your target project. OpenCode will automatically resolve and load your local plugin directory. You can test your changes by running `npm run build` in the plugin directory and restarting your OpenCode session.
+
+## Alpha Channel (Pre-release)
+
+To test bleeding-edge features or upcoming changes before official releases, configure the `@alpha` distribution tag:
+
+```bash
+npm install @anthonyhaussman/opencode-agy-auth@alpha
+```
+
+Or configure it directly in your `opencode.json`:
+
+```json
+{
+  "plugin": ["@anthonyhaussman/opencode-agy-auth@alpha"]
+}
+```
+
+> [!WARNING]
+> **Instability Warning**: The `@alpha` release contains experimental features, active development builds, and potential breaking protocol changes. It may be unstable, break unexpectedly, or cause disruptions in session authentication and model requests. Use only for testing and development. For day-to-day work, use the stable release.
