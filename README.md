@@ -17,6 +17,25 @@ Install the plugin from npm (or directly using local file configurations if deve
 npm install @anthonyhaussman/opencode-agy-auth
 ```
 
+### Alpha Channel (Pre-release)
+
+To test bleeding-edge features or upcoming changes before official releases, configure the `@alpha` distribution tag:
+
+```bash
+npm install @anthonyhaussman/opencode-agy-auth@alpha
+```
+
+Or configure it directly in your `opencode.json`:
+
+```json
+{
+  "plugin": ["@anthonyhaussman/opencode-agy-auth@alpha"]
+}
+```
+
+> [!WARNING]
+> **Instability Warning**: The `@alpha` release contains experimental features, active development builds, and potential breaking protocol changes. It may be unstable, break unexpectedly, or cause disruptions in session authentication and model requests. Use only for testing and development. For day-to-day work, use the stable release.
+
 ## Configuration
 
 Update your OpenCode configuration file (typically `opencode.json` at the root of your project or globally at `~/.config/opencode/opencode.json`) to register the plugin and specify your Google Cloud Project ID.
@@ -59,6 +78,33 @@ Additionally, you can check your quota using slash commands directly in your Ope
 You can also ask naturally:
 > "What is my current agy quota?"
 > "Show me my quota summary"
+
+### Companion Plugin: `opencode-quota`
+
+This repository is compatible with [`opencode-quota`](https://github.com/slkiser/opencode-quota), an OpenCode plugin for displaying quota information directly in your status bar or interface.
+
+Follow the [Google AGY Quick Setup Guide](https://github.com/slkiser/opencode-quota/blob/main/docs/readme/providers.md#google-agy-quick-setup) to set them up together.
+
+To use both plugins side by side, register them in your `opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "@anthonyhaussman/opencode-agy-auth",
+    "opencode-quota"
+  ],
+  "provider": {
+    "google-agy": {
+      "options": {
+        "projectId": "your-google-cloud-project-id"
+      }
+    }
+  }
+}
+```
+
+When used together, `opencode-quota` seamlessly visualizes rate limits and quotas for models authenticated through `google-agy`.
 
 ### Disk Persistence
 
