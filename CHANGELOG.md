@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.1.28](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.27...1.1.28) (2026-09-09)
+
+
+### Features
+
+* **sdk:** bump agy cli to 1.1.28 ([4a6e353](https://github.com/anthonyhaussman/opencode-agy-auth/commit/4a6e353b2b7e4b629fd581f4b20995bec6d77c32))
+
+
+### Bug Fixes
+
+* **release:** use changelog-sections key in release-please config ([45f22c9](https://github.com/anthonyhaussman/opencode-agy-auth/commit/45f22c90fce2e4fcf4f46d3a7917a4d59eca0a78))
+
+
+### Refactor
+
+* **models:** remove deprecated gemini-3.5-flash ([6834c69](https://github.com/anthonyhaussman/opencode-agy-auth/commit/6834c692e4b0d56bfc93ea84b3a2020217b62b36))
+
+
+### Documentation
+
+* **readme:** document alpha release and opencode-quota ([9f4529c](https://github.com/anthonyhaussman/opencode-agy-auth/commit/9f4529c49c38d59a962fb2409f3dc915aab5b964))
+* **readme:** move alpha channel section to end ([6da1a5d](https://github.com/anthonyhaussman/opencode-agy-auth/commit/6da1a5dd80763e6bc5cf8a09f2d10ead7bfe14f3))
+
 ## [1.1.27](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.26...1.1.27) (2026-09-05)
 
 
