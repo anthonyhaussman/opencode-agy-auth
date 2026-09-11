@@ -1,10 +1,10 @@
 {
   "name": "@anthonyhaussman/opencode-agy-auth",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "author": "antigravity",
   "repository": {
-      "type": "git",
-      "url": "git+https://github.com/anthonyhaussman/opencode-agy-auth.git"
+    "type": "git",
+    "url": "git+https://github.com/anthonyhaussman/opencode-agy-auth.git"
   },
   "homepage": "https://github.com/anthonyhaussman/opencode-agy-auth#readme",
   "main": "./dist/index.js",
