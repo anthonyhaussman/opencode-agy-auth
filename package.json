@@ -3,8 +3,8 @@
   "version": "1.2.0",
   "author": "antigravity",
   "repository": {
-      "type": "git",
-      "url": "git+https://github.com/anthonyhaussman/opencode-agy-auth.git"
+    "type": "git",
+    "url": "git+https://github.com/anthonyhaussman/opencode-agy-auth.git"
   },
   "homepage": "https://github.com/anthonyhaussman/opencode-agy-auth#readme",
   "main": "./dist/index.js",

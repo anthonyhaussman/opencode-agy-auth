@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.2.0...1.2.0) (2026-09-11)
+
+
+### Build System
+
+* **package:** add repository and homepage URLs ([3f3dab9](https://github.com/anthonyhaussman/opencode-agy-auth/commit/3f3dab98915aba2b9b86f6cb872d95277ddbc231))
+
 ## [1.2.0](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.1.28...1.2.0) (2026-09-10)
 
 
