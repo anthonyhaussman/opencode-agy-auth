@@ -31,7 +31,7 @@
     "gemini-3-flash"
   ],
   "commitMessageModelIds": [
-    "gemini-3.1-flash-lite"
+    "gemini-3.5-flash-lite"
   ],
   "defaultAgentModelId": "gemini-3.8-flash-high",
   "deprecatedModelIds": {
@@ -42,7 +42,7 @@
     }
   },
   "experimentIds": [
-    106329232,
+    106140402,
     105979552,
     105979574,
     106015333,
@@ -147,7 +147,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-09-11T13:51:47Z"
+        "resetTime": "2026-09-12T16:17:47Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -186,7 +186,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-09-11T13:51:47Z"
+        "resetTime": "2026-09-12T16:17:47Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -222,8 +222,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -299,8 +299,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -376,8 +376,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -450,8 +450,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "requiresImageOutputOutsideFunctionResponses": true,
@@ -525,8 +525,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -600,8 +600,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -664,8 +664,8 @@
       "model": "MODEL_PLACEHOLDER_M21",
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       }
     },
     "gemini-3.1-flash-lite": {
@@ -683,8 +683,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       }
     },
     "gemini-3.1-pro-high": {
@@ -715,8 +715,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -800,8 +800,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -875,8 +875,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -952,8 +952,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1029,8 +1029,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1118,8 +1118,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1207,8 +1207,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1296,8 +1296,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1384,8 +1384,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1465,8 +1465,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1548,8 +1548,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1631,8 +1631,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1713,8 +1713,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1794,8 +1794,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1877,8 +1877,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1960,8 +1960,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -2042,8 +2042,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -2126,8 +2126,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.8330518,
-        "resetTime": "2026-09-11T09:16:14Z"
+        "remainingFraction": 0.9785579,
+        "resetTime": "2026-09-12T16:15:34Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -2198,7 +2198,7 @@
       "modelProvider": "MODEL_PROVIDER_OPENAI",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-09-11T13:51:47Z"
+        "resetTime": "2026-09-12T16:17:47Z"
       },
       "recommended": true,
       "supportsThinking": true,
@@ -2238,7 +2238,7 @@
     }
   },
   "mqueryModelIds": [
-    "gemini-3.1-flash-lite"
+    "gemini-3.5-flash-lite"
   ],
   "tabModelIds": [
     "chat_20706",
@@ -2249,13 +2249,13 @@
       "gemini-3.8-flash-tiered"
     ],
     "flashLite": [
-      "gemini-3.1-flash-lite"
+      "gemini-3.5-flash-lite"
     ],
     "pro": [
       "gemini-3.1-pro-low"
     ]
   },
   "webSearchModelIds": [
-    "gemini-3.1-flash-lite"
+    "gemini-3.5-flash-lite"
   ]
 }
