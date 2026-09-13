@@ -59,6 +59,9 @@ export interface OpenCodeV2PluginContext {
   tool: OpenCodeV2TransformRegistry;
   command: OpenCodeV2TransformRegistry;
   session: OpenCodeV2SessionRegistry;
+  aisdk?: {
+    hook: (name: 'sdk' | 'language', handler: (event: any) => Promise<void> | void) => void;
+  };
   integration?: OpenCodeV2TransformRegistry | {
     transform?: (transformer: (editor: any) => void) => void;
   };

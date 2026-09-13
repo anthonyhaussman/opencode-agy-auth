@@ -1,4 +1,11 @@
-import { AGY_PROVIDER_ID } from '../constants';
+import {
+  AGY_AUTH_URL,
+  AGY_CLIENT_ID,
+  AGY_CLIENT_SECRET,
+  AGY_PROVIDER_ID,
+  AGY_SCOPES,
+  AGY_TOKEN_URL
+} from '../constants';
 import { STATIC_MODELS_SIMPLE, TIER_MAPPING } from '../plugin';
 import { createAgyQuotaTool, AGY_QUOTA_TOOL_NAME } from './quota';
 import { createAgyQuotaSummaryTool, AGY_QUOTA_SUMMARY_TOOL_NAME } from './quota-summary';
@@ -8,9 +15,24 @@ import {
   type OpenCodeV2PluginDefinition
 } from './types';
 import { buildAgyCliUserAgent } from '../sdk/user-agent';
-import { isGenerativeLanguageRequest, parseGenerativeLanguageRequest } from '../sdk/request';
+import {
+  isGenerativeLanguageRequest,
+  parseGenerativeLanguageRequest,
+  prepareAgyRequest,
+  transformAgyResponse
+} from '../sdk/request';
+import { createChatLogger } from '../sdk/chat-logger';
+import { fetchWithRetry } from '../sdk/retry';
 import { classifyQuotaResponse, retryInternals } from '../sdk/retry/quota';
 import { resolveRetryDelayMs } from '../sdk/retry/helpers';
+import { resolveCachedAuth } from './cache';
+import { accessTokenExpired, formatRefreshParts, isOAuthAuth, parseRefreshParts } from './auth';
+import { refreshAccessToken } from './token';
+import { ensureProjectContext } from './project';
+import { agyFetch } from '../fetch';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
 
 export const AGY_V2_QUOTA_COMMAND = 'agy-quota';
 export const AGY_V2_QUOTA_SUMMARY_COMMAND = 'agy-quota-summary';
@@ -26,6 +48,235 @@ export const AGY_V2_QUOTA_SUMMARY_COMMAND_TEMPLATE = `Retrieve Agy Code Assist q
 Immediately call \`${AGY_QUOTA_SUMMARY_TOOL_NAME}\` with no arguments and return its output verbatim.
 Do not call other tools.
 `;
+
+export function getSafeHeader(headers: unknown, key: string): string | undefined {
+  if (!headers) {
+    return undefined;
+  }
+  const targetKey = key.toLowerCase();
+
+  if (typeof (headers as any).get === 'function') {
+    try {
+      return (headers as any).get(targetKey) || undefined;
+    } catch {
+      // Fallback
+    }
+  }
+
+  if (Array.isArray(headers)) {
+    const found = headers.find((item) => {
+      if (Array.isArray(item) && typeof item[0] === 'string') {
+        return item[0].toLowerCase() === targetKey;
+      }
+      return false;
+    });
+    return found ? String(found[1]) : undefined;
+  }
+
+  if (typeof headers === 'object') {
+    const foundKey = Object.keys(headers).find(k => k.toLowerCase() === targetKey);
+    return foundKey ? ((headers as Record<string, unknown>)[foundKey] !== undefined ? String((headers as Record<string, unknown>)[foundKey]) : undefined) : undefined;
+  }
+
+  return undefined;
+}
+
+export function setSafeHeaders(initHeaders: unknown, newHeaders: Record<string, string>): unknown {
+  if (typeof globalThis.Headers !== 'undefined') {
+    const headers = new globalThis.Headers((initHeaders as any) ?? {});
+    for (const [k, v] of Object.entries(newHeaders)) {
+      headers.set(k, v);
+    }
+    return headers;
+  }
+
+  if (Array.isArray(initHeaders)) {
+    const nextHeaders = [...initHeaders];
+    for (const [k, v] of Object.entries(newHeaders)) {
+      const idx = nextHeaders.findIndex(item => Array.isArray(item) && typeof item[0] === 'string' && item[0].toLowerCase() === k.toLowerCase());
+      if (idx !== -1) {
+        nextHeaders[idx] = [k, v];
+      } else {
+        nextHeaders.push([k, v]);
+      }
+    }
+    return nextHeaders;
+  }
+
+  const nextHeaders: Record<string, string> = {};
+  if (initHeaders && typeof initHeaders === 'object') {
+    for (const [k, v] of Object.entries(initHeaders)) {
+      nextHeaders[k] = String(v);
+    }
+  }
+  for (const [k, v] of Object.entries(newHeaders)) {
+    const existingKey = Object.keys(nextHeaders).find(key => key.toLowerCase() === k.toLowerCase());
+    if (existingKey) {
+      nextHeaders[existingKey] = v;
+    } else {
+      nextHeaders[k] = v;
+    }
+  }
+  return nextHeaders;
+}
+
+export function toUrlString(value: RequestInfo): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+  const candidate = (value as Request).url;
+  if (candidate) {
+    return candidate;
+  }
+  return value.toString();
+}
+
+export function resolveModelTier(baseModelId: string, init?: RequestInit): string {
+  const parts = baseModelId.split('@');
+  const base = parts[0] || '';
+  const suffixTier = parts[1]?.toLowerCase();
+
+  const mapping = TIER_MAPPING[base];
+  if (!mapping) {
+    return baseModelId;
+  }
+
+  const headerTier = getSafeHeader(init?.headers, 'x-agy-tier')?.toLowerCase() || null;
+  const requestedTier = headerTier || suffixTier;
+
+  if (requestedTier && Object.prototype.hasOwnProperty.call(mapping, requestedTier)) {
+    return mapping[requestedTier] || baseModelId;
+  }
+
+  return mapping['medium'] ?? mapping['high'];
+}
+
+export function loadStoredAuthFromJson(): any {
+  const authPath = join(homedir(), '.local', 'share', 'opencode', 'auth.json');
+  try {
+    if (existsSync(authPath)) {
+      const content = readFileSync(authPath, 'utf8');
+      const data = JSON.parse(content);
+      return data?.[AGY_PROVIDER_ID];
+    }
+  } catch {
+    // Ignore read errors
+  }
+  return undefined;
+}
+
+export function createV2FetchInterceptor(getAuthSnapshot?: () => Promise<any> | any) {
+  return async function agyV2Fetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
+    const isGL = isGenerativeLanguageRequest(input);
+    const isInternal = toUrlString(input).includes('cloudcode-pa.googleapis.com');
+
+    if (!isGL && !isInternal) {
+      return agyFetch(input, init);
+    }
+
+    let rawAuth = getAuthSnapshot ? await getAuthSnapshot() : undefined;
+    if (!rawAuth) {
+      rawAuth = loadStoredAuthFromJson();
+    }
+
+    if (!rawAuth || !isOAuthAuth(rawAuth)) {
+      return agyFetch(input, init);
+    }
+
+    let authRecord = resolveCachedAuth(rawAuth);
+    if (accessTokenExpired(authRecord)) {
+      const refreshed = await refreshAccessToken(authRecord, { auth: { set: async () => {} } } as any);
+      if (refreshed) {
+        authRecord = refreshed;
+      }
+    }
+
+    if (!authRecord.access) {
+      return agyFetch(input, init);
+    }
+
+    if (isInternal) {
+      const hasAuth = getSafeHeader(init?.headers, 'Authorization') !== undefined;
+      if (hasAuth) {
+        return agyFetch(input, init);
+      }
+
+      const userAgent = buildAgyCliUserAgent();
+      const headers = setSafeHeaders(init?.headers, {
+        Authorization: `Bearer ${authRecord.access}`,
+        'User-Agent': userAgent
+      });
+
+      return agyFetch(input, {
+        ...init,
+        headers: headers as any
+      });
+    }
+
+    const requestTarget = parseGenerativeLanguageRequest(input);
+    const requestUserAgentModel = requestTarget?.effectiveModel;
+
+    let projectContext: { effectiveProjectId: string; auth: any };
+    try {
+      projectContext = await ensureProjectContext(
+        authRecord,
+        { auth: { set: async () => {} } } as any,
+        undefined,
+        requestUserAgentModel
+      );
+    } catch {
+      projectContext = {
+        effectiveProjectId: parseRefreshParts(authRecord.refresh).projectId || 'antigravity',
+        auth: authRecord
+      };
+    }
+
+    const originalRequestedModel = parseGenerativeLanguageRequest(input)?.effectiveModel;
+    let modifiedInput = input;
+    if (isGL && originalRequestedModel) {
+      const originalBase = originalRequestedModel.replace('google-agy/', '');
+      const resolvedBase = resolveModelTier(originalBase, init);
+      if (originalBase !== resolvedBase) {
+        if (typeof modifiedInput === 'string') {
+          modifiedInput = modifiedInput.replace(`models/${originalBase}`, `models/${resolvedBase}`);
+        } else if (typeof Request !== 'undefined' && modifiedInput instanceof Request) {
+          const newUrl = modifiedInput.url.replace(`models/${originalBase}`, `models/${resolvedBase}`);
+          modifiedInput = new Request(newUrl, modifiedInput);
+        }
+      }
+    }
+
+    const transformed = prepareAgyRequest(
+      modifiedInput,
+      init,
+      authRecord.access,
+      projectContext.effectiveProjectId,
+      undefined
+    );
+
+    const chatLogger = createChatLogger();
+    if (chatLogger) {
+      chatLogger.logRequest(
+        toUrlString(transformed.request),
+        transformed.init.method || 'GET',
+        transformed.init.headers,
+        transformed.init.body
+      );
+    }
+
+    const response = await fetchWithRetry(transformed.request, transformed.init);
+    return transformAgyResponse(
+      response,
+      transformed.streaming,
+      null,
+      transformed.requestedModel,
+      transformed.sessionId,
+      chatLogger
+    );
+  };
+}
+
+import { parseOAuthCallbackInput } from './oauth-authorize';
 
 /**
  * Setup adapter for OpenCode v2 plugin architecture.
@@ -229,13 +480,105 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
         label: 'Antigravity CLI (OAuth)'
       },
       authorize: async () => {
+        const authUrl = new URL(AGY_AUTH_URL);
+        authUrl.searchParams.set('client_id', AGY_CLIENT_ID);
+        authUrl.searchParams.set('response_type', 'code');
+        authUrl.searchParams.set('redirect_uri', 'http://localhost');
+        authUrl.searchParams.set('scope', AGY_SCOPES.join(' '));
+        authUrl.searchParams.set('access_type', 'offline');
+        authUrl.searchParams.set('prompt', 'consent');
+
         return {
-          mode: 'auto',
-          url: 'https://accounts.google.com/o/oauth2/auth',
-          instructions: 'Login with Google Cloud / Antigravity CLI credentials'
+          mode: 'code',
+          url: authUrl.toString(),
+          instructions:
+            'Please complete Google account authorization in your browser. After authorization, copy the full redirect URL or code and paste it below:',
+          callback: async (code: string) => {
+            const trimmed = code.trim();
+            const parsed = parseOAuthCallbackInput(trimmed);
+            const authCode = parsed.code || trimmed;
+
+            if (!authCode) {
+              return { type: 'failed', error: 'Missing authorization code in callback input' };
+            }
+
+            const tokenResponse = await agyFetch(AGY_TOKEN_URL, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+              },
+              body: new URLSearchParams({
+                client_id: AGY_CLIENT_ID,
+                client_secret: AGY_CLIENT_SECRET,
+                code: authCode,
+                grant_type: 'authorization_code',
+                redirect_uri: 'http://localhost'
+              })
+            });
+
+            if (!tokenResponse.ok) {
+              const errorText = await tokenResponse.text();
+              return { type: 'failed', error: errorText };
+            }
+
+            const tokenPayload = (await tokenResponse.json()) as {
+              access_token: string;
+              expires_in: number;
+              refresh_token?: string;
+            };
+
+            if (!tokenPayload.refresh_token) {
+              return { type: 'failed', error: 'Missing refresh token in response' };
+            }
+
+            const initialRefresh = formatRefreshParts({
+              refreshToken: tokenPayload.refresh_token
+            });
+
+            let authRecord = {
+              type: 'oauth' as const,
+              refresh: initialRefresh,
+              access: tokenPayload.access_token,
+              expires: Date.now() + tokenPayload.expires_in * 1000
+            };
+
+            try {
+              const projectContext = await ensureProjectContext(
+                authRecord,
+                { auth: { set: async () => {} } } as any
+              );
+              authRecord = {
+                ...authRecord,
+                refresh: projectContext.auth.refresh
+              };
+            } catch {
+              // Ignore project resolution error during authorize
+            }
+
+            return {
+              type: 'success',
+              refresh: authRecord.refresh,
+              access: authRecord.access,
+              expires: authRecord.expires
+            };
+          }
         };
       }
     });
+  });
+
+  // 5. Register aisdk hook if supported
+  ctx.aisdk?.hook('sdk', async (event: any) => {
+    if (!event) return;
+    const isMatchingProvider =
+      event.providerID === AGY_PROVIDER_ID ||
+      event.model?.providerID === AGY_PROVIDER_ID;
+
+    if (!isMatchingProvider) return;
+
+    event.options = event.options || {};
+    event.options.apiKey = 'dummy';
+    event.options.fetch = createV2FetchInterceptor();
   });
 
   // 5. Register session hooks
