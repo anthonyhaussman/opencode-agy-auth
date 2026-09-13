@@ -46,7 +46,7 @@ export interface OpenCodeV2TransformRegistry<T = any> {
 }
 
 export interface OpenCodeV2SessionRegistry {
-  hook: (name: string, handler: (...args: any[]) => any) => void;
+  hook: (name: string, handler: (...args: any[]) => any, options?: { providerID?: string }) => void;
 }
 
 export interface OpenCodeV2PluginLocation {
@@ -59,7 +59,9 @@ export interface OpenCodeV2PluginContext {
   tool: OpenCodeV2TransformRegistry;
   command: OpenCodeV2TransformRegistry;
   session: OpenCodeV2SessionRegistry;
-  integration: OpenCodeV2TransformRegistry;
+  integration?: OpenCodeV2TransformRegistry | {
+    transform?: (transformer: (editor: any) => void) => void;
+  };
   location: OpenCodeV2PluginLocation;
 }
 
