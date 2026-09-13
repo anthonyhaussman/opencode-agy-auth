@@ -78,6 +78,36 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     expect(catalog.providers[AGY_PROVIDER_ID].models['claude-sonnet-4-6']).toBeDefined();
     expect(catalog.providers[AGY_PROVIDER_ID].models['gpt-oss-120b-medium']).toBeDefined();
 
+    // Test v2 catalog editor interface (provider.update and model.update)
+    const providerUpdateMock = vi.fn();
+    const modelUpdateMock = vi.fn();
+    const v2Editor = {
+      provider: {
+        update: providerUpdateMock
+      },
+      model: {
+        update: modelUpdateMock
+      }
+    };
+    await catalogTransformFn!(v2Editor);
+    expect(providerUpdateMock).toHaveBeenCalledWith(AGY_PROVIDER_ID, expect.any(Function));
+    const providerObj: any = {};
+    providerUpdateMock.mock.calls[0][1](providerObj);
+    expect(providerObj.name).toBe('Antigravity CLI');
+    expect(providerObj.activation).toBe('enabled');
+    expect(providerObj.package).toBe('@ai-sdk/google');
+    expect(providerObj.description).toBe('Google Gemini Antigravity Code Assist OAuth provider');
+
+    expect(modelUpdateMock).toHaveBeenCalled();
+    const firstCall = modelUpdateMock.mock.calls[0];
+    expect(firstCall[0]).toBe(AGY_PROVIDER_ID);
+    const modelObj: any = {};
+    firstCall[2](modelObj);
+    expect(modelObj.family).toBe('gemini');
+    expect(modelObj.capabilities.tools).toBe(true);
+    expect(modelObj.capabilities.input).toEqual(['text', 'image']);
+    expect(modelObj.capabilities.output).toEqual(['text']);
+
     // Verify catalog transform handles null safely
     await catalogTransformFn!(null);
   });
@@ -115,6 +145,22 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
 
     const quotaSummaryRes = await quotaSummaryTool.execute({});
     expect(quotaSummaryRes).toContain('unavailable before Google auth is initialized');
+
+    // v2 Editor with .add()
+    const addedTools: any[] = [];
+    const addEditor = {
+      add: vi.fn((toolDef: any) => {
+        addedTools.push(toolDef);
+      })
+    };
+    await toolTransformFn!(addEditor);
+    expect(addEditor.add).toHaveBeenCalledTimes(2);
+    expect(addedTools[0].name).toBe(AGY_QUOTA_TOOL_NAME);
+    expect(addedTools[1].name).toBe(AGY_QUOTA_SUMMARY_TOOL_NAME);
+    const v2QuotaRes = await addedTools[0].execute({}, {});
+    expect(v2QuotaRes).toContain('unavailable before Google auth is initialized');
+    const v2QuotaSummaryRes = await addedTools[1].execute({}, {});
+    expect(v2QuotaSummaryRes).toContain('unavailable before Google auth is initialized');
 
     // Object with tools property
     const toolsPropEditor: any = { tools: {} };
@@ -155,6 +201,20 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     await commandTransformFn!(mapEditor);
     expect(mapEditor.get(AGY_V2_QUOTA_COMMAND)?.template).toContain(AGY_QUOTA_TOOL_NAME);
     expect(mapEditor.get(AGY_V2_QUOTA_SUMMARY_COMMAND)?.template).toContain(AGY_QUOTA_SUMMARY_TOOL_NAME);
+
+    // v2 Editor with .add()
+    const addedCommands: any[] = [];
+    const addEditor = {
+      add: vi.fn((cmdDef: any) => {
+        addedCommands.push(cmdDef);
+      })
+    };
+    await commandTransformFn!(addEditor);
+    expect(addEditor.add).toHaveBeenCalledTimes(2);
+    expect(addedCommands[0].name).toBe(AGY_V2_QUOTA_COMMAND);
+    expect(addedCommands[0].template).toContain(AGY_QUOTA_TOOL_NAME);
+    expect(addedCommands[1].name).toBe(AGY_V2_QUOTA_SUMMARY_COMMAND);
+    expect(addedCommands[1].template).toContain(AGY_QUOTA_SUMMARY_TOOL_NAME);
 
     // Object with commands property
     const commandsPropEditor: any = { commands: {} };
