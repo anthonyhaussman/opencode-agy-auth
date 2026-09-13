@@ -117,7 +117,7 @@ export function createOAuthAuthorizeMethod(options?: {
   };
 }
 
-function parseOAuthCallbackInput(input: string): { code?: string; state?: string } {
+export function parseOAuthCallbackInput(input: string): { code?: string; state?: string } {
   const trimmed = input.trim();
   if (!trimmed) {
     return {};
