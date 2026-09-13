@@ -52,6 +52,8 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
         p.activation = 'enabled';
         p.package = 'aisdk:@ai-sdk/google';
         p.description = 'Google Gemini Antigravity Code Assist OAuth provider';
+        p.settings = { ...(p.settings || {}), apiKey: 'dummy' };
+        p.integrationID = AGY_PROVIDER_ID;
       });
 
       if (typeof editor?.model?.update === 'function') {
@@ -87,9 +89,20 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
       id: AGY_PROVIDER_ID,
       name: 'Antigravity CLI',
       npm: 'aisdk:@ai-sdk/google',
+      settings: { apiKey: 'dummy' },
+      integrationID: AGY_PROVIDER_ID,
       models: { ...(catalog.providers[AGY_PROVIDER_ID]?.models || {}) },
       ...catalog.providers[AGY_PROVIDER_ID]
     };
+    if (catalog.providers[AGY_PROVIDER_ID].settings) {
+      catalog.providers[AGY_PROVIDER_ID].settings = {
+        ...catalog.providers[AGY_PROVIDER_ID].settings,
+        apiKey: 'dummy'
+      };
+    } else {
+      catalog.providers[AGY_PROVIDER_ID].settings = { apiKey: 'dummy' };
+    }
+    catalog.providers[AGY_PROVIDER_ID].integrationID = AGY_PROVIDER_ID;
 
     const targetModels = catalog.providers[AGY_PROVIDER_ID].models;
 
@@ -200,70 +213,165 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
     }
   });
 
-  // 4. Register session hooks
-  ctx.session.hook('http.request', async (event: any) => {
-    if (!event) return;
+  // 4. Register integration for AGY_PROVIDER_ID via integration transform
+  ctx.integration?.transform?.((editor: any) => {
+    if (!editor) return;
 
-    const url = typeof event.url === 'string' ? event.url : (event.request?.url || '');
-    const isGL = isGenerativeLanguageRequest(url);
-    const isInternal = url.includes('cloudcode-pa.googleapis.com');
+    editor.update?.(AGY_PROVIDER_ID, (integration: any) => {
+      integration.name = 'Antigravity CLI (plugin)';
+    });
 
-    if (!isGL && !isInternal) {
-      return;
-    }
-
-    event.headers = event.headers || {};
-    let modelName: string | undefined;
-
-    if (isGL) {
-      const parsed = parseGenerativeLanguageRequest(url);
-      modelName = parsed?.effectiveModel;
-    }
-
-    const userAgent = buildAgyCliUserAgent(modelName);
-    if (typeof event.headers.set === 'function') {
-      if (!event.headers.get('User-Agent')) {
-        event.headers.set('User-Agent', userAgent);
+    editor.method?.update?.({
+      integrationID: AGY_PROVIDER_ID,
+      method: {
+        id: 'oauth',
+        type: 'oauth',
+        label: 'Antigravity CLI (OAuth)'
+      },
+      authorize: async () => {
+        return {
+          mode: 'auto',
+          url: 'https://accounts.google.com/o/oauth2/auth',
+          instructions: 'Login with Google Cloud / Antigravity CLI credentials'
+        };
       }
-    } else {
-      if (!event.headers['User-Agent'] && !event.headers['user-agent']) {
-        event.headers['User-Agent'] = userAgent;
-      }
-    }
+    });
   });
 
-  ctx.session.hook('http.response', async (event: any) => {
-    if (!event) return;
-    // Log or trace response status if needed
-    if (event.response?.status === 429) {
-      return;
-    }
-  });
+  // 5. Register session hooks
+  ctx.session.hook(
+    'http.request',
+    async (event: any) => {
+      if (!event) return;
 
-  ctx.session.hook('retry', async (event: any) => {
-    if (!event) return;
-    const response = event.response;
-    if (response instanceof Response) {
-      if (response.status === 429 || response.status === 503) {
-        const quota = await classifyQuotaResponse(response);
-        if (quota?.retryDelayMs) {
-          event.retryDelayMs = quota.retryDelayMs;
+      const rawUrl = typeof event.url === 'string' ? event.url : (event.request?.url || '');
+      const isGL = isGenerativeLanguageRequest(rawUrl);
+      const isInternal = rawUrl.includes('cloudcode-pa.googleapis.com');
+
+      if (!isGL && !isInternal) {
+        return;
+      }
+
+      event.headers = event.headers || {};
+      let modelName: string | undefined;
+
+      if (isGL) {
+        const parsed = parseGenerativeLanguageRequest(rawUrl);
+        modelName = parsed?.effectiveModel;
+
+        // Strip x-goog-api-key and api-key from headers
+        if (typeof event.headers.delete === 'function') {
+          event.headers.delete('x-goog-api-key');
+          event.headers.delete('api-key');
         } else {
-          event.retryDelayMs = await resolveRetryDelayMs(response, event.attempt || 1);
+          for (const key of Object.keys(event.headers)) {
+            const lower = key.toLowerCase();
+            if (lower === 'x-goog-api-key' || lower === 'api-key') {
+              delete event.headers[key];
+            }
+          }
+        }
+
+        // Strip query parameter key/x-goog-api-key/api-key if URL has them
+        try {
+          const parsedUrl = new URL(rawUrl);
+          let urlChanged = false;
+          for (const param of ['key', 'x-goog-api-key', 'api-key']) {
+            if (parsedUrl.searchParams.has(param)) {
+              parsedUrl.searchParams.delete(param);
+              urlChanged = true;
+            }
+          }
+          if (urlChanged) {
+            const cleanedUrl = parsedUrl.toString();
+            if (typeof event.url === 'string') {
+              event.url = cleanedUrl;
+            }
+            if (event.request && typeof event.request === 'object') {
+              if (typeof event.request.url === 'string') {
+                event.request.url = cleanedUrl;
+              }
+            }
+          }
+        } catch {
+          // Ignore invalid URL parse
+        }
+
+        // Inject Authorization: Bearer <token>
+        const hasAuth = typeof event.headers.get === 'function'
+          ? !!event.headers.get('Authorization')
+          : Object.keys(event.headers).some((k) => k.toLowerCase() === 'authorization');
+
+        if (!hasAuth) {
+          let token: string | undefined;
+          if (typeof event.auth?.access === 'string' && event.auth.access) {
+            token = event.auth.access;
+          } else if (typeof event.auth?.token === 'string' && event.auth.token) {
+            token = event.auth.token;
+          }
+
+          if (typeof event.headers.set === 'function') {
+            event.headers.set('Authorization', `Bearer ${token || 'dummy'}`);
+          } else {
+            event.headers['Authorization'] = `Bearer ${token || 'dummy'}`;
+          }
         }
       }
-    } else if (event.details && Array.isArray(event.details)) {
-      const retryInfo = event.details.find(
-        (d: any) => d && d['@type'] === 'type.googleapis.com/google.rpc.RetryInfo'
-      );
-      if (retryInfo?.retryDelay) {
-        const delayMs = retryInternals.parseRetryDelayValue(retryInfo.retryDelay);
-        if (delayMs !== null) {
-          event.retryDelayMs = delayMs;
+
+      const userAgent = buildAgyCliUserAgent(modelName);
+      if (typeof event.headers.set === 'function') {
+        if (!event.headers.get('User-Agent')) {
+          event.headers.set('User-Agent', userAgent);
+        }
+      } else {
+        if (!event.headers['User-Agent'] && !event.headers['user-agent']) {
+          event.headers['User-Agent'] = userAgent;
         }
       }
-    }
-  });
+    },
+    { providerID: AGY_PROVIDER_ID }
+  );
+
+  ctx.session.hook(
+    'http.response',
+    async (event: any) => {
+      if (!event) return;
+      // Log or trace response status if needed
+      if (event.response?.status === 429) {
+        return;
+      }
+    },
+    { providerID: AGY_PROVIDER_ID }
+  );
+
+  ctx.session.hook(
+    'retry',
+    async (event: any) => {
+      if (!event) return;
+      const response = event.response;
+      if (response instanceof Response) {
+        if (response.status === 429 || response.status === 503) {
+          const quota = await classifyQuotaResponse(response);
+          if (quota?.retryDelayMs) {
+            event.retryDelayMs = quota.retryDelayMs;
+          } else {
+            event.retryDelayMs = await resolveRetryDelayMs(response, event.attempt || 1);
+          }
+        }
+      } else if (event.details && Array.isArray(event.details)) {
+        const retryInfo = event.details.find(
+          (d: any) => d && d['@type'] === 'type.googleapis.com/google.rpc.RetryInfo'
+        );
+        if (retryInfo?.retryDelay) {
+          const delayMs = retryInternals.parseRetryDelayValue(retryInfo.retryDelay);
+          if (delayMs !== null) {
+            event.retryDelayMs = delayMs;
+          }
+        }
+      }
+    },
+    { providerID: AGY_PROVIDER_ID }
+  );
 }
 
 /**
