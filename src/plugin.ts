@@ -56,7 +56,7 @@ let latestAgyAuthResolver: GetAuth | undefined;
 let latestAgyConfiguredProjectId: string | undefined;
 let latestAgyUserAgentModel: string | undefined;
 
-interface SimpleStaticModel {
+export interface SimpleStaticModel {
   name: string;
   description: string;
   maxTokens: number;
@@ -71,7 +71,7 @@ interface SimpleStaticModel {
   };
 }
 
-const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
+export const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
   'gemini-3.8-flash': {
     name: 'Gemini 3.8 Flash',
     description: 'Gemini 3.8 Flash base model. Select tier at runtime.',
@@ -137,7 +137,7 @@ const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
   }
 };
 
-const TIER_MAPPING: Record<string, { low: string; high: string; medium?: string } & Record<string, string | undefined>> = {
+export const TIER_MAPPING: Record<string, { low: string; high: string; medium?: string } & Record<string, string | undefined>> = {
   'gemini-3.8-flash': {
     low: 'gemini-3.8-flash-low',
     medium: 'gemini-3.8-flash-medium',
