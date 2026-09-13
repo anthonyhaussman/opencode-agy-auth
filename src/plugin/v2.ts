@@ -32,9 +32,41 @@ Do not call other tools.
  */
 export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<void> {
   // 1. Register provider and models via catalog transform
-  ctx.catalog.transform(async (catalog: any) => {
-    if (!catalog) return;
+  ctx.catalog.transform(async (editor: any) => {
+    if (!editor) return;
 
+    if (typeof editor?.provider?.update === 'function') {
+      editor.provider.update(AGY_PROVIDER_ID, (p: any) => {
+        p.name = 'Antigravity CLI';
+        p.activation = 'enabled';
+        p.package = '@ai-sdk/google';
+        p.description = 'Google Gemini Antigravity Code Assist OAuth provider';
+      });
+
+      if (typeof editor?.model?.update === 'function') {
+        for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
+          editor.model.update(AGY_PROVIDER_ID, modelId, (m: any) => {
+            m.name = simple.name;
+            m.capabilities = {
+              tools: true,
+              input: ['text', 'image'],
+              output: ['text']
+            };
+            m.limit = {
+              context: simple.maxTokens,
+              output: simple.maxOutputTokens
+            };
+            m.family = 'gemini';
+            if (simple.cost) {
+              m.cost = simple.cost;
+            }
+          });
+        }
+      }
+      return;
+    }
+
+    const catalog = editor;
     catalog.providers = catalog.providers || {};
     catalog.providers[AGY_PROVIDER_ID] = {
       id: AGY_PROVIDER_ID,
@@ -88,7 +120,20 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
       getUserAgentModel: () => undefined
     });
 
-    if (typeof editor.set === 'function') {
+    if (typeof editor.add === 'function') {
+      editor.add({
+        name: AGY_QUOTA_TOOL_NAME,
+        description: quotaTool.description,
+        input: {},
+        execute: async (args: any, context: any) => (quotaTool as any).execute(args, context)
+      });
+      editor.add({
+        name: AGY_QUOTA_SUMMARY_TOOL_NAME,
+        description: quotaSummaryTool.description,
+        input: {},
+        execute: async (args: any, context: any) => (quotaSummaryTool as any).execute(args, context)
+      });
+    } else if (typeof editor.set === 'function') {
       editor.set(AGY_QUOTA_TOOL_NAME, quotaTool);
       editor.set(AGY_QUOTA_SUMMARY_TOOL_NAME, quotaSummaryTool);
     } else if (editor.tools && typeof editor.tools === 'object') {
@@ -115,7 +160,18 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
       }
     };
 
-    if (typeof editor.set === 'function') {
+    if (typeof editor.add === 'function') {
+      editor.add({
+        name: AGY_V2_QUOTA_COMMAND,
+        description: 'Display current Antigravity quota usage',
+        template: AGY_V2_QUOTA_COMMAND_TEMPLATE
+      });
+      editor.add({
+        name: AGY_V2_QUOTA_SUMMARY_COMMAND,
+        description: 'Display Antigravity quota summary grouped by model family',
+        template: AGY_V2_QUOTA_SUMMARY_COMMAND_TEMPLATE
+      });
+    } else if (typeof editor.set === 'function') {
       editor.set(AGY_V2_QUOTA_COMMAND, commands[AGY_V2_QUOTA_COMMAND]);
       editor.set(AGY_V2_QUOTA_SUMMARY_COMMAND, commands[AGY_V2_QUOTA_SUMMARY_COMMAND]);
     } else if (editor.commands && typeof editor.commands === 'object') {
