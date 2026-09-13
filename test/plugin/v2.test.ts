@@ -73,9 +73,19 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     expect(catalog.providers).toBeDefined();
     expect(catalog.providers[AGY_PROVIDER_ID]).toBeDefined();
     expect(catalog.providers[AGY_PROVIDER_ID].id).toBe(AGY_PROVIDER_ID);
-    expect(catalog.providers[AGY_PROVIDER_ID].npm).toBe('@ai-sdk/google');
+    expect(catalog.providers[AGY_PROVIDER_ID].npm).toBe('aisdk:@ai-sdk/google');
     expect(catalog.providers[AGY_PROVIDER_ID].models['gemini-3.8-flash']).toBeDefined();
+    expect(catalog.providers[AGY_PROVIDER_ID].models['gemini-3.8-flash'].variants).toEqual([
+      { id: 'low' },
+      { id: 'medium' },
+      { id: 'high' }
+    ]);
+    expect(catalog.providers[AGY_PROVIDER_ID].models['gemini-3.1-pro'].variants).toEqual([
+      { id: 'low' },
+      { id: 'high' }
+    ]);
     expect(catalog.providers[AGY_PROVIDER_ID].models['claude-sonnet-4-6']).toBeDefined();
+    expect(catalog.providers[AGY_PROVIDER_ID].models['claude-sonnet-4-6'].variants).toBeUndefined();
     expect(catalog.providers[AGY_PROVIDER_ID].models['gpt-oss-120b-medium']).toBeDefined();
 
     // Test v2 catalog editor interface (provider.update and model.update)
@@ -95,18 +105,39 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     providerUpdateMock.mock.calls[0][1](providerObj);
     expect(providerObj.name).toBe('Antigravity CLI');
     expect(providerObj.activation).toBe('enabled');
-    expect(providerObj.package).toBe('@ai-sdk/google');
+    expect(providerObj.package).toBe('aisdk:@ai-sdk/google');
     expect(providerObj.description).toBe('Google Gemini Antigravity Code Assist OAuth provider');
 
     expect(modelUpdateMock).toHaveBeenCalled();
-    const firstCall = modelUpdateMock.mock.calls[0];
-    expect(firstCall[0]).toBe(AGY_PROVIDER_ID);
-    const modelObj: any = {};
-    firstCall[2](modelObj);
-    expect(modelObj.family).toBe('gemini');
-    expect(modelObj.capabilities.tools).toBe(true);
-    expect(modelObj.capabilities.input).toEqual(['text', 'image']);
-    expect(modelObj.capabilities.output).toEqual(['text']);
+    const modelCalls = modelUpdateMock.mock.calls;
+    const flashCall = modelCalls.find((c: any) => c[0] === AGY_PROVIDER_ID && c[1] === 'gemini-3.8-flash');
+    expect(flashCall).toBeDefined();
+    const flashModelObj: any = {};
+    flashCall[2](flashModelObj);
+    expect(flashModelObj.family).toBe('gemini');
+    expect(flashModelObj.capabilities.tools).toBe(true);
+    expect(flashModelObj.capabilities.input).toEqual(['text', 'image']);
+    expect(flashModelObj.capabilities.output).toEqual(['text']);
+    expect(flashModelObj.variants).toEqual([
+      { id: 'low' },
+      { id: 'medium' },
+      { id: 'high' }
+    ]);
+
+    const proCall = modelCalls.find((c: any) => c[0] === AGY_PROVIDER_ID && c[1] === 'gemini-3.1-pro');
+    expect(proCall).toBeDefined();
+    const proModelObj: any = {};
+    proCall[2](proModelObj);
+    expect(proModelObj.variants).toEqual([
+      { id: 'low' },
+      { id: 'high' }
+    ]);
+
+    const claudeCall = modelCalls.find((c: any) => c[0] === AGY_PROVIDER_ID && c[1] === 'claude-sonnet-4-6');
+    expect(claudeCall).toBeDefined();
+    const claudeModelObj: any = {};
+    claudeCall[2](claudeModelObj);
+    expect(claudeModelObj.variants).toBeUndefined();
 
     // Verify catalog transform handles null safely
     await catalogTransformFn!(null);
