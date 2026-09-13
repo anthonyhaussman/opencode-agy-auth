@@ -111,4 +111,58 @@ describe('Final Coverage Push', () => {
     const res = await onboardManagedProject('token', 'free-tier');
     expect(res).toBe('auto-proj');
   });
+
+  it('covers createOAuthAuthorizeMethod options callbacks', async () => {
+    const plugin = await AgyCLIOAuthPlugin({
+      client: {
+        tui: { showToast: vi.fn() },
+        config: { get: vi.fn().mockResolvedValue({ data: { provider: {} } }) },
+        auth: { set: vi.fn() }
+      }
+    } as any);
+
+    const authMethod = (plugin.auth as any).methods.find((m: any) => m.type === 'oauth');
+    const authResult = await authMethod.authorize();
+    expect(authResult.url).toBeDefined();
+    expect(typeof authResult.callback).toBe('function');
+
+    // Exercise non-headless browser open branch
+    const origEnv = process.env;
+    process.env = { ...origEnv };
+    delete process.env.SSH_CONNECTION;
+    delete process.env.SSH_CLIENT;
+    delete process.env.SSH_TTY;
+    delete process.env.OPENCODE_HEADLESS;
+    try {
+      const nonHeadlessMethod = (plugin.auth as any).methods.find((m: any) => m.type === 'oauth');
+      const res = await nonHeadlessMethod.authorize();
+      expect(res.url).toBeDefined();
+    } finally {
+      process.env = origEnv;
+    }
+  });
+
+  it('covers plugin provider models hook error and null auth', async () => {
+    const plugin = await AgyCLIOAuthPlugin({
+      client: {
+        tui: { showToast: vi.fn() },
+        config: { get: vi.fn().mockResolvedValue({ data: { provider: {} } }) },
+        auth: { set: vi.fn() }
+      }
+    } as any);
+
+    let shouldThrow = false;
+    // Call loader to register resolver
+    await plugin.auth.loader(async () => {
+      if (shouldThrow) {
+        throw new Error('Resolver explosion');
+      }
+      return { type: 'oauth', access: 'token', refresh: 'ref', expires: Date.now() + 100000 };
+    }, { models: {} } as any);
+
+    // Call provider.models with failing resolver
+    shouldThrow = true;
+    const modelsResult = await (plugin as any).provider.models({ models: {} }, {});
+    expect(modelsResult['login-required']).toBeDefined();
+  });
 });
