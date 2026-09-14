@@ -379,13 +379,15 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
         );
       });
       const successRes = await authorizeRes.callback('https://antigravity.google/oauth-callback?code=good-code');
-      expect(successRes.type).toBe('success');
+      expect(successRes.type).toBe('oauth');
+      expect(successRes.methodID).toBe('oauth');
       expect(successRes.access).toBe('acc');
       expect(successRes.refresh).toContain('ref');
 
       // Test callback with localhost loopback redirect url format
       const loopbackSuccessRes = await authorizeRes.callback('http://127.0.0.1:8085/?code=loopback-code');
-      expect(loopbackSuccessRes.type).toBe('success');
+      expect(loopbackSuccessRes.type).toBe('oauth');
+      expect(loopbackSuccessRes.methodID).toBe('oauth');
       expect(loopbackSuccessRes.access).toBe('acc');
     } finally {
       globalThis.fetch = originalFetch;
@@ -406,7 +408,8 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
       });
       // Spy ensureProjectContext or trigger its failure path
       const successWithFallbackProject = await authorizeRes.callback('test-code');
-      expect(successWithFallbackProject.type).toBe('success');
+      expect(successWithFallbackProject.type).toBe('oauth');
+      expect(successWithFallbackProject.methodID).toBe('oauth');
       expect(successWithFallbackProject.refresh).toContain('ref');
     } finally {
       globalThis.fetch = originalFetch;
@@ -655,15 +658,26 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     await onRequest(nonGoogleEvent);
     expect(nonGoogleEvent.headers['User-Agent']).toBeUndefined();
 
-    // Injects User-Agent for Google GL URL with plain object headers
+    // Injects User-Agent and rewrites Google GL URL with plain object headers
     const glEvent: any = {
       url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
       headers: {},
-      auth: { access: 'dummy' }
+      auth: { access: 'dummy', refresh: 'dummy|proj|mproj' }
     };
     await onRequest(glEvent);
     expect(glEvent.headers['User-Agent']).toContain('antigravity');
     expect(glEvent.headers['Authorization']).toBe('Bearer dummy');
+    expect(glEvent.url).toContain('cloudcode-pa.googleapis.com');
+
+    // Test fallback when no authRecord is found on GL request
+    const glNoAuthEvent: any = {
+      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=val',
+      request: { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=val' },
+      headers: {}
+    };
+    await onRequest(glNoAuthEvent);
+    expect(glNoAuthEvent.url).not.toContain('key=val');
+    expect(glNoAuthEvent.request.url).not.toContain('key=val');
 
     // Strips x-goog-api-key and api-key from headers and query parameters, and injects auth
     const glWithKeyHeaders = new Headers({
@@ -671,7 +685,7 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
       'api-key': 'secret-key-2'
     });
     const glWithKeyEvent: any = {
-      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:streamGenerateContent?key=query-key&api-key=query-key-2',
+      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:streamGenerateContent?key=query-key&api-key=secret-param',
       headers: glWithKeyHeaders,
       auth: { access: 'oauth-test-access-token' }
     };
@@ -679,7 +693,7 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     expect(glWithKeyHeaders.get('x-goog-api-key')).toBeNull();
     expect(glWithKeyHeaders.get('api-key')).toBeNull();
     expect(glWithKeyHeaders.get('Authorization')).toBe('Bearer oauth-test-access-token');
-    expect(glWithKeyEvent.url).toBe('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:streamGenerateContent');
+    expect(glWithKeyEvent.url).toContain('cloudcode-pa.googleapis.com');
 
     // Strips headers using plain object headers and request.url
     const plainHeadersObj: Record<string, string> = {
@@ -697,7 +711,7 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     expect(plainHeadersObj['x-goog-api-key']).toBeUndefined();
     expect(plainHeadersObj['api-key']).toBeUndefined();
     expect(plainHeadersObj['Authorization']).toBe('Bearer token-property-test');
-    expect(reqObjEvent.request.url).toBe('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent');
+    expect(reqObjEvent.request.url).toContain('cloudcode-pa.googleapis.com');
 
     // Test automatic credential loading from stored auth.json if event.auth is missing
     setStoredAuthOverrideForTesting({
@@ -720,9 +734,19 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
       expect(reqWithNoAuthEvent.request.headers.get('api-key')).toBeNull();
       expect(reqWithNoAuthEvent.request.headers.get('Authorization')).toBe('Bearer ci-stored-access-token');
       expect(reqWithNoAuthEvent.headers.get('Authorization')).toBe('Bearer ci-stored-access-token');
+      expect(reqWithNoAuthEvent.request.url).toContain('cloudcode-pa.googleapis.com');
     } finally {
       setStoredAuthOverrideForTesting(undefined);
     }
+
+    // Injects User-Agent for CloudCode PA internal endpoint with plain object headers
+    const internalPlainHeaders: any = {};
+    const internalPlainEvent: any = {
+      url: 'https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels',
+      headers: internalPlainHeaders
+    };
+    await onRequest(internalPlainEvent);
+    expect(internalPlainHeaders['User-Agent']).toContain('antigravity');
 
     // Injects User-Agent for CloudCode PA internal endpoint with Headers object
     const internalHeaders = new Headers();
@@ -732,6 +756,24 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     };
     await onRequest(internalEvent);
     expect(internalHeaders.get('User-Agent')).toContain('antigravity');
+
+    // Fallback branch: GL request with no authRecord and no stored token
+    const noTokenEvent: any = {
+      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+      headers: {},
+      request: {
+        url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+        headers: {}
+      }
+    };
+    setStoredAuthOverrideForTesting(null);
+    try {
+      await onRequest(noTokenEvent);
+      expect(noTokenEvent.url).toContain('https://generativelanguage.googleapis.com');
+      expect(noTokenEvent.request.url).toContain('https://generativelanguage.googleapis.com');
+    } finally {
+      setStoredAuthOverrideForTesting(undefined);
+    }
 
     // Does not overwrite existing User-Agent
     const customHeaders = { 'User-Agent': 'custom-agent' };
@@ -768,6 +810,18 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     expect(onResponse).toBeDefined();
     await onResponse({ response: { status: 429 } });
     await onResponse(null);
+
+    // Test http.response transforming internal Code Assist streaming response
+    const mockInternalResponse = new Response('data: {}\n\n', {
+      status: 200,
+      headers: { 'content-type': 'text/event-stream' }
+    });
+    const internalRespEvent: any = {
+      url: 'https://daily-cloudcode-pa.googleapis.com/v1internal:streamGenerateCode',
+      response: mockInternalResponse
+    };
+    await onResponse(internalRespEvent);
+    expect(internalRespEvent.response).toBeDefined();
 
     const onRetry = sessionHooks['retry'];
     expect(onRetry).toBeDefined();
@@ -829,5 +883,71 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     await onRetry(regularRetryEvent);
     expect(regularRetryEvent.retryDelayMs).toBeUndefined();
     await onRetry(null);
+
+    // Test createV2FetchInterceptor directly
+    const interceptor = createV2FetchInterceptor(async () => ({
+      type: 'oauth',
+      access: 'mock-access',
+      refresh: 'ref|proj|mproj',
+      expires: Date.now() + 3600000
+    }));
+    // Call with non-GL, non-internal URL
+    const passThroughRes = await interceptor('https://example.com/api');
+    expect(passThroughRes).toBeDefined();
+
+    // Call with internal endpoint missing auth header
+    const internalFetchRes = await interceptor('https://daily-cloudcode-pa.googleapis.com/v1internal:check');
+    expect(internalFetchRes).toBeDefined();
+
+    // Test createV2FetchInterceptor with expired token that refreshes
+    const expiredInterceptor = createV2FetchInterceptor(async () => ({
+      type: 'oauth',
+      access: 'expired-access',
+      refresh: 'ref|proj|mproj',
+      expires: Date.now() - 1000
+    }));
+    const refreshedFetchRes = await expiredInterceptor('https://daily-cloudcode-pa.googleapis.com/v1internal:check');
+    expect(refreshedFetchRes).toBeDefined();
+
+    // Test createV2FetchInterceptor when rawAuth is non-oauth or has no access
+    const nonOauthInterceptor = createV2FetchInterceptor(async () => ({ type: 'key', key: '123' }));
+    const nonOauthRes = await nonOauthInterceptor('https://daily-cloudcode-pa.googleapis.com/v1internal:check');
+    expect(nonOauthRes).toBeDefined();
+
+    const noAccessInterceptor = createV2FetchInterceptor(async () => ({ type: 'oauth', access: '', refresh: 'ref' }));
+    const noAccessRes = await noAccessInterceptor('https://daily-cloudcode-pa.googleapis.com/v1internal:check');
+    expect(noAccessRes).toBeDefined();
+
+    // Test createV2FetchInterceptor GL request with tier suffix and Request object input
+    const glTierInterceptor = createV2FetchInterceptor(async () => ({
+      type: 'oauth',
+      access: 'gl-access',
+      refresh: 'ref|proj|mproj',
+      expires: Date.now() + 3600000
+    }));
+    const glReqObj = new Request('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash@low:generateContent', {
+      method: 'POST',
+      body: JSON.stringify({ contents: [{ parts: [{ text: 'hi' }] }] })
+    });
+    const glTierRes = await glTierInterceptor(glReqObj);
+    expect(glTierRes).toBeDefined();
+
+    // Test resolveModelTier directly with header and suffix variants
+    expect(resolveModelTier('unknown-model')).toBe('unknown-model');
+    expect(resolveModelTier('gemini-3.8-flash', { headers: { 'x-agy-tier': 'low' } })).toBe('gemini-3.8-flash-low');
+    expect(resolveModelTier('gemini-3.8-flash@high')).toBe('gemini-3.8-flash-high');
+
+    // Test setSafeHeaders with array and plain object without Headers global
+    const origHeaders = globalThis.Headers;
+    try {
+      (globalThis as any).Headers = undefined;
+      const arrayHeaders = setSafeHeaders([['x-test', '1']], { 'x-test': '2', 'x-new': '3' });
+      expect(Array.isArray(arrayHeaders)).toBe(true);
+
+      const objHeaders = setSafeHeaders({ 'x-test': '1' }, { 'x-test': '2', 'x-new': '3' });
+      expect(objHeaders['x-test']).toBe('2');
+    } finally {
+      globalThis.Headers = origHeaders;
+    }
   });
 });
