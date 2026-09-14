@@ -415,6 +415,28 @@ function normalizeToolSchemaTypes(tools: unknown, toolMapper?: ToolMapper): void
       }
     }
 
+    if (Array.isArray(obj.enum)) {
+      const sanitizedEnum = Array.from(
+        new Set(
+          obj.enum
+            .filter((v: unknown) => v !== null && v !== undefined)
+            .map((v: unknown) => String(v))
+        )
+      );
+      if (sanitizedEnum.length > 0) {
+        obj.enum = sanitizedEnum;
+        // Gemini Protobuf Schema requires enum elements to be strings.
+        // If the property was typed as BOOLEAN, adjust type to STRING so Gemini's schema validation accepts it.
+        if (obj.type === "BOOLEAN") {
+          obj.type = "STRING";
+        }
+      } else {
+        delete obj.enum;
+      }
+    } else if ("enum" in obj) {
+      delete obj.enum;
+    }
+
     if (obj.properties && typeof obj.properties === "object") {
       Object.values(obj.properties).forEach(sanitizeSchema);
     }
