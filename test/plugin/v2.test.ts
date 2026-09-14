@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import * as fs from 'node:fs';
 import {
   setupOpenCodeV2,
   v2PluginDefinition,
@@ -7,6 +8,7 @@ import {
   AGY_V2_QUOTA_SUMMARY_COMMAND,
   createV2FetchInterceptor,
   loadStoredAuthFromJson,
+  setStoredAuthOverrideForTesting,
   getSafeHeader,
   setSafeHeaders,
   toUrlString,
@@ -698,6 +700,13 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     expect(reqObjEvent.request.url).toBe('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent');
 
     // Test automatic credential loading from stored auth.json if event.auth is missing
+    setStoredAuthOverrideForTesting({
+      type: 'oauth',
+      access: 'ci-stored-access-token',
+      refresh: 'ref|proj|mproj',
+      expires: Date.now() + 3600000
+    });
+
     const reqWithNoAuthEvent: any = {
       request: {
         url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
@@ -705,11 +714,15 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
       },
       headers: new Headers()
     };
-    await onRequest(reqWithNoAuthEvent);
-    expect(reqWithNoAuthEvent.request.headers.get('x-goog-api-key')).toBeNull();
-    expect(reqWithNoAuthEvent.request.headers.get('api-key')).toBeNull();
-    expect(reqWithNoAuthEvent.request.headers.get('Authorization')).toMatch(/^Bearer /);
-    expect(reqWithNoAuthEvent.headers.get('Authorization')).toMatch(/^Bearer /);
+    try {
+      await onRequest(reqWithNoAuthEvent);
+      expect(reqWithNoAuthEvent.request.headers.get('x-goog-api-key')).toBeNull();
+      expect(reqWithNoAuthEvent.request.headers.get('api-key')).toBeNull();
+      expect(reqWithNoAuthEvent.request.headers.get('Authorization')).toBe('Bearer ci-stored-access-token');
+      expect(reqWithNoAuthEvent.headers.get('Authorization')).toBe('Bearer ci-stored-access-token');
+    } finally {
+      setStoredAuthOverrideForTesting(undefined);
+    }
 
     // Injects User-Agent for CloudCode PA internal endpoint with Headers object
     const internalHeaders = new Headers();
