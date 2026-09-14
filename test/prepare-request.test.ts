@@ -198,6 +198,65 @@ describe("prepareAgyRequest Comprehensive Suite", () => {
     expect(parsed.request.toolConfig.functionCallingConfig.allowedFunctionNames).toEqual(["complexTool"]);
   });
 
+  it("normalizes non-string enums to strings and aligns boolean enum types for Gemini API", () => {
+    const input = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
+    const body = JSON.stringify({
+      contents: [],
+      tools: [
+        {
+          functionDeclarations: [
+            {
+              name: "datadogTool",
+              parameters: {
+                type: "object",
+                properties: {
+                  boolWithEnum: {
+                    type: "boolean",
+                    enum: [true, false],
+                  },
+                  numWithEnum: {
+                    type: "integer",
+                    enum: [1, 2, 3],
+                  },
+                  emptyEnum: {
+                    type: "string",
+                    enum: [],
+                  },
+                  nestedArray: {
+                    type: "array",
+                    items: {
+                      type: "boolean",
+                      enum: [true],
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = prepareAgyRequest(input, { method: "POST", body }, token, project);
+    const parsed = JSON.parse(result.init.body as string);
+    const fn = parsed.request.tools[0].functionDeclarations[0];
+    const props = fn.parameters.properties;
+
+    // Boolean with enum should have type changed to STRING and values stringified
+    expect(props.boolWithEnum.type).toBe("STRING");
+    expect(props.boolWithEnum.enum).toEqual(["true", "false"]);
+
+    // Integer with enum values should be stringified
+    expect(props.numWithEnum.enum).toEqual(["1", "2", "3"]);
+
+    // Empty enum should be removed
+    expect(props.emptyEnum.enum).toBeUndefined();
+
+    // Nested array items with boolean enum should be STRING and stringified
+    expect(props.nestedArray.items.type).toBe("STRING");
+    expect(props.nestedArray.items.enum).toEqual(["true"]);
+  });
+
   it("normalizes consecutive contents sequences by role and filters nulls", () => {
     const input = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
     const body = JSON.stringify({
