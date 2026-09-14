@@ -15,6 +15,7 @@ export function createOAuthAuthorizeMethod(options?: {
   client?: PluginClient;
   getConfiguredProjectId?: () => Promise<string | undefined> | string | undefined;
   getUserAgentModel?: () => Promise<string | undefined> | string | undefined;
+  openBrowser?: (url: string) => void;
 }): () => Promise<{
   url: string;
   instructions: string;
@@ -86,7 +87,11 @@ export function createOAuthAuthorizeMethod(options?: {
 
     const authorization = await authorizeAgy();
     if (!isHeadless) {
-      openBrowserUrl(authorization.url);
+      if (options?.openBrowser) {
+        options.openBrowser(authorization.url);
+      } else {
+        openBrowserUrl(authorization.url);
+      }
     }
 
     return {
@@ -148,16 +153,26 @@ export function parseOAuthCallbackInput(input: string): { code?: string; state?:
   return { code: trimmed };
 }
 
+export function setOpenBrowserLauncherForTesting(launcher: typeof openBrowserLauncher | null): void {
+  openBrowserLauncher = launcher ?? defaultOpenBrowserLauncher;
+}
+
+function defaultOpenBrowserLauncher(command: string, args: string[]) {
+  const child = spawn(command, args, {
+    stdio: 'ignore',
+    detached: true
+  });
+  child.unref?.();
+}
+
+let openBrowserLauncher = defaultOpenBrowserLauncher;
+
 function openBrowserUrl(url: string): void {
   try {
     const platform = process.platform;
     const command =
       platform === 'darwin' ? 'open' : platform === 'win32' ? 'rundll32' : 'xdg-open';
     const args = platform === 'win32' ? ['url.dll,FileProtocolHandler', url] : [url];
-    const child = spawn(command, args, {
-      stdio: 'ignore',
-      detached: true
-    });
-    child.unref?.();
+    openBrowserLauncher(command, args);
   } catch {}
 }
