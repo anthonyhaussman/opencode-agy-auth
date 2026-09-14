@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { AgyCLIOAuthPlugin } from '../src/plugin.js';
+import { setOpenBrowserLauncherForTesting } from '../src/plugin/oauth-authorize.js';
 import { createThoughtBuffer, deduplicateThinkingText } from '../src/sdk/request/thinking.js';
 import { onboardManagedProject } from '../src/sdk/fetch_project.js';
 import * as chatLoggerModule from '../src/sdk/chat-logger.js';
@@ -127,6 +128,8 @@ describe('Final Coverage Push', () => {
     expect(typeof authResult.callback).toBe('function');
 
     // Exercise non-headless browser open branch
+    const launcherMock = vi.fn();
+    setOpenBrowserLauncherForTesting(launcherMock);
     const origEnv = process.env;
     process.env = { ...origEnv };
     delete process.env.SSH_CONNECTION;
@@ -137,8 +140,10 @@ describe('Final Coverage Push', () => {
       const nonHeadlessMethod = (plugin.auth as any).methods.find((m: any) => m.type === 'oauth');
       const res = await nonHeadlessMethod.authorize();
       expect(res.url).toBeDefined();
+      expect(launcherMock).toHaveBeenCalled();
     } finally {
       process.env = origEnv;
+      setOpenBrowserLauncherForTesting(null);
     }
   });
 

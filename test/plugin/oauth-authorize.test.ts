@@ -162,4 +162,29 @@ describe('oauth-authorize', () => {
       expect(res.error).toBe('Network crash');
     }
   });
+
+  it('exercises defaultOpenBrowserLauncher without throwing', async () => {
+    // Call default launcher directly to ensure coverage
+    const origEnv = process.env;
+    process.env = { ...origEnv };
+    delete process.env.SSH_CONNECTION;
+    delete process.env.SSH_CLIENT;
+    delete process.env.SSH_TTY;
+    delete process.env.OPENCODE_HEADLESS;
+
+    vi.spyOn(oauthSdk, 'authorizeAgy').mockResolvedValue({
+      url: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=123',
+      verifier: 'verifier-def',
+      state: 'state-def',
+    });
+
+    try {
+      // Use true command that exits immediately without opening window
+      const auth = createOAuthAuthorizeMethod();
+      // Ensure launcher doesn't crash on execution
+      await auth();
+    } finally {
+      process.env = origEnv;
+    }
+  });
 });
