@@ -33,6 +33,7 @@ import { agyFetch } from '../fetch';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
+import { createServer, type Server } from 'node:http';
 
 export const AGY_V2_QUOTA_COMMAND = 'agy-quota';
 export const AGY_V2_QUOTA_SUMMARY_COMMAND = 'agy-quota-summary';
@@ -276,7 +277,8 @@ export function createV2FetchInterceptor(getAuthSnapshot?: () => Promise<any> | 
   };
 }
 
-import { parseOAuthCallbackInput } from './oauth-authorize';
+import { authorizeAgy, exchangeAgyWithVerifier } from '../sdk/oauth';
+import { createOAuthAuthorizeMethod, parseOAuthCallbackInput } from './oauth-authorize';
 
 /**
  * Setup adapter for OpenCode v2 plugin architecture.
@@ -480,17 +482,11 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
         label: 'Antigravity CLI (OAuth)'
       },
       authorize: async () => {
-        const authUrl = new URL(AGY_AUTH_URL);
-        authUrl.searchParams.set('client_id', AGY_CLIENT_ID);
-        authUrl.searchParams.set('response_type', 'code');
-        authUrl.searchParams.set('redirect_uri', 'http://localhost');
-        authUrl.searchParams.set('scope', AGY_SCOPES.join(' '));
-        authUrl.searchParams.set('access_type', 'offline');
-        authUrl.searchParams.set('prompt', 'consent');
+        const authorization = await authorizeAgy();
 
         return {
           mode: 'code',
-          url: authUrl.toString(),
+          url: authorization.url,
           instructions:
             'Please complete Google account authorization in your browser. After authorization, copy the full redirect URL or code and paste it below:',
           callback: async (code: string) => {
@@ -502,44 +498,24 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
               return { type: 'failed', error: 'Missing authorization code in callback input' };
             }
 
-            const tokenResponse = await agyFetch(AGY_TOKEN_URL, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-              },
-              body: new URLSearchParams({
-                client_id: AGY_CLIENT_ID,
-                client_secret: AGY_CLIENT_SECRET,
-                code: authCode,
-                grant_type: 'authorization_code',
-                redirect_uri: 'http://localhost'
-              })
-            });
-
-            if (!tokenResponse.ok) {
-              const errorText = await tokenResponse.text();
-              return { type: 'failed', error: errorText };
+            if (parsed.state && parsed.state !== authorization.state) {
+              return { type: 'failed', error: 'State mismatch in callback input (possible CSRF attempt)' };
             }
 
-            const tokenPayload = (await tokenResponse.json()) as {
-              access_token: string;
-              expires_in: number;
-              refresh_token?: string;
-            };
-
-            if (!tokenPayload.refresh_token) {
-              return { type: 'failed', error: 'Missing refresh token in response' };
+            const exchangeResult = await exchangeAgyWithVerifier(authCode, authorization.verifier);
+            if (exchangeResult.type !== 'success') {
+              return exchangeResult;
             }
 
             const initialRefresh = formatRefreshParts({
-              refreshToken: tokenPayload.refresh_token
+              refreshToken: exchangeResult.refresh
             });
 
             let authRecord = {
               type: 'oauth' as const,
               refresh: initialRefresh,
-              access: tokenPayload.access_token,
-              expires: Date.now() + tokenPayload.expires_in * 1000
+              access: exchangeResult.access,
+              expires: exchangeResult.expires
             };
 
             try {
@@ -615,6 +591,20 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
           }
         }
 
+        if (event.request?.headers) {
+          if (typeof event.request.headers.delete === 'function') {
+            event.request.headers.delete('x-goog-api-key');
+            event.request.headers.delete('api-key');
+          } else {
+            for (const key of Object.keys(event.request.headers)) {
+              const lower = key.toLowerCase();
+              if (lower === 'x-goog-api-key' || lower === 'api-key') {
+                delete event.request.headers[key];
+              }
+            }
+          }
+        }
+
         // Strip query parameter key/x-goog-api-key/api-key if URL has them
         try {
           const parsedUrl = new URL(rawUrl);
@@ -641,24 +631,37 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
         }
 
         // Inject Authorization: Bearer <token>
-        const hasAuth = typeof event.headers.get === 'function'
-          ? !!event.headers.get('Authorization')
-          : Object.keys(event.headers).some((k) => k.toLowerCase() === 'authorization');
+      // 4. Fallback: try stored auth if not present in headers
+      const hasAuth = typeof event.headers?.get === 'function'
+        ? !!event.headers.get('Authorization')
+        : (event.headers && Object.keys(event.headers).some((k) => k.toLowerCase() === 'authorization'));
 
-        if (!hasAuth) {
-          let token: string | undefined;
-          if (typeof event.auth?.access === 'string' && event.auth.access) {
-            token = event.auth.access;
-          } else if (typeof event.auth?.token === 'string' && event.auth.token) {
-            token = event.auth.token;
-          }
-
-          if (typeof event.headers.set === 'function') {
-            event.headers.set('Authorization', `Bearer ${token || 'dummy'}`);
-          } else {
-            event.headers['Authorization'] = `Bearer ${token || 'dummy'}`;
+      if (!hasAuth) {
+        let token: string | undefined;
+        if (typeof event.auth?.access === 'string' && event.auth.access) {
+          token = event.auth.access;
+        } else if (typeof event.auth?.token === 'string' && event.auth.token) {
+          token = event.auth.token;
+        } else {
+          // Check local auth.json storage
+          const storedAuth = loadStoredAuthFromJson();
+          if (storedAuth && isOAuthAuth(storedAuth)) {
+            const resolved = resolveCachedAuth(storedAuth);
+            token = resolved.access;
           }
         }
+
+        if (token) {
+          if (typeof event.headers?.set === 'function') {
+            event.headers.set('Authorization', `Bearer ${token}`);
+          } else if (event.headers) {
+            event.headers['Authorization'] = `Bearer ${token}`;
+          }
+          if (event.request?.headers && typeof event.request.headers.set === 'function') {
+            event.request.headers.set('Authorization', `Bearer ${token}`);
+          }
+        }
+      }
       }
 
       const userAgent = buildAgyCliUserAgent(modelName);
