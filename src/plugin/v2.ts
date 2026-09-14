@@ -32,7 +32,7 @@ import { ensureProjectContext } from './project';
 import { agyFetch } from '../fetch';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 
 export const AGY_V2_QUOTA_COMMAND = 'agy-quota';
@@ -173,6 +173,37 @@ export function loadStoredAuthFromJson(): any {
     // Ignore read errors
   }
   return undefined;
+}
+
+export function saveStoredAuthToJson(authRecord: any): void {
+  // Never overwrite the user's real auth.json during tests or when testing override is active
+  if (process.env.NODE_ENV === 'test' || process.env.VITEST || storedAuthOverrideForTesting !== undefined) {
+    return;
+  }
+  try {
+    const dirPath = join(homedir(), '.local', 'share', 'opencode');
+    if (!existsSync(dirPath)) {
+      mkdirSync(dirPath, { recursive: true });
+    }
+    const authPath = join(dirPath, 'auth.json');
+    let data: Record<string, any> = {};
+    if (existsSync(authPath)) {
+      try {
+        data = JSON.parse(readFileSync(authPath, 'utf8')) || {};
+      } catch {
+        data = {};
+      }
+    }
+    data[AGY_PROVIDER_ID] = {
+      type: 'oauth',
+      refresh: authRecord.refresh,
+      access: authRecord.access,
+      expires: authRecord.expires
+    };
+    writeFileSync(authPath, JSON.stringify(data, null, 2), 'utf8');
+  } catch {
+    // Ignore write errors
+  }
 }
 
 export function createV2FetchInterceptor(getAuthSnapshot?: () => Promise<any> | any) {
@@ -540,8 +571,11 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
               // Ignore project resolution error during authorize
             }
 
+            saveStoredAuthToJson(authRecord);
+
             return {
-              type: 'success',
+              type: 'oauth',
+              methodID: 'oauth',
               refresh: authRecord.refresh,
               access: authRecord.access,
               expires: authRecord.expires
@@ -583,6 +617,27 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
       event.headers = event.headers || {};
       let modelName: string | undefined;
 
+      // Load auth record
+      let rawAuth = event.auth;
+      if (rawAuth && !rawAuth.type) {
+        const tokenVal = rawAuth.access || rawAuth.token;
+        if (tokenVal || rawAuth.refresh) {
+          rawAuth = { type: 'oauth', access: tokenVal, ...rawAuth };
+        }
+      }
+      if (!rawAuth || !isOAuthAuth(rawAuth)) {
+        rawAuth = loadStoredAuthFromJson();
+      }
+
+      let authRecord = rawAuth && isOAuthAuth(rawAuth) ? resolveCachedAuth(rawAuth) : undefined;
+      if (authRecord && accessTokenExpired(authRecord)) {
+        const refreshed = await refreshAccessToken(authRecord, { auth: { set: async () => {} } } as any);
+        if (refreshed) {
+          authRecord = refreshed;
+          saveStoredAuthToJson(refreshed);
+        }
+      }
+
       if (isGL) {
         const parsed = parseGenerativeLanguageRequest(rawUrl);
         modelName = parsed?.effectiveModel;
@@ -615,6 +670,7 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
         }
 
         // Strip query parameter key/x-goog-api-key/api-key if URL has them
+        let cleanUrl = rawUrl;
         try {
           const parsedUrl = new URL(rawUrl);
           let urlChanged = false;
@@ -625,60 +681,171 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
             }
           }
           if (urlChanged) {
-            const cleanedUrl = parsedUrl.toString();
-            if (typeof event.url === 'string') {
-              event.url = cleanedUrl;
-            }
-            if (event.request && typeof event.request === 'object') {
-              if (typeof event.request.url === 'string') {
-                event.request.url = cleanedUrl;
-              }
-            }
+            cleanUrl = parsedUrl.toString();
           }
         } catch {
           // Ignore invalid URL parse
         }
 
-        // Inject Authorization: Bearer <token>
-      // 4. Fallback: try stored auth if not present in headers
-      const hasAuth = typeof event.headers?.get === 'function'
-        ? !!event.headers.get('Authorization')
-        : (event.headers && Object.keys(event.headers).some((k) => k.toLowerCase() === 'authorization'));
+        // If we have auth, perform full URL and body transformation via prepareAgyRequest
+        if (authRecord && authRecord.access) {
+          let projectContext: { effectiveProjectId: string; auth: any };
+          try {
+            projectContext = await ensureProjectContext(
+              authRecord,
+              { auth: { set: async () => {} } } as any,
+              undefined,
+              modelName
+            );
+          } catch {
+            projectContext = {
+              effectiveProjectId: parseRefreshParts(authRecord.refresh).projectId || 'antigravity',
+              auth: authRecord
+            };
+          }
 
-      if (!hasAuth) {
-        let token: string | undefined;
-        if (typeof event.auth?.access === 'string' && event.auth.access) {
-          token = event.auth.access;
-        } else if (typeof event.auth?.token === 'string' && event.auth.token) {
-          token = event.auth.token;
+          const originalRequestedModel = modelName;
+          let modifiedUrl = cleanUrl;
+          if (originalRequestedModel) {
+            const originalBase = originalRequestedModel.replace('google-agy/', '');
+            const initHeaders = event.headers instanceof Headers ? event.headers : event.request?.headers;
+            const resolvedBase = resolveModelTier(originalBase, { headers: initHeaders });
+            if (originalBase !== resolvedBase) {
+              modifiedUrl = modifiedUrl.replace(`models/${originalBase}`, `models/${resolvedBase}`);
+            }
+          }
+
+          // Read body from event.body or event.request
+          let bodyPayload: any = event.body;
+          if (bodyPayload === undefined && event.request) {
+            if (typeof event.request.clone === 'function') {
+              try {
+                bodyPayload = await event.request.clone().text();
+              } catch {
+                // Ignore clone read error
+              }
+            } else if (event.request.body !== undefined) {
+              bodyPayload = event.request.body;
+            }
+          }
+
+          // Check if caller supplied custom user-agent
+          let preExistingUserAgent: string | undefined;
+          if (typeof event.headers?.get === 'function') {
+            preExistingUserAgent = event.headers.get('user-agent') || event.headers.get('User-Agent') || undefined;
+          } else if (event.headers && typeof event.headers === 'object') {
+            preExistingUserAgent = (event.headers['user-agent'] as string) || (event.headers['User-Agent'] as string) || undefined;
+          }
+          if (!preExistingUserAgent && typeof event.request?.headers?.get === 'function') {
+            preExistingUserAgent = event.request.headers.get('user-agent') || event.request.headers.get('User-Agent') || undefined;
+          } else if (!preExistingUserAgent && event.request?.headers && typeof event.request.headers === 'object') {
+            preExistingUserAgent = (event.request.headers['user-agent'] as string) || (event.request.headers['User-Agent'] as string) || undefined;
+          }
+
+          const method = event.method || event.request?.method || 'POST';
+          const requestHeaders = event.headers || event.request?.headers;
+          const transformed = prepareAgyRequest(
+            modifiedUrl,
+            {
+              method,
+              headers: requestHeaders,
+              body: bodyPayload
+            },
+            authRecord.access,
+            projectContext.effectiveProjectId
+          );
+
+          // Update URL to Code Assist endpoint
+          const targetUrl = toUrlString(transformed.request);
+          if (typeof event.url === 'string') {
+            event.url = targetUrl;
+          }
+          if (event.request && typeof event.request === 'object') {
+            if (typeof event.request.url === 'string') {
+              event.request.url = targetUrl;
+            }
+            if (typeof Request !== 'undefined' && event.request instanceof Request) {
+              event.request = new Request(targetUrl, {
+                method: transformed.init.method,
+                headers: transformed.init.headers,
+                body: transformed.init.body
+              });
+            }
+          }
+
+          // Update headers
+          const headerEntries = transformed.init.headers instanceof Headers
+            ? Array.from(transformed.init.headers.entries())
+            : Object.entries(transformed.init.headers || {});
+
+          for (const [k, v] of headerEntries) {
+            const lowerK = k.toLowerCase();
+            if (lowerK === 'user-agent') {
+              if (preExistingUserAgent) {
+                continue;
+              }
+              // If no pre-existing user-agent, set as 'User-Agent' on plain objects
+              if (typeof event.headers?.set === 'function') {
+                event.headers.set('User-Agent', v);
+              } else if (event.headers) {
+                event.headers['User-Agent'] = v;
+              }
+              if (event.request?.headers && typeof event.request.headers.set === 'function') {
+                event.request.headers.set('User-Agent', v);
+              } else if (event.request?.headers && typeof event.request.headers === 'object') {
+                event.request.headers['User-Agent'] = v;
+              }
+              continue;
+            }
+            if (typeof event.headers?.set === 'function') {
+              event.headers.set(k, v);
+            } else if (event.headers) {
+              event.headers[k] = v;
+            }
+            if (event.request?.headers && typeof event.request.headers.set === 'function') {
+              event.request.headers.set(k, v);
+            } else if (event.request?.headers && typeof event.request.headers === 'object') {
+              event.request.headers[k] = v;
+            }
+          }
+
+          // Update body
+          if (transformed.init.body !== undefined) {
+            event.body = transformed.init.body;
+            if (event.request && typeof event.request === 'object' && !(event.request instanceof Request)) {
+              event.request.body = transformed.init.body;
+            }
+          }
         } else {
-          // Check local auth.json storage
-          const storedAuth = loadStoredAuthFromJson();
-          if (storedAuth && isOAuthAuth(storedAuth)) {
-            const resolved = resolveCachedAuth(storedAuth);
-            token = resolved.access;
+          // Fallback if no auth: update cleaned URL
+          if (typeof event.url === 'string') {
+            event.url = cleanUrl;
           }
-        }
-
-        if (token) {
-          if (typeof event.headers?.set === 'function') {
-            event.headers.set('Authorization', `Bearer ${token}`);
-          } else if (event.headers) {
-            event.headers['Authorization'] = `Bearer ${token}`;
-          }
-          if (event.request?.headers && typeof event.request.headers.set === 'function') {
-            event.request.headers.set('Authorization', `Bearer ${token}`);
+          if (event.request && typeof event.request === 'object') {
+            if (typeof event.request.url === 'string') {
+              event.request.url = cleanUrl;
+            }
           }
         }
       }
+
+      if (authRecord && authRecord.access) {
+        if (typeof event.headers?.set === 'function') {
+          event.headers.set('Authorization', `Bearer ${authRecord.access}`);
+        } else if (event.headers) {
+          event.headers['Authorization'] = `Bearer ${authRecord.access}`;
+        }
+        if (event.request?.headers && typeof event.request.headers.set === 'function') {
+          event.request.headers.set('Authorization', `Bearer ${authRecord.access}`);
+        }
       }
 
       const userAgent = buildAgyCliUserAgent(modelName);
-      if (typeof event.headers.set === 'function') {
-        if (!event.headers.get('User-Agent')) {
+      if (typeof event.headers?.set === 'function') {
+        if (!event.headers.get('User-Agent') && !event.headers.get('user-agent')) {
           event.headers.set('User-Agent', userAgent);
         }
-      } else {
+      } else if (event.headers) {
         if (!event.headers['User-Agent'] && !event.headers['user-agent']) {
           event.headers['User-Agent'] = userAgent;
         }
@@ -690,10 +857,25 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
   ctx.session.hook(
     'http.response',
     async (event: any) => {
-      if (!event) return;
-      // Log or trace response status if needed
-      if (event.response?.status === 429) {
-        return;
+      if (!event || !event.response) return;
+
+      const rawUrl = typeof event.url === 'string' ? event.url : (event.request?.url || '');
+      const isInternal = rawUrl.includes('cloudcode-pa.googleapis.com');
+
+      if (isInternal && event.response instanceof Response) {
+        const isStreaming = rawUrl.includes(':streamGenerateCode') ||
+          event.response.headers.get('content-type')?.includes('text/event-stream');
+
+        const parsedModel = parseGenerativeLanguageRequest(rawUrl)?.effectiveModel;
+        const transformed = transformAgyResponse(
+          event.response,
+          !!isStreaming,
+          null,
+          parsedModel,
+          undefined,
+          undefined
+        );
+        event.response = transformed;
       }
     },
     { providerID: AGY_PROVIDER_ID }
