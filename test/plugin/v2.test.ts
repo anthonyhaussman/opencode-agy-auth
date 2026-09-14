@@ -325,7 +325,7 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
 
     const authorizeRes = await methodUpdateMock.mock.calls[0][0].authorize();
     expect(authorizeRes.mode).toBe('code');
-    expect(authorizeRes.url).toContain('https://accounts.google.com/o/oauth2/auth');
+    expect(authorizeRes.url).toContain('https://accounts.google.com/o/oauth2/v2/auth');
     expect(authorizeRes.url).toContain('response_type=code');
     expect(authorizeRes.url).toContain('client_id=');
     expect(authorizeRes.url).toContain('redirect_uri=');
@@ -349,39 +349,59 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
       expect(tokenFailRes.error).toBe('invalid_grant');
 
       // Test callback with mock token exchange success without refresh token
-      globalThis.fetch = vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ access_token: 'acc', expires_in: 3600 }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        })
-      );
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('oauth2/v1/userinfo')) {
+          return Promise.resolve(new Response(JSON.stringify({ email: 'test@example.com' }), { status: 200 }));
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify({ access_token: 'acc', expires_in: 3600 }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+      });
       const noRefreshRes = await authorizeRes.callback('test-code');
       expect(noRefreshRes.type).toBe('failed');
       expect(noRefreshRes.error).toContain('Missing refresh token');
 
       // Test callback with mock token exchange success
-      globalThis.fetch = vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ access_token: 'acc', refresh_token: 'ref', expires_in: 3600 }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        })
-      );
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('oauth2/v1/userinfo')) {
+          return Promise.resolve(new Response(JSON.stringify({ email: 'test@example.com' }), { status: 200 }));
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify({ access_token: 'acc', refresh_token: 'ref', expires_in: 3600 }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+      });
       const successRes = await authorizeRes.callback('https://antigravity.google/oauth-callback?code=good-code');
       expect(successRes.type).toBe('success');
       expect(successRes.access).toBe('acc');
       expect(successRes.refresh).toContain('ref');
+
+      // Test callback with localhost loopback redirect url format
+      const loopbackSuccessRes = await authorizeRes.callback('http://127.0.0.1:8085/?code=loopback-code');
+      expect(loopbackSuccessRes.type).toBe('success');
+      expect(loopbackSuccessRes.access).toBe('acc');
     } finally {
       globalThis.fetch = originalFetch;
     }
 
     // Test callback with valid refresh token that fails project resolution
     try {
-      globalThis.fetch = vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ access_token: 'acc', refresh_token: 'ref', expires_in: 3600 }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        })
-      );
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('oauth2/v1/userinfo')) {
+          return Promise.resolve(new Response(JSON.stringify({ email: 'test@example.com' }), { status: 200 }));
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify({ access_token: 'acc', refresh_token: 'ref', expires_in: 3600 }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+      });
       // Spy ensureProjectContext or trigger its failure path
       const successWithFallbackProject = await authorizeRes.callback('test-code');
       expect(successWithFallbackProject.type).toBe('success');
@@ -636,7 +656,8 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     // Injects User-Agent for Google GL URL with plain object headers
     const glEvent: any = {
       url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
-      headers: {}
+      headers: {},
+      auth: { access: 'dummy' }
     };
     await onRequest(glEvent);
     expect(glEvent.headers['User-Agent']).toContain('antigravity');
@@ -675,6 +696,20 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     expect(plainHeadersObj['api-key']).toBeUndefined();
     expect(plainHeadersObj['Authorization']).toBe('Bearer token-property-test');
     expect(reqObjEvent.request.url).toBe('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent');
+
+    // Test automatic credential loading from stored auth.json if event.auth is missing
+    const reqWithNoAuthEvent: any = {
+      request: {
+        url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
+        headers: new Headers({ 'x-goog-api-key': 'old-key', 'api-key': 'old-key-2' })
+      },
+      headers: new Headers()
+    };
+    await onRequest(reqWithNoAuthEvent);
+    expect(reqWithNoAuthEvent.request.headers.get('x-goog-api-key')).toBeNull();
+    expect(reqWithNoAuthEvent.request.headers.get('api-key')).toBeNull();
+    expect(reqWithNoAuthEvent.request.headers.get('Authorization')).toMatch(/^Bearer /);
+    expect(reqWithNoAuthEvent.headers.get('Authorization')).toMatch(/^Bearer /);
 
     // Injects User-Agent for CloudCode PA internal endpoint with Headers object
     const internalHeaders = new Headers();
