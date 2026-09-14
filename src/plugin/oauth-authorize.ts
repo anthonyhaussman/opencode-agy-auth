@@ -157,7 +157,7 @@ export function setOpenBrowserLauncherForTesting(launcher: typeof openBrowserLau
   openBrowserLauncher = launcher ?? defaultOpenBrowserLauncher;
 }
 
-function defaultOpenBrowserLauncher(command: string, args: string[]) {
+export function defaultOpenBrowserLauncher(command: string, args: string[]) {
   const child = spawn(command, args, {
     stdio: 'ignore',
     detached: true
@@ -168,6 +168,10 @@ function defaultOpenBrowserLauncher(command: string, args: string[]) {
 let openBrowserLauncher = defaultOpenBrowserLauncher;
 
 function openBrowserUrl(url: string): void {
+  // If no mock launcher is provided during tests, skip opening real desktop browser
+  if ((process.env.NODE_ENV === 'test' || process.env.VITEST) && openBrowserLauncher === defaultOpenBrowserLauncher) {
+    return;
+  }
   try {
     const platform = process.platform;
     const command =
