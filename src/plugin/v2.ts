@@ -152,7 +152,16 @@ export function resolveModelTier(baseModelId: string, init?: RequestInit): strin
   return mapping['medium'] ?? mapping['high'];
 }
 
+let storedAuthOverrideForTesting: any = undefined;
+
+export function setStoredAuthOverrideForTesting(override: any): void {
+  storedAuthOverrideForTesting = override;
+}
+
 export function loadStoredAuthFromJson(): any {
+  if (storedAuthOverrideForTesting !== undefined) {
+    return storedAuthOverrideForTesting;
+  }
   const authPath = join(homedir(), '.local', 'share', 'opencode', 'auth.json');
   try {
     if (existsSync(authPath)) {
