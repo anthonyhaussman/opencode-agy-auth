@@ -784,6 +784,124 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     await onRequest(customEvent);
     expect(customHeaders['User-Agent']).toBe('custom-agent');
 
+    // Test with native Request instance as event.request
+    const nativeReq = new Request('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: 'hi' }] }] })
+    });
+    const nativeReqEvent: any = {
+      request: nativeReq,
+      auth: {
+        type: 'oauth',
+        access: 'native-req-token',
+        refresh: 'ref|proj|mproj',
+        expires: Date.now() + 3600000
+      }
+    };
+    await onRequest(nativeReqEvent);
+    expect(nativeReqEvent.request).toBeInstanceOf(Request);
+    expect(nativeReqEvent.request.url).toContain('cloudcode-pa.googleapis.com');
+    expect(nativeReqEvent.request.headers.get('Authorization')).toContain('Bearer ');
+
+    // Test with plain object request containing custom headers instance and body
+    const reqHeadersInstance = new Headers();
+    const plainReqWithHeadersEvent: any = {
+      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
+      request: {
+        url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
+        headers: reqHeadersInstance,
+        body: JSON.stringify({ contents: [{ parts: [{ text: 'test-body' }] }] })
+      },
+      auth: {
+        type: 'oauth',
+        access: 'custom-headers-token',
+        refresh: 'ref|proj|mproj',
+        expires: Date.now() + 3600000
+      }
+    };
+    await onRequest(plainReqWithHeadersEvent);
+    expect(reqHeadersInstance.get('Authorization')).toContain('Bearer ');
+    expect(plainReqWithHeadersEvent.request.url).toContain('cloudcode-pa.googleapis.com');
+    expect(plainReqWithHeadersEvent.request.body).toBeDefined();
+
+    // Test with plain object request and plain object headers for GL endpoint (covers lines 742, 799, 811)
+    const plainHeadersRecord: Record<string, string> = {
+      'x-goog-api-key': 'old-key'
+    };
+    const plainReqRecordEvent: any = {
+      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
+      request: {
+        url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
+        headers: plainHeadersRecord,
+        body: JSON.stringify({ contents: [{ parts: [{ text: 'test-body-record' }] }] })
+      },
+      auth: {
+        type: 'oauth',
+        access: 'record-headers-token',
+        refresh: 'ref|proj|mproj',
+        expires: Date.now() + 3600000
+      }
+    };
+    await onRequest(plainReqRecordEvent);
+    expect(plainHeadersRecord['Authorization']).toContain('Bearer ');
+    expect(plainHeadersRecord['User-Agent']).toContain('antigravity');
+    expect(plainHeadersRecord['x-goog-api-key']).toBeUndefined();
+    expect(plainReqRecordEvent.request.url).toContain('cloudcode-pa.googleapis.com');
+
+    // Test with preExistingUserAgent in event.headers plain object (covers line 788 continue)
+    const customUserAgentEvent: any = {
+      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
+      headers: {
+        'user-agent': 'custom-client-ua/2.0'
+      },
+      auth: {
+        type: 'oauth',
+        access: 'custom-ua-token',
+        refresh: 'ref|proj|mproj',
+        expires: Date.now() + 3600000
+      }
+    };
+    await onRequest(customUserAgentEvent);
+    expect(customUserAgentEvent.headers['user-agent']).toBe('custom-client-ua/2.0');
+
+    // Test with plain object request and plain object headers for internal endpoint
+    const internalPlainReqHeaders: Record<string, string> = {};
+    const internalReqHeadersEvent: any = {
+      url: 'https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels',
+      request: {
+        url: 'https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels',
+        headers: internalPlainReqHeaders
+      },
+      auth: {
+        type: 'oauth',
+        access: 'internal-token',
+        refresh: 'ref|proj|mproj',
+        expires: Date.now() + 3600000
+      }
+    };
+    await onRequest(internalReqHeadersEvent);
+    expect(internalPlainReqHeaders['Authorization']).toContain('Bearer ');
+    expect(internalPlainReqHeaders['User-Agent']).toContain('antigravity');
+
+    // Test with event.request.headers as Headers instance for internal endpoint
+    const internalHeadersObj = new Headers();
+    const internalReqHeadersObjEvent: any = {
+      url: 'https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels',
+      request: {
+        url: 'https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels',
+        headers: internalHeadersObj
+      },
+      auth: {
+        type: 'oauth',
+        access: 'internal-token-2',
+        refresh: 'ref|proj|mproj',
+        expires: Date.now() + 3600000
+      }
+    };
+    await onRequest(internalReqHeadersObjEvent);
+    expect(internalHeadersObj.get('Authorization')).toContain('Bearer ');
+
     // Safe with null event
     await onRequest(null);
   });
