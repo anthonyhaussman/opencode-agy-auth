@@ -761,15 +761,18 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
             event.url = targetUrl;
           }
           if (event.request && typeof event.request === 'object') {
-            if (typeof event.request.url === 'string') {
-              event.request.url = targetUrl;
-            }
             if (typeof Request !== 'undefined' && event.request instanceof Request) {
               event.request = new Request(targetUrl, {
                 method: transformed.init.method,
                 headers: transformed.init.headers,
                 body: transformed.init.body
               });
+            } else if (typeof event.request.url === 'string') {
+              try {
+                event.request.url = targetUrl;
+              } catch {
+                // Ignore setter error on read-only url property
+              }
             }
           }
 
@@ -837,6 +840,8 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
         }
         if (event.request?.headers && typeof event.request.headers.set === 'function') {
           event.request.headers.set('Authorization', `Bearer ${authRecord.access}`);
+        } else if (event.request?.headers && typeof event.request.headers === 'object') {
+          event.request.headers['Authorization'] = `Bearer ${authRecord.access}`;
         }
       }
 
@@ -848,6 +853,15 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
       } else if (event.headers) {
         if (!event.headers['User-Agent'] && !event.headers['user-agent']) {
           event.headers['User-Agent'] = userAgent;
+        }
+      }
+      if (event.request?.headers && typeof event.request.headers.set === 'function') {
+        if (!event.request.headers.get('User-Agent') && !event.request.headers.get('user-agent')) {
+          event.request.headers.set('User-Agent', userAgent);
+        }
+      } else if (event.request?.headers && typeof event.request.headers === 'object') {
+        if (!event.request.headers['User-Agent'] && !event.request.headers['user-agent']) {
+          event.request.headers['User-Agent'] = userAgent;
         }
       }
     },
