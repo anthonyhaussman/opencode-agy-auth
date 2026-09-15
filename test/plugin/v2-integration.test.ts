@@ -231,6 +231,54 @@ describe('OpenCode v2 Integration and Edge Cases', () => {
       await onResponse({ response: { status: 429 } });
       await onResponse({ response: { status: 500 } });
     });
+
+    it('transforms internal Code Assist response and yields a Response object with numeric status', async () => {
+      const harness = createMockContext();
+      await setupOpenCodeV2(harness.ctx);
+      const onRequest = harness.getSessionHook('http.request');
+      const onResponse = harness.getSessionHook('http.response');
+
+      const reqEvent: any = {
+        url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
+        headers: {},
+        auth: {
+          type: 'oauth',
+          access: 'test-token',
+          refresh: 'token|project-123|citric-engine-123'
+        },
+        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Hello World' }] }] })
+      };
+      await onRequest(reqEvent);
+
+      const agyPayload = {
+        candidates: [
+          {
+            content: {
+              parts: [{ text: 'Hello World response' }],
+              role: 'model'
+            },
+            finishReason: 'STOP'
+          }
+        ]
+      };
+
+      const respEvent: any = {
+        url: reqEvent.url, // rewritten to cloudcode-pa.googleapis.com
+        response: new Response(JSON.stringify(agyPayload), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })
+      };
+
+      await onResponse(respEvent);
+
+      expect(respEvent.response).toBeInstanceOf(Response);
+      expect(typeof respEvent.response.status).toBe('number');
+      expect(respEvent.response.status).toBe(200);
+
+      const body = await respEvent.response.json();
+      expect(body.candidates[0].content.parts[0].text).toBe('Hello World response');
+    });
   });
 
   describe('session retry hook edge cases', () => {
