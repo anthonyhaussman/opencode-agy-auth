@@ -140,7 +140,7 @@ To test and develop the plugin locally with OpenCode before publishing:
 
 ## Alpha Channel (Pre-release)
 
-To test bleeding-edge features or upcoming changes before official releases, configure the `@alpha` distribution tag:
+To test bleeding-edge features, upcoming changes, or [OpenCode v2](https://opencode.ai/v2/docs) compatibility before official releases, configure the `@alpha` distribution tag:
 
 ```bash
 npm install @anthonyhaussman/opencode-agy-auth@alpha
@@ -153,6 +153,10 @@ Or configure it directly in your `opencode.json`:
   "plugin": ["@anthonyhaussman/opencode-agy-auth@alpha"]
 }
 ```
+
+### OpenCode v2 Compatibility
+
+The `@alpha` channel provides dual compatibility with both OpenCode v1 and [OpenCode v2](https://opencode.ai/v2/docs), supporting the new v2 plugin architecture, unified hooks, and OAuth credential handling while maintaining full backward compatibility.
 
 > [!WARNING]
 > **Instability Warning**: The `@alpha` release contains experimental features, active development builds, and potential breaking protocol changes. It may be unstable, break unexpectedly, or cause disruptions in session authentication and model requests. Use only for testing and development. For day-to-day work, use the stable release.
