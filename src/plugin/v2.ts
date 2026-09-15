@@ -600,6 +600,9 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
     event.options.fetch = createV2FetchInterceptor();
   });
 
+  // Track model across request and response in session hooks
+  let lastInterceptedModel: string | undefined;
+
   // 5. Register session hooks
   ctx.session.hook(
     'http.request',
@@ -641,6 +644,9 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
       if (isGL) {
         const parsed = parseGenerativeLanguageRequest(rawUrl);
         modelName = parsed?.effectiveModel;
+        if (modelName) {
+          lastInterceptedModel = modelName;
+        }
 
         // Strip x-goog-api-key and api-key from headers
         if (typeof event.headers.delete === 'function') {
@@ -880,8 +886,8 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
         const isStreaming = rawUrl.includes(':streamGenerateCode') ||
           event.response.headers.get('content-type')?.includes('text/event-stream');
 
-        const parsedModel = parseGenerativeLanguageRequest(rawUrl)?.effectiveModel;
-        const transformed = transformAgyResponse(
+        const parsedModel = parseGenerativeLanguageRequest(rawUrl)?.effectiveModel || lastInterceptedModel;
+        const transformed = await transformAgyResponse(
           event.response,
           !!isStreaming,
           null,
