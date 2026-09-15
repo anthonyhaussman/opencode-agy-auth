@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.3](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.2.2...1.2.3) (2026-09-15)
+
+
+### Features
+
+* **agy:** bump agy CLI to v1.2.3 ([1ed1092](https://github.com/anthonyhaussman/opencode-agy-auth/commit/1ed10922bc9a31f708c0fc3c5a230fa0ae01a377))
+
+
+### Bug Fixes
+
+* **request:** stringify tool schema enums for Gemini API ([cd09046](https://github.com/anthonyhaussman/opencode-agy-auth/commit/cd090462f6169b98e27c0d2cd32f8f167ce0fcae))
+
 ## [1.2.2](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.2.1...1.2.2) (2026-09-12)
 
 
