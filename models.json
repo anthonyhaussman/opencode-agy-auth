@@ -48,7 +48,6 @@
     106015333,
     106568772,
     105867471,
-    106548982,
     106123599,
     106121401,
     106100625,
@@ -147,7 +146,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-09-12T16:17:47Z"
+        "resetTime": "2026-09-15T07:48:02Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -186,7 +185,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-09-12T16:17:47Z"
+        "resetTime": "2026-09-15T07:48:02Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -222,8 +221,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -299,8 +298,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -376,8 +375,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -450,8 +449,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "requiresImageOutputOutsideFunctionResponses": true,
@@ -525,8 +524,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -600,8 +599,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -664,8 +663,8 @@
       "model": "MODEL_PLACEHOLDER_M21",
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       }
     },
     "gemini-3.1-flash-lite": {
@@ -683,8 +682,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       }
     },
     "gemini-3.1-pro-high": {
@@ -715,8 +714,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -800,8 +799,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -875,8 +874,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -952,8 +951,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1029,8 +1028,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1118,8 +1117,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1207,8 +1206,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1296,8 +1295,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1384,8 +1383,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1465,8 +1464,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1548,8 +1547,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1631,8 +1630,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1713,8 +1712,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1794,8 +1793,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1877,8 +1876,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1960,8 +1959,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -2042,8 +2041,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -2126,8 +2125,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9785579,
-        "resetTime": "2026-09-12T16:15:34Z"
+        "remainingFraction": 0.967206,
+        "resetTime": "2026-09-15T07:33:42Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -2198,7 +2197,7 @@
       "modelProvider": "MODEL_PROVIDER_OPENAI",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-09-12T16:17:47Z"
+        "resetTime": "2026-09-15T07:48:02Z"
       },
       "recommended": true,
       "supportsThinking": true,
@@ -2256,6 +2255,6 @@
     ]
   },
   "webSearchModelIds": [
-    "gemini-3.5-flash-lite"
+    "gemini-3.1-flash-lite"
   ]
 }
