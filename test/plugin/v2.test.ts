@@ -940,6 +940,9 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     };
     await onResponse(internalRespEvent);
     expect(internalRespEvent.response).toBeDefined();
+    expect(internalRespEvent.response).toBeInstanceOf(Response);
+    expect(typeof internalRespEvent.response.status).toBe('number');
+    expect(internalRespEvent.response.status).toBe(200);
 
     const onRetry = sessionHooks['retry'];
     expect(onRetry).toBeDefined();
