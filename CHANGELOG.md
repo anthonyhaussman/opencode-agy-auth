@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.4](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.2.3...1.2.4) (2026-09-16)
+
+
+### Features
+
+* **agy:** bump agy CLI to v1.2.4 ([52b3700](https://github.com/anthonyhaussman/opencode-agy-auth/commit/52b3700919bcc75e5be20f1c73add43fde052b93))
+
+
+### Documentation
+
+* **readme:** note opencode v2 support in alpha ([0bb4a02](https://github.com/anthonyhaussman/opencode-agy-auth/commit/0bb4a0227acdc5b0d6e3d5bc04d32bcd246dc05f))
+
 ## [1.2.3](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.2.2...1.2.3) (2026-09-15)
 
 
