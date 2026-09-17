@@ -42,7 +42,7 @@
     "vitest": "^4.1.11"
   },
   "dependencies": {
-    "@ai-sdk/google": "^4.0.72",
+    "@ai-sdk/google": "^4.0.74",
     "@openauthjs/openauth": "^0.4.3",
     "@opencode-ai/plugin": "^1.18.31"
   }

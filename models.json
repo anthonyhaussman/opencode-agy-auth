@@ -43,6 +43,7 @@
   },
   "experimentIds": [
     106140402,
+    106519115,
     105979552,
     105979574,
     106015333,
@@ -146,7 +147,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-09-16T09:06:33Z"
+        "resetTime": "2026-09-17T11:40:46Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -185,7 +186,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-09-16T09:06:33Z"
+        "resetTime": "2026-09-17T11:40:46Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -221,14 +222,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -298,14 +305,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -375,14 +388,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -449,15 +468,21 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "requiresImageOutputOutsideFunctionResponses": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -524,14 +549,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -599,14 +630,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -663,8 +700,8 @@
       "model": "MODEL_PLACEHOLDER_M21",
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       }
     },
     "gemini-3.1-flash-lite": {
@@ -682,8 +719,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       }
     },
     "gemini-3.1-pro-high": {
@@ -714,14 +751,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -799,14 +842,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -874,14 +923,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -951,14 +1006,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -1028,14 +1089,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -1117,14 +1184,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -1206,14 +1279,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -1295,14 +1374,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -1383,14 +1468,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -1464,14 +1555,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -1547,14 +1644,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -1630,14 +1733,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -1712,14 +1821,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -1793,14 +1908,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -1876,14 +1997,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -1959,14 +2086,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -2041,14 +2174,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -2125,14 +2264,20 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9615639,
-        "resetTime": "2026-09-16T08:58:14Z"
+        "remainingFraction": 0.9790073,
+        "resetTime": "2026-09-17T09:29:22Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
         "application/json": true,
+        "application/msword": true,
         "application/pdf": true,
         "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
         "application/x-ipynb+json": true,
         "application/x-javascript": true,
         "application/x-python-code": true,
@@ -2197,7 +2342,7 @@
       "modelProvider": "MODEL_PROVIDER_OPENAI",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-09-16T09:06:33Z"
+        "resetTime": "2026-09-17T11:40:46Z"
       },
       "recommended": true,
       "supportsThinking": true,
