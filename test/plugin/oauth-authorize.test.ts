@@ -187,7 +187,8 @@ describe('oauth-authorize', () => {
     try {
       const auth = createOAuthAuthorizeMethod();
       await auth();
-      expect(launcherMock).toHaveBeenCalledWith('xdg-open', [
+      const expectedCmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
+      expect(launcherMock).toHaveBeenCalledWith(expectedCmd, [
         'https://accounts.google.com/o/oauth2/v2/auth?client_id=123'
       ]);
     } finally {

@@ -55,7 +55,9 @@ export interface OpenCodeV2PluginLocation {
 }
 
 export interface OpenCodeV2PluginContext {
-  catalog: OpenCodeV2TransformRegistry;
+  catalog?: OpenCodeV2TransformRegistry;
+  provider?: OpenCodeV2TransformRegistry;
+  model?: OpenCodeV2TransformRegistry;
   tool: OpenCodeV2TransformRegistry;
   command: OpenCodeV2TransformRegistry;
   session: OpenCodeV2SessionRegistry;
