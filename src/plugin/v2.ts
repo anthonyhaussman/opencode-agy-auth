@@ -324,105 +324,154 @@ import { createOAuthAuthorizeMethod, parseOAuthCallbackInput } from './oauth-aut
  * Setup adapter for OpenCode v2 plugin architecture.
  */
 export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<void> {
-  // 1. Register provider and models via catalog transform
-  ctx.catalog.transform(async (editor: any) => {
-    if (!editor) return;
+  // 1. Register provider and models
+  const resolveVariants = (modelId: string) => {
+    const mapping = TIER_MAPPING[modelId];
+    if (!mapping) return undefined;
+    const variants: Array<{ id: string }> = [];
+    if (mapping.minimal !== undefined) variants.push({ id: 'minimal' });
+    if (mapping.low !== undefined) variants.push({ id: 'low' });
+    if (mapping.medium !== undefined) variants.push({ id: 'medium' });
+    if (mapping.high !== undefined) variants.push({ id: 'high' });
+    return variants.length > 0 ? variants : undefined;
+  };
 
-    const resolveVariants = (modelId: string) => {
-      const mapping = TIER_MAPPING[modelId];
-      if (!mapping) return undefined;
-      const variants: Array<{ id: string }> = [];
-      if (mapping.minimal !== undefined) variants.push({ id: 'minimal' });
-      if (mapping.low !== undefined) variants.push({ id: 'low' });
-      if (mapping.medium !== undefined) variants.push({ id: 'medium' });
-      if (mapping.high !== undefined) variants.push({ id: 'high' });
-      return variants.length > 0 ? variants : undefined;
+  const updateProviderRecord = (p: any) => {
+    p.name = 'Antigravity CLI';
+    p.activation = 'enabled';
+    p.package = 'aisdk:@ai-sdk/google';
+    p.description = 'Google Gemini Antigravity Code Assist OAuth provider';
+    p.settings = { ...(p.settings || {}), apiKey: 'dummy' };
+    p.integrationID = AGY_PROVIDER_ID;
+  };
+
+  const buildModelRecord = (modelId: string, simple: any, existingModel?: any) => {
+    const isClaude = modelId.startsWith('claude-');
+    const isGpt = modelId.startsWith('gpt-');
+    const variants = resolveVariants(modelId);
+    return {
+      id: modelId,
+      providerID: AGY_PROVIDER_ID,
+      name: simple.name,
+      description: simple.description,
+      family: modelId.includes('gemini') ? 'gemini' : (isClaude ? 'claude' : (isGpt ? 'gpt' : 'unknown')),
+      reasoning: simple.reasoning,
+      attachment: simple.attachment,
+      tool_call: simple.toolCall,
+      limit: {
+        context: simple.maxTokens,
+        output: simple.maxOutputTokens
+      },
+      cost: simple.cost || { input: 0, output: 0 },
+      ...(variants ? { variants } : {}),
+      ...(existingModel || {})
     };
+  };
 
-    if (typeof editor?.provider?.update === 'function') {
-      editor.provider.update(AGY_PROVIDER_ID, (p: any) => {
-        p.name = 'Antigravity CLI';
-        p.activation = 'enabled';
-        p.package = 'aisdk:@ai-sdk/google';
-        p.description = 'Google Gemini Antigravity Code Assist OAuth provider';
-        p.settings = { ...(p.settings || {}), apiKey: 'dummy' };
-        p.integrationID = AGY_PROVIDER_ID;
-      });
+  const updateModelRecord = (m: any, modelId: string, simple: any) => {
+    m.name = simple.name;
+    m.capabilities = {
+      tools: true,
+      input: ['text', 'image'],
+      output: ['text']
+    };
+    m.limit = {
+      context: simple.maxTokens,
+      output: simple.maxOutputTokens
+    };
+    m.family = 'gemini';
+    if (simple.cost) {
+      m.cost = simple.cost;
+    }
+    const variants = resolveVariants(modelId);
+    if (variants) {
+      m.variants = variants;
+    }
+  };
 
-      if (typeof editor?.model?.update === 'function') {
+  // OpenCode v2.0.8+ splits catalog into top-level provider and model services
+  if (ctx.provider?.transform) {
+    ctx.provider.transform(async (editor: any) => {
+      if (!editor) return;
+      if (typeof editor.update === 'function') {
+        editor.update(AGY_PROVIDER_ID, updateProviderRecord);
+      } else if (typeof editor.set === 'function') {
+        const p: any = { id: AGY_PROVIDER_ID };
+        updateProviderRecord(p);
+        editor.set(AGY_PROVIDER_ID, p);
+      } else if (typeof editor === 'object') {
+        const p: any = editor[AGY_PROVIDER_ID] || { id: AGY_PROVIDER_ID };
+        updateProviderRecord(p);
+        editor[AGY_PROVIDER_ID] = p;
+      }
+    });
+  }
+
+  if (ctx.model?.transform) {
+    ctx.model.transform(async (editor: any) => {
+      if (!editor) return;
+      if (typeof editor.update === 'function') {
         for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
-          editor.model.update(AGY_PROVIDER_ID, modelId, (m: any) => {
-            m.name = simple.name;
-            m.capabilities = {
-              tools: true,
-              input: ['text', 'image'],
-              output: ['text']
-            };
-            m.limit = {
-              context: simple.maxTokens,
-              output: simple.maxOutputTokens
-            };
-            m.family = 'gemini';
-            if (simple.cost) {
-              m.cost = simple.cost;
-            }
-            const variants = resolveVariants(modelId);
-            if (variants) {
-              m.variants = variants;
-            }
-          });
+          editor.update(AGY_PROVIDER_ID, modelId, (m: any) => updateModelRecord(m, modelId, simple));
+        }
+      } else if (typeof editor.set === 'function') {
+        for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
+          const m = buildModelRecord(modelId, simple);
+          editor.set(`${AGY_PROVIDER_ID}:${modelId}`, m);
+        }
+      } else if (typeof editor === 'object') {
+        for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
+          const key = `${AGY_PROVIDER_ID}:${modelId}`;
+          editor[key] = buildModelRecord(modelId, simple, editor[key]);
         }
       }
-      return;
-    }
+    });
+  }
 
-    const catalog = editor;
-    catalog.providers = catalog.providers || {};
-    catalog.providers[AGY_PROVIDER_ID] = {
-      id: AGY_PROVIDER_ID,
-      name: 'Antigravity CLI',
-      npm: 'aisdk:@ai-sdk/google',
-      settings: { apiKey: 'dummy' },
-      integrationID: AGY_PROVIDER_ID,
-      models: { ...(catalog.providers[AGY_PROVIDER_ID]?.models || {}) },
-      ...catalog.providers[AGY_PROVIDER_ID]
-    };
-    if (catalog.providers[AGY_PROVIDER_ID].settings) {
-      catalog.providers[AGY_PROVIDER_ID].settings = {
-        ...catalog.providers[AGY_PROVIDER_ID].settings,
-        apiKey: 'dummy'
+  // OpenCode v2 <= 2.0.7 legacy catalog transform fallback
+  if (ctx.catalog?.transform) {
+    ctx.catalog.transform(async (editor: any) => {
+      if (!editor) return;
+
+      if (typeof editor?.provider?.update === 'function') {
+        editor.provider.update(AGY_PROVIDER_ID, updateProviderRecord);
+
+        if (typeof editor?.model?.update === 'function') {
+          for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
+            editor.model.update(AGY_PROVIDER_ID, modelId, (m: any) => updateModelRecord(m, modelId, simple));
+          }
+        }
+        return;
+      }
+
+      const catalog = editor;
+      catalog.providers = catalog.providers || {};
+      catalog.providers[AGY_PROVIDER_ID] = {
+        id: AGY_PROVIDER_ID,
+        name: 'Antigravity CLI',
+        npm: 'aisdk:@ai-sdk/google',
+        settings: { apiKey: 'dummy' },
+        integrationID: AGY_PROVIDER_ID,
+        models: { ...(catalog.providers[AGY_PROVIDER_ID]?.models || {}) },
+        ...catalog.providers[AGY_PROVIDER_ID]
       };
-    } else {
-      catalog.providers[AGY_PROVIDER_ID].settings = { apiKey: 'dummy' };
-    }
-    catalog.providers[AGY_PROVIDER_ID].integrationID = AGY_PROVIDER_ID;
+      if (catalog.providers[AGY_PROVIDER_ID].settings) {
+        catalog.providers[AGY_PROVIDER_ID].settings = {
+          ...catalog.providers[AGY_PROVIDER_ID].settings,
+          apiKey: 'dummy'
+        };
+      } else {
+        catalog.providers[AGY_PROVIDER_ID].settings = { apiKey: 'dummy' };
+      }
+      catalog.providers[AGY_PROVIDER_ID].integrationID = AGY_PROVIDER_ID;
 
-    const targetModels = catalog.providers[AGY_PROVIDER_ID].models;
+      const targetModels = catalog.providers[AGY_PROVIDER_ID].models;
 
-    for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
-      const isClaude = modelId.startsWith('claude-');
-      const isGpt = modelId.startsWith('gpt-');
-      const variants = resolveVariants(modelId);
-
-      targetModels[modelId] = {
-        id: modelId,
-        providerID: AGY_PROVIDER_ID,
-        name: simple.name,
-        description: simple.description,
-        family: modelId.includes('gemini') ? 'gemini' : (isClaude ? 'claude' : (isGpt ? 'gpt' : 'unknown')),
-        reasoning: simple.reasoning,
-        attachment: simple.attachment,
-        tool_call: simple.toolCall,
-        limit: {
-          context: simple.maxTokens,
-          output: simple.maxOutputTokens
-        },
-        cost: simple.cost || { input: 0, output: 0 },
-        ...(variants ? { variants } : {}),
-        ...(targetModels[modelId] || {})
-      };
-    }
-  });
+      for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
+        targetModels[modelId] = buildModelRecord(modelId, simple, targetModels[modelId]);
+      }
+    });
+  }
 
   // 2. Register agy_quota and agy_quota_summary tools via tool transform
   ctx.tool.transform(async (editor: any) => {

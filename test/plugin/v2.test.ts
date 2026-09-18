@@ -29,6 +29,102 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     expect(created.setup).toBe(setupOpenCodeV2);
   });
 
+  it('registers provider and models via provider.transform and model.transform in v2.0.8+', async () => {
+    let providerTransformFn: ((editor: any) => Promise<void> | void) | undefined;
+    let modelTransformFn: ((editor: any) => Promise<void> | void) | undefined;
+
+    const mockCtx: OpenCodeV2PluginContext = {
+      provider: {
+        transform: vi.fn((fn) => {
+          providerTransformFn = fn;
+        })
+      },
+      model: {
+        transform: vi.fn((fn) => {
+          modelTransformFn = fn;
+        })
+      },
+      tool: {
+        transform: vi.fn()
+      },
+      command: {
+        transform: vi.fn()
+      },
+      session: {
+        hook: vi.fn()
+      },
+      integration: {
+        transform: vi.fn()
+      },
+      location: {}
+    };
+
+    await setupOpenCodeV2(mockCtx);
+
+    expect(mockCtx.provider?.transform).toHaveBeenCalledTimes(1);
+    expect(mockCtx.model?.transform).toHaveBeenCalledTimes(1);
+
+    // 1. Test provider editor with .update()
+    const updateProviderMock = vi.fn();
+    await providerTransformFn!({ update: updateProviderMock });
+    expect(updateProviderMock).toHaveBeenCalledWith(AGY_PROVIDER_ID, expect.any(Function));
+    const pObj: any = {};
+    updateProviderMock.mock.calls[0][1](pObj);
+    expect(pObj.name).toBe('Antigravity CLI');
+    expect(pObj.activation).toBe('enabled');
+    expect(pObj.package).toBe('aisdk:@ai-sdk/google');
+    expect(pObj.settings).toEqual({ apiKey: 'dummy' });
+
+    // 2. Test provider editor with .set()
+    const setProviderMock = vi.fn();
+    await providerTransformFn!({ set: setProviderMock });
+    expect(setProviderMock).toHaveBeenCalledWith(
+      AGY_PROVIDER_ID,
+      expect.objectContaining({ name: 'Antigravity CLI', integrationID: AGY_PROVIDER_ID })
+    );
+
+    // 3. Test provider editor as plain object
+    const plainProviderEditor: any = {};
+    await providerTransformFn!(plainProviderEditor);
+    expect(plainProviderEditor[AGY_PROVIDER_ID]).toBeDefined();
+    expect(plainProviderEditor[AGY_PROVIDER_ID].name).toBe('Antigravity CLI');
+
+    // 4. Test provider editor null guard
+    await providerTransformFn!(null);
+
+    // 5. Test model editor with .update()
+    const updateModelMock = vi.fn();
+    await modelTransformFn!({ update: updateModelMock });
+    expect(updateModelMock).toHaveBeenCalled();
+    const flashCall = updateModelMock.mock.calls.find(
+      (c: any) => c[0] === AGY_PROVIDER_ID && c[1] === 'gemini-3.8-flash'
+    );
+    expect(flashCall).toBeDefined();
+    const mObj: any = {};
+    flashCall[2](mObj);
+    expect(mObj.name).toBeDefined();
+    expect(mObj.capabilities.tools).toBe(true);
+    expect(mObj.variants).toBeDefined();
+
+    // 6. Test model editor with .set()
+    const setModelMock = vi.fn();
+    await modelTransformFn!({ set: setModelMock });
+    expect(setModelMock).toHaveBeenCalled();
+    expect(setModelMock).toHaveBeenCalledWith(
+      `${AGY_PROVIDER_ID}:gemini-3.8-flash`,
+      expect.objectContaining({ id: 'gemini-3.8-flash', providerID: AGY_PROVIDER_ID })
+    );
+
+    // 7. Test model editor as plain object
+    const plainModelEditor: any = {};
+    await modelTransformFn!(plainModelEditor);
+    expect(plainModelEditor[`${AGY_PROVIDER_ID}:gemini-3.8-flash`]).toBeDefined();
+    expect(plainModelEditor[`${AGY_PROVIDER_ID}:gemini-3.8-flash`].providerID).toBe(AGY_PROVIDER_ID);
+
+    // 8. Test model editor null guard
+    await modelTransformFn!(null);
+  });
+
   it('registers provider and models via catalog.transform', async () => {
     let catalogTransformFn: ((catalog: any) => Promise<void> | void) | undefined;
     let toolTransformFn: ((editor: any) => Promise<void> | void) | undefined;
