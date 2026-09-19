@@ -8,6 +8,7 @@ An [OpenCode](https://opencode.ai/) authentication plugin that enables seamless 
 - **Dynamic Model Retrieval**: Fetches available models based on user tier and current allocations.
 - **Quota Tracking**: Injects the `agy_quota` tool into OpenCode to check usage limits directly.
 - **Traffic Simulation**: Maintains background heartbeat with `agy` servers.
+- **Dual OpenCode Compatibility**: Fully supports both OpenCode v1 (>= 1.18.29) and OpenCode v2 seamlessly without breaking changes.
 
 ## Installation
 
