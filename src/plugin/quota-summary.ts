@@ -8,6 +8,12 @@ import type { GetAuth, PluginClient } from "./types";
 import { buildProgressBar, clamp, formatRemainingAmount, formatRelativeResetTime } from "./quota-utils";
 
 export const AGY_QUOTA_SUMMARY_TOOL_NAME = "agy_quota_summary";
+export const AGY_V2_QUOTA_SUMMARY_COMMAND = "agy-quota-summary";
+export const AGY_V2_QUOTA_SUMMARY_COMMAND_TEMPLATE = `Retrieve Agy Code Assist quota summary (weekly and 5-hour limits by model group) for the current authenticated account.
+
+Immediately call \`${AGY_QUOTA_SUMMARY_TOOL_NAME}\` with no arguments and return its output verbatim.
+Do not call other tools.
+`;
 
 interface AgyQuotaSummaryToolDependencies {
   client: PluginClient;
