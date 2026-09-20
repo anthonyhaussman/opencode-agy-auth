@@ -9,11 +9,14 @@ The package exports a single composite default export from `index.ts` that provi
 ### Runtime execution paths
 
 - **OpenCode v1 (>= 1.18.29)**: The v1 runtime loads the default export and invokes the `server(options)` hook. This returns the v1 plugin object (`config`, `tool`, `auth`) defined in `src/plugin.ts`. Older v1 versions prior to 1.18.29 only supported function exports; 1.18.29 and newer support object exports with `server()`.
-- **OpenCode v2**: The v2 runtime inspects the default export for `id` and executes `setup(ctx)`. This adapter is implemented in `src/plugin/v2.ts` using contracts defined in `src/plugin/types.ts`. Key v2 components:
-  - `ctx.integration.transform`: registers the `google-agy` OAuth integration method with PKCE flow (`src/plugin/oauth-authorize.ts`).
-  - `ctx.aisdk.hook("sdk", ...)`: intercepts AI SDK client initialization to provide dummy `apiKey` and custom fetch interceptor (`createV2FetchInterceptor`).
-  - Dual auth storage: reads credentials from `~/.local/share/opencode/auth.json` or v2 context, and persists changes to both stores so existing v1 logins work seamlessly in v2.
-  - Session hooks: `http.request`, `http.response`, and `retry` handle request rewriting, streaming transformation, and backoff.
+- **OpenCode v2**: The v2 runtime inspects the default export for `id` and executes `setup(ctx)`. This adapter is orchestrated in `src/plugin/v2.ts` (using contracts defined in `src/plugin/types.ts`) and decomposed into modular units under `src/plugin/`:
+  - `src/plugin/oauth-authorize.ts`: registers the `google-agy` OAuth integration method with PKCE flow.
+  - `src/plugin/v2-fetch.ts`: `createV2FetchInterceptor` intercepts AI SDK client initialization (`ctx.aisdk.hook("sdk", ...)`) to inject dummy `apiKey` and handle Code Assist transformations.
+  - `src/plugin/v2-session.ts`: session hooks `http.request`, `http.response`, and `retry` handle request rewriting, streaming transformation, and backoff.
+  - `src/plugin/v2-storage.ts`: dual auth storage helpers reading and writing credentials to `~/.local/share/opencode/auth.json` alongside v2 auth store.
+  - `src/plugin/headers.ts`: shared safe HTTP header and URL parsing utilities across v1 and v2.
+  - `src/plugin/tier.ts`: shared model definitions (`STATIC_MODELS_SIMPLE`, `TIER_MAPPING`) and tier resolution (`resolveModelTier`).
+  - `src/plugin/quota.ts` & `src/plugin/quota-summary.ts`: tool definitions and v2 command mappings (`agy-quota`, `agy-quota-summary`).
 - **Shared engine layer**: Both v1 and v2 adapters delegate all underlying business logic to `src/sdk/`:
   - Request preparation and endpoint transformations (`src/sdk/request/`)
   - Quota fetching and telemetry (`src/sdk/fetch_quota.ts`, `src/plugin/quota.ts`, `src/plugin/quota-summary.ts`)
@@ -119,9 +122,14 @@ When reconciling agy CLI release notes against this plugin's code surface, check
 
 - `index.ts` - entrypoint exporting dual v1/v2 interface and legacy named exports
 - `src/plugin/types.ts` - OpenCode v2 plugin type contracts and helper definitions
-- `src/plugin/v2.ts` - OpenCode v2 adapter (catalog, integration, aisdk, tools, commands, session hooks)
+- `src/plugin/v2.ts` - OpenCode v2 orchestrator (catalog, integration, aisdk, tools, commands, session hooks)
+- `src/plugin/v2-fetch.ts` - OpenCode v2 AI SDK client fetch interceptor
+- `src/plugin/v2-session.ts` - OpenCode v2 session hooks (`http.request`, `http.response`, `retry`)
+- `src/plugin/v2-storage.ts` - OpenCode v2 credentials storage sync with `~/.local/share/opencode/auth.json`
+- `src/plugin/headers.ts` - shared HTTP header and URL helpers
+- `src/plugin/tier.ts` - shared model definitions (`STATIC_MODELS_SIMPLE`, `TIER_MAPPING`) and tier resolution
 - `src/plugin/oauth-authorize.ts` - OpenCode v2 PKCE OAuth authorization flow and callback handler
-- `src/plugin.ts` - `STATIC_MODELS_SIMPLE`, `TIER_MAPPING`, OpenCode v1 plugin, fetch interceptor
+- `src/plugin.ts` - OpenCode v1 plugin, fetch interceptor
 - `src/sdk/agy-cli-version.ts` - version constant
 - `scripts/fetch-models.mjs` - `AGY_API_VERSION` constant
 - `src/constants.ts` - client ID/secret, endpoints, OAuth scopes
