@@ -246,8 +246,14 @@ export function createV2HttpRequestHook(state: V2SessionHooksState = {}) {
           event.url = cleanUrl;
         }
         if (event.request && typeof event.request === 'object') {
-          if (typeof event.request.url === 'string') {
-            event.request.url = cleanUrl;
+          if (typeof Request !== 'undefined' && event.request instanceof Request) {
+            event.request = new Request(cleanUrl, event.request);
+          } else if (typeof event.request.url === 'string') {
+            try {
+              event.request.url = cleanUrl;
+            } catch {
+              // Ignore setter error on read-only url property
+            }
           }
         }
       }
