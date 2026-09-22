@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.8](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.2.7...1.2.8) (2026-09-22)
+
+
+### Features
+
+* **agy:** bump agy CLI to v1.2.8 ([324741d](https://github.com/anthonyhaussman/opencode-agy-auth/commit/324741d5f4fa5096ba14f3daefc823f2ee8ffe94))
+
+
+### Documentation
+
+* **agents:** require dependency upgrade in bump workflow ([044b323](https://github.com/anthonyhaussman/opencode-agy-auth/commit/044b32358f5ee6c3d207c6e5b3b358d00d16b4d0))
+
 ## [1.2.7](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.2.6...1.2.7) (2026-09-19)
 
 
