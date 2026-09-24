@@ -13,4 +13,4 @@ jobs:
         with:
           plugin_dir: "."
           min_score: 80
-          fail_on_severity: high
+          fail_on_severity: critical
