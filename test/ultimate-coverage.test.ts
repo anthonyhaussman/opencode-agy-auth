@@ -198,7 +198,7 @@ describe("Ultimate coverage expansion", () => {
     it("handles refreshed token persistence error gracefully", async () => {
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       agyFetchSpy.mockResolvedValueOnce(
-        new Response(JSON.stringify({ access_token: "new-acc", expires_in: 3600, refresh_token: "rotated-ref" }), {
+        new Response(JSON.stringify({ access_token: "<placeholder-access-token>", expires_in: 3600, refresh_token: "<placeholder-rotated-ref>" }), {
           status: 200
         })
       );
@@ -217,7 +217,7 @@ describe("Ultimate coverage expansion", () => {
       };
 
       const res = await refreshAccessToken(auth, client);
-      expect(res?.access).toBe("new-acc");
+      expect(res?.access).toBe("<placeholder-access-token>");
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Failed to persist refreshed Antigravity OAuth credentials"));
       warnSpy.mockRestore();
     });

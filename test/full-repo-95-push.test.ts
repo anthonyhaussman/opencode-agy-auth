@@ -78,7 +78,7 @@ describe('Final Push to >=95% Test Coverage', () => {
       new Response(JSON.stringify({
         access_token: 'new-acc',
         expires_in: 3600,
-        refresh_token: 'new-refresh'
+        refresh_token: '<placeholder-refresh-token>'
       }), { status: 200 })
     );
 

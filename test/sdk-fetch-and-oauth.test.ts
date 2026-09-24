@@ -226,9 +226,9 @@ describe("sdk/chat-logger and fetch_* modules and oauth", () => {
         if (String(url).includes("oauth2.googleapis.com/token")) {
           return new Response(
             JSON.stringify({
-              access_token: "access-123",
+              access_token: "<placeholder-access-token>",
               expires_in: 3600,
-              refresh_token: "refresh-123"
+              refresh_token: "<placeholder-refresh-token>"
             }),
             { status: 200 }
           );
@@ -247,8 +247,8 @@ describe("sdk/chat-logger and fetch_* modules and oauth", () => {
       const res = await exchangeAgyWithVerifier("test-code", "test-verifier");
       expect(res.type).toBe("success");
       if (res.type === "success") {
-        expect(res.access).toBe("access-123");
-        expect(res.refresh).toBe("refresh-123");
+        expect(res.access).toBe("<placeholder-access-token>");
+        expect(res.refresh).toBe("<placeholder-refresh-token>");
         expect(res.email).toBe("test@example.com");
       }
     });
@@ -270,7 +270,7 @@ describe("sdk/chat-logger and fetch_* modules and oauth", () => {
         if (String(url).includes("oauth2.googleapis.com/token")) {
           return new Response(
             JSON.stringify({
-              access_token: "access-123",
+              access_token: "<placeholder-access-token>",
               expires_in: 3600
             }),
             { status: 200 }
