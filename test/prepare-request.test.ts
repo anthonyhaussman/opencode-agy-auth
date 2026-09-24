@@ -5,7 +5,7 @@ import { initTurnStateTracker } from "../src/sdk/request/turn-state-tracker";
 import { cacheSignature } from "../src/plugin/cache";
 
 describe("prepareAgyRequest Comprehensive Suite", () => {
-  const token = "mock-access-token";
+  const token = "<placeholder-access-token>";
   const project = "mock-project-id";
 
   it("passes through non-generativelanguage requests untouched", () => {

@@ -37,9 +37,9 @@ describe('token', () => {
     vi.spyOn(fetchModule, 'agyFetch').mockResolvedValueOnce(
       new Response(
         JSON.stringify({
-          access_token: 'new-access-token',
+          access_token: '<placeholder-new-access-token>',
           expires_in: 3600,
-          refresh_token: 'ref-token-2',
+          refresh_token: '<placeholder-ref-token-2>',
         }),
         { status: 200 }
       )
@@ -47,8 +47,8 @@ describe('token', () => {
 
     const result = await refreshAccessToken(auth, client);
     expect(result).toBeDefined();
-    expect(result?.access).toBe('new-access-token');
-    expect(result?.refresh).toContain('ref-token-2');
+    expect(result?.access).toBe('<placeholder-new-access-token>');
+    expect(result?.refresh).toContain('<placeholder-ref-token-2>');
     expect(client.auth.set).toHaveBeenCalled();
   });
 
@@ -65,7 +65,7 @@ describe('token', () => {
       await new Promise((r) => setTimeout(r, 20));
       return new Response(
         JSON.stringify({
-          access_token: 'shared-access-token',
+          access_token: '<placeholder-shared-access-token>',
           expires_in: 3600,
         }),
         { status: 200 }
@@ -77,8 +77,8 @@ describe('token', () => {
       refreshAccessToken(auth, client),
     ]);
 
-    expect(res1?.access).toBe('shared-access-token');
-    expect(res2?.access).toBe('shared-access-token');
+    expect(res1?.access).toBe('<placeholder-shared-access-token>');
+    expect(res2?.access).toBe('<placeholder-shared-access-token>');
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -141,16 +141,16 @@ describe('token', () => {
     vi.spyOn(fetchModule, 'agyFetch').mockResolvedValueOnce(
       new Response(
         JSON.stringify({
-          access_token: 'new-token-fail-persist',
+          access_token: '<placeholder-new-token-fail-persist>',
           expires_in: 3600,
-          refresh_token: 'ref-token-changed',
+          refresh_token: '<placeholder-ref-token-changed>',
         }),
         { status: 200 }
       )
     );
 
     const res2 = await refreshAccessToken(auth, client);
-    expect(res2?.access).toBe('new-token-fail-persist');
+    expect(res2?.access).toBe('<placeholder-new-token-fail-persist>');
   });
 
   it('handles invalid_grant when client.auth.set throws', async () => {
@@ -190,7 +190,7 @@ describe('token', () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
-            access_token: 'recovered-access-token',
+            access_token: '<placeholder-recovered-access-token>',
             expires_in: 3600,
           }),
           { status: 200 }
@@ -198,7 +198,7 @@ describe('token', () => {
       );
 
     const result = await refreshAccessToken(auth, client);
-    expect(result?.access).toBe('recovered-access-token');
+    expect(result?.access).toBe('<placeholder-recovered-access-token>');
   });
 
   it('retries on network errors and succeeds', async () => {
@@ -216,7 +216,7 @@ describe('token', () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
-            access_token: 'net-recovered-token',
+            access_token: '<placeholder-net-recovered-token>',
             expires_in: 3600,
           }),
           { status: 200 }
@@ -224,6 +224,6 @@ describe('token', () => {
       );
 
     const result = await refreshAccessToken(auth, client);
-    expect(result?.access).toBe('net-recovered-token');
+    expect(result?.access).toBe('<placeholder-net-recovered-token>');
   });
 });
