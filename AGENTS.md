@@ -106,6 +106,7 @@ When reconciling agy CLI release notes against this plugin's code surface, check
 - Only `models.json` is used by the plugin at runtime; the `agy models` output is informational and not consumed by the plugin code.
 - `@ai-sdk/google` is never imported; it is only used as a literal npm-name string at `src/plugin.ts:179` and `src/plugin.ts:438`. Version bumps to this package are zero-risk regardless of API changes in the upstream package.
 - The plugin's OAuth token storage lives at `~/.local/share/opencode/auth.json` under the `google-agy` key. The agy CLI itself uses the OS keyring directly; the opencode plugin maintains its own auth storage for portability.
+- **Client Credentials**: `AGY_CLIENT_SECRET` in `src/constants.ts` and `scripts/fetch-models.mjs` is Google's public OAuth client secret for the Antigravity desktop/CLI OAuth client (RFC 8252 public client). It is embedded directly in the upstream binary distribution and is not a confidential server secret. Do not rotate or redact it without updating the paired public `AGY_CLIENT_ID`.
 - **Thinking / CoT Support**: Tiered Gemini models (`gemini-3.7/3.8-flash-high/medium`) currently have thinking suppressed by the upstream Code Assist server over SSE (it performs internal reasoning but does not stream raw `thought: true` parts back to the client, unlike Claude thinking models). When Google enables streaming thoughts for Flash tiers in future Code Assist protocol updates, add client response stream parsing and configuration support for them.
 
 ## Gotchas
@@ -125,6 +126,7 @@ npm run test:coverage # run tests with v8 code coverage enforcement
 npm run typecheck    # tsc type check
 npm run build        # tsup bundle + tsc declaration emit
 npm run smoke:node-import  # verify dist/index.js loads without error
+pipx run plugin-scanner scan .  # verify security and quality compliance (score >= 80)
 ```
 
 ## Testing & Code Coverage
