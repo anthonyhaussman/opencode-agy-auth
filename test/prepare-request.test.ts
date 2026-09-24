@@ -257,6 +257,107 @@ describe("prepareAgyRequest Comprehensive Suite", () => {
     expect(props.nestedArray.items.enum).toEqual(["true"]);
   });
 
+  describe("parameters_json_schema and parametersJsonSchema handling", () => {
+    it("deletes parameters_json_schema and parametersJsonSchema when parameters is present", () => {
+      const input = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
+      const body = JSON.stringify({
+        contents: [],
+        tools: [
+          {
+            functionDeclarations: [
+              {
+                name: "toolSnakeCase",
+                parameters: {
+                  type: "object",
+                  properties: { query: { type: "string" } },
+                },
+                parameters_json_schema: {
+                  type: "object",
+                  properties: { query_snake: { type: "string" } },
+                },
+              },
+              {
+                name: "toolCamelCase",
+                parameters: {
+                  type: "object",
+                  properties: { count: { type: "integer" } },
+                },
+                parametersJsonSchema: {
+                  type: "object",
+                  properties: { count_camel: { type: "integer" } },
+                },
+              },
+            ],
+          },
+        ],
+      });
+
+      const result = prepareAgyRequest(input, { method: "POST", body }, token, project);
+      const parsed = JSON.parse(result.init.body as string);
+      const [fnSnake, fnCamel] = parsed.request.tools[0].functionDeclarations;
+
+      expect(fnSnake.parameters.type).toBe("OBJECT");
+      expect(fnSnake.parameters.properties.query.type).toBe("STRING");
+      expect(fnSnake.parameters_json_schema).toBeUndefined();
+      expect("parameters_json_schema" in fnSnake).toBe(false);
+
+      expect(fnCamel.parameters.type).toBe("OBJECT");
+      expect(fnCamel.parameters.properties.count.type).toBe("INTEGER");
+      expect(fnCamel.parametersJsonSchema).toBeUndefined();
+      expect("parametersJsonSchema" in fnCamel).toBe(false);
+    });
+
+    it("adopts parameters_json_schema / parametersJsonSchema into parameters and deletes schema fields when parameters is missing", () => {
+      const input = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
+      const body = JSON.stringify({
+        contents: [],
+        tools: [
+          {
+            functionDeclarations: [
+              {
+                name: "toolFromSnake",
+                parameters_json_schema: {
+                  type: "object",
+                  properties: {
+                    filter: { type: "string" },
+                    enumProp: { type: "boolean", enum: [true, false] },
+                  },
+                },
+              },
+              {
+                name: "toolFromCamel",
+                parametersJsonSchema: {
+                  type: "object",
+                  properties: {
+                    limit: { type: "integer" },
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      });
+
+      const result = prepareAgyRequest(input, { method: "POST", body }, token, project);
+      const parsed = JSON.parse(result.init.body as string);
+      const [fnSnake, fnCamel] = parsed.request.tools[0].functionDeclarations;
+
+      expect(fnSnake.parameters).toBeDefined();
+      expect(fnSnake.parameters.type).toBe("OBJECT");
+      expect(fnSnake.parameters.properties.filter.type).toBe("STRING");
+      expect(fnSnake.parameters.properties.enumProp.type).toBe("STRING");
+      expect(fnSnake.parameters.properties.enumProp.enum).toEqual(["true", "false"]);
+      expect(fnSnake.parameters_json_schema).toBeUndefined();
+      expect("parameters_json_schema" in fnSnake).toBe(false);
+
+      expect(fnCamel.parameters).toBeDefined();
+      expect(fnCamel.parameters.type).toBe("OBJECT");
+      expect(fnCamel.parameters.properties.limit.type).toBe("INTEGER");
+      expect(fnCamel.parametersJsonSchema).toBeUndefined();
+      expect("parametersJsonSchema" in fnCamel).toBe(false);
+    });
+  });
+
   it("normalizes consecutive contents sequences by role and filters nulls", () => {
     const input = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
     const body = JSON.stringify({
