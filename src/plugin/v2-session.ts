@@ -52,7 +52,11 @@ export function createV2HttpRequestHook(state: V2SessionHooksState = {}) {
       const refreshed = await refreshAccessToken(authRecord, { auth: { set: async () => {} } } as any);
       if (refreshed) {
         authRecord = refreshed;
-        saveStoredAuthToJson(refreshed);
+        try {
+          saveStoredAuthToJson(refreshed);
+        } catch {
+          console.warn('[Agy Auth] Refreshed credentials could not be persisted; the current request will continue.');
+        }
       }
     }
 
