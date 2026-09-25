@@ -39,6 +39,20 @@ import type {
   ProviderV2
 } from './plugin/types';
 
+import {
+  STATIC_MODELS_SIMPLE,
+  TIER_MAPPING,
+  resolveModelTier,
+  type SimpleStaticModel
+} from './plugin/tier';
+import { getSafeHeader, setSafeHeaders, toUrlString } from './plugin/headers';
+export {
+  STATIC_MODELS_SIMPLE,
+  TIER_MAPPING,
+  resolveModelTier,
+  type SimpleStaticModel
+};
+
 const AGY_QUOTA_COMMAND = 'agyquota';
 const AGY_QUOTA_COMMAND_TEMPLATE = `Retrieve Agy Code Assist quota usage for the current authenticated account.
 
@@ -55,110 +69,6 @@ Do not call other tools.
 let latestAgyAuthResolver: GetAuth | undefined;
 let latestAgyConfiguredProjectId: string | undefined;
 let latestAgyUserAgentModel: string | undefined;
-
-interface SimpleStaticModel {
-  name: string;
-  description: string;
-  maxTokens: number;
-  maxOutputTokens: number;
-  toolCall: boolean;
-  reasoning: boolean;
-  attachment: boolean;
-  cost?: {
-    input: number;
-    output: number;
-    cache?: { read: number; write: number };
-  };
-}
-
-const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
-  'gemini-3.8-flash': {
-    name: 'Gemini 3.8 Flash',
-    description: 'Gemini 3.8 Flash base model. Select tier at runtime.',
-    maxTokens: 1048576,
-    maxOutputTokens: 65536,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'gemini-3.7-flash': {
-    name: 'Gemini 3.7 Flash',
-    description: 'Gemini 3.7 Flash base model. Select tier at runtime.',
-    maxTokens: 1048576,
-    maxOutputTokens: 65536,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'gemini-3.6-flash': {
-    name: 'Gemini 3.6 Flash',
-    description: 'Gemini 3.6 Flash base model. Select tier at runtime.',
-    maxTokens: 1048576,
-    maxOutputTokens: 65536,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'gemini-3.1-pro': {
-    name: 'Gemini 3.1 Pro',
-    description: 'Gemini 3.1 Pro base model. Select tier at runtime.',
-    maxTokens: 1048576,
-    maxOutputTokens: 65535,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'claude-sonnet-4-6': {
-    name: 'Claude Sonnet 4.6 (Thinking)',
-    description: 'Claude Sonnet 4.6 deep reasoning model, perfectly balancing thinking process, processing speed, and output quality.',
-    maxTokens: 250000,
-    maxOutputTokens: 64000,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'claude-opus-4-6-thinking': {
-    name: 'Claude Opus 4.6 (Thinking)',
-    description: 'Claude Opus 4.6 deep reasoning model, built-in chain of thought, highly suitable for top-tier algorithm and logic puzzles.',
-    maxTokens: 250000,
-    maxOutputTokens: 64000,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'gpt-oss-120b-medium': {
-    name: 'GPT-OSS 120B (Medium)',
-    description: 'GPT open-source 120B parameter medium tier model, excellent performance in local deployment or specific open-source benchmarks.',
-    maxTokens: 131072,
-    maxOutputTokens: 32768,
-    toolCall: true,
-    reasoning: true,
-    attachment: false
-  }
-};
-
-const TIER_MAPPING: Record<string, { low: string; high: string; medium?: string } & Record<string, string | undefined>> = {
-  'gemini-3.8-flash': {
-    low: 'gemini-3.8-flash-low',
-    medium: 'gemini-3.8-flash-medium',
-    high: 'gemini-3.8-flash-high'
-  },
-  'gemini-3.7-flash': {
-    low: 'gemini-3.7-flash-low',
-    medium: 'gemini-3.7-flash-medium',
-    high: 'gemini-3.7-flash-high'
-  },
-  'gemini-3.6-flash': {
-    minimal: 'gemini-3.6-flash-low',
-    low: 'gemini-3.6-flash-low',
-    medium: 'gemini-3.6-flash-medium',
-    high: 'gemini-3.6-flash-high'
-  },
-  'gemini-3.1-pro': {
-    low: 'gemini-3.1-pro-low',
-    high: 'gemini-3.1-pro-high'
-  }
-};
 
 const buildModelFromSimple = (modelId: string, simple: SimpleStaticModel): ProviderModel => {
   const isClaude = modelId.startsWith('claude-');
@@ -252,98 +162,6 @@ const buildModelFromSimple = (modelId: string, simple: SimpleStaticModel): Provi
 const STATIC_MODELS: Record<string, ProviderModel> = {};
 for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
   STATIC_MODELS[modelId] = buildModelFromSimple(modelId, simple);
-}
-
-function getSafeHeader(headers: unknown, key: string): string | undefined {
-  if (!headers) {
-    return undefined;
-  }
-  const targetKey = key.toLowerCase();
-
-  if (typeof (headers as any).get === 'function') {
-    try {
-      return (headers as any).get(targetKey) || undefined;
-    } catch {
-      // Fallback in case get throws
-    }
-  }
-
-  if (Array.isArray(headers)) {
-    const found = headers.find((item) => {
-      if (Array.isArray(item) && typeof item[0] === 'string') {
-        return item[0].toLowerCase() === targetKey;
-      }
-      return false;
-    });
-    return found ? String(found[1]) : undefined;
-  }
-
-  if (typeof headers === 'object') {
-    const foundKey = Object.keys(headers).find(k => k.toLowerCase() === targetKey);
-    return foundKey ? ((headers as Record<string, unknown>)[foundKey] !== undefined ? String((headers as Record<string, unknown>)[foundKey]) : undefined) : undefined;
-  }
-
-  return undefined;
-}
-
-function setSafeHeaders(initHeaders: unknown, newHeaders: Record<string, string>): unknown {
-  if (typeof globalThis.Headers !== 'undefined') {
-    const headers = new globalThis.Headers((initHeaders as any) ?? {});
-    for (const [k, v] of Object.entries(newHeaders)) {
-      headers.set(k, v);
-    }
-    return headers;
-  }
-
-  if (Array.isArray(initHeaders)) {
-    const nextHeaders = [...initHeaders];
-    for (const [k, v] of Object.entries(newHeaders)) {
-      const idx = nextHeaders.findIndex(item => Array.isArray(item) && typeof item[0] === 'string' && item[0].toLowerCase() === k.toLowerCase());
-      if (idx !== -1) {
-        nextHeaders[idx] = [k, v];
-      } else {
-        nextHeaders.push([k, v]);
-      }
-    }
-    return nextHeaders;
-  }
-
-  const nextHeaders: Record<string, string> = {};
-  if (initHeaders && typeof initHeaders === 'object') {
-    for (const [k, v] of Object.entries(initHeaders)) {
-      nextHeaders[k] = String(v);
-    }
-  }
-  for (const [k, v] of Object.entries(newHeaders)) {
-    const existingKey = Object.keys(nextHeaders).find(key => key.toLowerCase() === k.toLowerCase());
-    if (existingKey) {
-      nextHeaders[existingKey] = v;
-    } else {
-      nextHeaders[k] = v;
-    }
-  }
-  return nextHeaders;
-}
-
-function resolveModelTier(baseModelId: string, init?: RequestInit): string {
-  const parts = baseModelId.split('@');
-  const base = parts[0] || '';
-  const suffixTier = parts[1]?.toLowerCase();
-
-  const mapping = TIER_MAPPING[base];
-  if (!mapping) {
-    return baseModelId;
-  }
-
-  const headerTier = getSafeHeader(init?.headers, 'x-agy-tier')?.toLowerCase() || null;
-  const requestedTier = headerTier || suffixTier;
-
-  // Resolve to specific tier or default to medium
-  if (requestedTier && Object.prototype.hasOwnProperty.call(mapping, requestedTier)) {
-    return mapping[requestedTier] || baseModelId;
-  }
-
-  return mapping['medium'] ?? mapping['high'];
 }
 
 /**
@@ -739,15 +557,4 @@ async function ensureProjectContextOrThrow(
     }
     throw error;
   }
-}
-
-function toUrlString(value: RequestInfo): string {
-  if (typeof value === 'string') {
-    return value;
-  }
-  const candidate = (value as Request).url;
-  if (candidate) {
-    return candidate;
-  }
-  return value.toString();
 }

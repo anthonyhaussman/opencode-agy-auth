@@ -459,8 +459,13 @@ function normalizeToolSchemaTypes(tools: unknown, toolMapper?: ToolMapper): void
         }
         if (fn) {
           if (!fn.parameters) {
+            fn.parameters = fn.parameters_json_schema ?? fn.parametersJsonSchema;
+          }
+          if (!fn.parameters) {
             fn.parameters = { type: "OBJECT", properties: {} };
           }
+          delete (fn as Record<string, unknown>).parameters_json_schema;
+          delete (fn as Record<string, unknown>).parametersJsonSchema;
           sanitizeSchema(fn.parameters);
         }
       }

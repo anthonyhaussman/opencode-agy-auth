@@ -8,6 +8,12 @@ import type { GetAuth, PluginClient } from "./types";
 import { buildProgressBar, clamp, formatRemainingAmount, formatRelativeResetTime, pad } from "./quota-utils";
 
 export const AGY_QUOTA_TOOL_NAME = "agy_quota";
+export const AGY_V2_QUOTA_COMMAND = "agy-quota";
+export const AGY_V2_QUOTA_COMMAND_TEMPLATE = `Retrieve Agy Code Assist quota usage for the current authenticated account.
+
+Immediately call \`${AGY_QUOTA_TOOL_NAME}\` with no arguments and return its output verbatim.
+Do not call other tools.
+`;
 
 interface AgyQuotaToolDependencies {
   client: PluginClient;

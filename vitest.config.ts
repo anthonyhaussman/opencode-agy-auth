@@ -10,7 +10,7 @@ export default defineConfig({
     passWithNoTests: false,
     coverage: {
       provider: "v8",
-      reporter: ["text", "json", "html"],
+      reporter: ["text", "json", "lcov"],
       include: ["src/**/*.ts"],
       exclude: ["src/**/*.d.ts"],
       thresholds: {

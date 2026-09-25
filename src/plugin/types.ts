@@ -38,3 +38,49 @@ export interface ProjectContextResult {
 
 // Export V2 types explicitly for use in provider hooks
 export type { Provider as ProviderV2, Model as ModelV2 } from '@opencode-ai/sdk/v2';
+
+// OpenCode v2 Plugin Contracts (without taking @opencode/plugin runtime dependency)
+
+export interface OpenCodeV2TransformRegistry<T = any> {
+  transform: (fn: (target: T) => Promise<void> | void) => void;
+}
+
+export interface OpenCodeV2SessionRegistry {
+  hook: (name: string, handler: (...args: any[]) => any, options?: { providerID?: string }) => void;
+}
+
+export interface OpenCodeV2PluginLocation {
+  root?: string;
+  workspace?: string;
+}
+
+export interface OpenCodeV2PluginContext {
+  catalog?: OpenCodeV2TransformRegistry;
+  provider?: OpenCodeV2TransformRegistry;
+  model?: OpenCodeV2TransformRegistry;
+  tool: OpenCodeV2TransformRegistry;
+  command: OpenCodeV2TransformRegistry;
+  session: OpenCodeV2SessionRegistry;
+  aisdk?: {
+    hook: (name: 'sdk' | 'language', handler: (event: any) => Promise<void> | void) => void;
+  };
+  integration?: OpenCodeV2TransformRegistry | {
+    transform?: (transformer: (editor: any) => void) => void;
+  };
+  location: OpenCodeV2PluginLocation;
+}
+
+export interface OpenCodeV2PluginDefinition {
+  id: string;
+  setup: (ctx: OpenCodeV2PluginContext) => Promise<void> | void;
+}
+
+export interface DualOpenCodePlugin extends OpenCodeV2PluginDefinition {
+  server: (options: any) => Promise<any>;
+}
+
+export function defineOpenCodeV2Plugin(
+  def: OpenCodeV2PluginDefinition,
+): OpenCodeV2PluginDefinition {
+  return def;
+}
