@@ -339,7 +339,14 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
               // Ignore project resolution error during authorize
             }
 
-            saveStoredAuthToJson(authRecord);
+            try {
+              saveStoredAuthToJson(authRecord);
+            } catch {
+              return {
+                type: 'failed',
+                error: 'Google authentication succeeded but AGY credentials could not be stored. Check filesystem access and retry.',
+              };
+            }
 
             return {
               type: 'oauth',
