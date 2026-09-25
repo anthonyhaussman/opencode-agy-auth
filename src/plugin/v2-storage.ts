@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'fs';
+import { randomUUID } from 'crypto';
 import { homedir } from 'os';
 import { join } from 'path';
 import { AGY_PROVIDER_ID } from '../constants';
@@ -31,28 +32,48 @@ export function saveStoredAuthToJson(authRecord: any): void {
   if (process.env.NODE_ENV === 'test' || process.env.VITEST || storedAuthOverrideForTesting !== undefined) {
     return;
   }
+  const dirPath = join(homedir(), '.local', 'share', 'opencode');
+  if (!existsSync(dirPath)) {
+    mkdirSync(dirPath, { recursive: true });
+  }
+  const authPath = join(dirPath, 'auth.json');
+  const data: Record<string, any> = existsSync(authPath)
+    ? JSON.parse(readFileSync(authPath, 'utf8'))
+    : {};
+  data[AGY_PROVIDER_ID] = {
+    type: 'oauth',
+    refresh: authRecord.refresh,
+    access: authRecord.access,
+    expires: authRecord.expires,
+  };
+
+  const tempPath = `${authPath}.${process.pid}.${randomUUID()}.tmp`;
+  let tempFileDescriptor: number | undefined;
+  let ownsTempFile = false;
   try {
-    const dirPath = join(homedir(), '.local', 'share', 'opencode');
-    if (!existsSync(dirPath)) {
-      mkdirSync(dirPath, { recursive: true });
-    }
-    const authPath = join(dirPath, 'auth.json');
-    let data: Record<string, any> = {};
-    if (existsSync(authPath)) {
+    tempFileDescriptor = openSync(tempPath, 'wx', 0o600);
+    ownsTempFile = true;
+    writeFileSync(tempFileDescriptor, JSON.stringify(data, null, 2), {
+      encoding: 'utf8',
+    });
+    closeSync(tempFileDescriptor);
+    tempFileDescriptor = undefined;
+    renameSync(tempPath, authPath);
+  } catch (error) {
+    if (tempFileDescriptor !== undefined) {
       try {
-        data = JSON.parse(readFileSync(authPath, 'utf8')) || {};
+        closeSync(tempFileDescriptor);
       } catch {
-        data = {};
+        // Preserve the original persistence error.
       }
     }
-    data[AGY_PROVIDER_ID] = {
-      type: 'oauth',
-      refresh: authRecord.refresh,
-      access: authRecord.access,
-      expires: authRecord.expires,
-    };
-    writeFileSync(authPath, JSON.stringify(data, null, 2), 'utf8');
-  } catch {
-    // Ignore write errors
+    if (ownsTempFile) {
+      try {
+        unlinkSync(tempPath);
+      } catch {
+        // The temporary file has already been renamed or removed.
+      }
+    }
+    throw error;
   }
 }
