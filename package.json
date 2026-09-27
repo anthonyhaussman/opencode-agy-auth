@@ -35,14 +35,14 @@
   },
   "devDependencies": {
     "@opencode-ai/sdk": "^1.18.32",
-    "@types/node": "^26.6.2",
-    "@vitest/coverage-v8": "^5.0.1",
+    "@types/node": "^26.6.3",
+    "@vitest/coverage-v8": "^5.0.2",
     "tsup": "^8.5.1",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.2"
   },
   "dependencies": {
-    "@ai-sdk/google": "^4.0.80",
+    "@ai-sdk/google": "^4.0.82",
     "@openauthjs/openauth": "^0.4.3",
     "@opencode-ai/plugin": "^1.18.32"
   }
