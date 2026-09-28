@@ -4,6 +4,8 @@ coverage/
 agy_chat_log/
 .env
 docs/superpowers
+.worktrees/
+.superpowers/
 
 # pnpm
 pnpm-lock.yaml
