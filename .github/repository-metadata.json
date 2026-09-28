@@ -1,0 +1,16 @@
+{
+  "name": "opencode-agy-auth",
+  "description": "Google Gemini Antigravity (agy) OAuth provider and models for OpenCode",
+  "homepage": "https://github.com/anthonyhaussman/opencode-agy-auth#readme",
+  "topics": [
+    "opencode",
+    "opencode-plugin",
+    "gemini",
+    "antigravity",
+    "agy",
+    "google-gemini",
+    "oauth",
+    "ai-coding",
+    "gemini-flash"
+  ]
+}

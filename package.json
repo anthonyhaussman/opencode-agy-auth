@@ -21,6 +21,17 @@
     "dist",
     "README.md"
   ],
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "gemini",
+    "antigravity",
+    "agy",
+    "google-gemini",
+    "oauth",
+    "ai-coding",
+    "gemini-flash"
+  ],
   "license": "MIT",
   "type": "module",
   "scripts": {
