@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.13](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.2.12...1.2.13) (2026-09-29)
+
+
+### Features
+
+* **sdk:** bump agy cli to 1.2.13 ([2969fe6](https://github.com/anthonyhaussman/opencode-agy-auth/commit/2969fe69c80f67d47cd7b015866bdfd0edafedd6))
+
+
+### Documentation
+
+* add badges to README header ([ce150ab](https://github.com/anthonyhaussman/opencode-agy-auth/commit/ce150ab133c27459ff302e58ca1a47d1fe34a540))
+* add soft star call-to-action to README ([26813f0](https://github.com/anthonyhaussman/opencode-agy-auth/commit/26813f07c9a7a8133c02a550472a671fdfdeed90))
+
 ## [1.2.12](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.2.11...1.2.12) (2026-09-28)
 
 
