@@ -3,6 +3,7 @@ dist/
 coverage/
 agy_chat_log/
 .env
+.vitest/
 docs/superpowers
 .worktrees/
 .superpowers/
