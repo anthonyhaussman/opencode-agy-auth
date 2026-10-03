@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.16](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.2.14...1.2.16) (2026-10-03)
+
+
+### Features
+
+* **models:** register claude 5.5 models and tiers ([ea39435](https://github.com/anthonyhaussman/opencode-agy-auth/commit/ea39435e7ff12cc4e7a322d1f97f3dac0ccbcd1d))
+* **sdk:** bump agy cli to 1.2.16 ([cfe3fbe](https://github.com/anthonyhaussman/opencode-agy-auth/commit/cfe3fbe6b396cdb8b9ddb781ab99185aa3085079))
+
+
+### Build System
+
+* **deps:** bump hashgraph-online/ai-plugin-scanner-action ([cb96a8c](https://github.com/anthonyhaussman/opencode-agy-auth/commit/cb96a8c12d7c6e0ac23cbc3950aa9bfe86edfb9e))
+
 ## [1.2.14](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.2.13...1.2.14) (2026-09-30)
 
 
