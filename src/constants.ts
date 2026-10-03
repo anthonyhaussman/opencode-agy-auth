@@ -2,6 +2,8 @@
 export const AGY_PROVIDER_ID = 'google-agy';
 
 // Antigravity CLI (Daily) constant definitions.
+export const AGY_AUTH_URL = 'https://accounts.google.com/o/oauth2/auth';
+export const AGY_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 export const AGY_CLIENT_ID = '1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com';
 export const AGY_CLIENT_SECRET = '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';
 export const AGY_SCOPES: readonly string[] = [
