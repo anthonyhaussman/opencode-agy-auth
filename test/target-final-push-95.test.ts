@@ -20,7 +20,7 @@ describe('Final Coverage Push', () => {
     const models = config.provider['google-agy'].models;
 
     // Check claude vs gpt vs gemini modalities
-    expect(models['claude-sonnet-4-6'].capabilities.input.audio).toBe(false);
+    expect(models['claude-sonnet-5-5'].capabilities.input.audio).toBe(false);
     expect(models['gpt-oss-120b-medium'].capabilities.input.video).toBe(false);
     expect(models['gemini-3.7-flash'].capabilities.input.audio).toBe(true);
     expect(models['gemini-3.7-flash'].capabilities.input.video).toBe(true);

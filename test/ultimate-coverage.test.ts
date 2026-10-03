@@ -57,7 +57,7 @@ describe("Ultimate coverage expansion", () => {
 
       const models = customConfig.provider["google-agy"].models as Record<string, any>;
       // Check claude models
-      const claude37 = models["claude-sonnet-4-6"];
+      const claude37 = models["claude-sonnet-5-5"];
       if (claude37) {
         expect(claude37.family).toBe("claude");
         expect(claude37.modalities.input).toContain("pdf");
