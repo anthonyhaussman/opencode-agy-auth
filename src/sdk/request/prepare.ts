@@ -118,6 +118,10 @@ function getModelEnum(modelName: string): string {
   return "MODEL_PLACEHOLDER_M16";
 }
 
+export function isClaudeModel(model: string): boolean {
+  return model.toLowerCase().includes("claude");
+}
+
 function transformRequestBody(
   body: string,
   projectId: string,
@@ -162,7 +166,7 @@ function transformRequestBody(
           last_step_index: "0",
           model_enum: getModelEnum(effectiveModel),
           trajectory_id: randomUUID(),
-          used_claude: "false",
+          used_claude: isClaudeModel(effectiveModel) || isClaudeModel(requestedModel) ? "true" : "false",
           used_claude_conservative: "false"
         };
       }
@@ -257,7 +261,7 @@ function transformRequestBody(
         last_step_index: "0",
         model_enum: getModelEnum(effectiveModel),
         trajectory_id: randomUUID(),
-        used_claude: "false",
+        used_claude: isClaudeModel(effectiveModel) || isClaudeModel(requestedModel) ? "true" : "false",
         used_claude_conservative: "false"
       };
     }
