@@ -108,20 +108,20 @@ const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
     reasoning: true,
     attachment: true
   },
-  'claude-sonnet-4-6': {
-    name: 'Claude Sonnet 4.6 (Thinking)',
-    description: 'Claude Sonnet 4.6 deep reasoning model, perfectly balancing thinking process, processing speed, and output quality.',
-    maxTokens: 250000,
-    maxOutputTokens: 64000,
+  'claude-opus-5-5': {
+    name: 'Claude Opus 5.5',
+    description: 'Claude Opus 5.5 deep reasoning model. Select tier at runtime.',
+    maxTokens: 1000000,
+    maxOutputTokens: 128000,
     toolCall: true,
     reasoning: true,
     attachment: true
   },
-  'claude-opus-4-6-thinking': {
-    name: 'Claude Opus 4.6 (Thinking)',
-    description: 'Claude Opus 4.6 deep reasoning model, built-in chain of thought, highly suitable for top-tier algorithm and logic puzzles.',
-    maxTokens: 250000,
-    maxOutputTokens: 64000,
+  'claude-sonnet-5-5': {
+    name: 'Claude Sonnet 5.5',
+    description: 'Claude Sonnet 5.5 deep reasoning model. Select tier at runtime.',
+    maxTokens: 1000000,
+    maxOutputTokens: 128000,
     toolCall: true,
     reasoning: true,
     attachment: true
@@ -157,6 +157,16 @@ const TIER_MAPPING: Record<string, { low: string; high: string; medium?: string 
   'gemini-3.1-pro': {
     low: 'gemini-3.1-pro-low',
     high: 'gemini-3.1-pro-high'
+  },
+  'claude-opus-5-5': {
+    low: 'claude-opus-5-5-low',
+    medium: 'claude-opus-5-5-medium',
+    high: 'claude-opus-5-5-high'
+  },
+  'claude-sonnet-5-5': {
+    low: 'claude-sonnet-5-5-low',
+    medium: 'claude-sonnet-5-5-medium',
+    high: 'claude-sonnet-5-5-high'
   }
 };
 

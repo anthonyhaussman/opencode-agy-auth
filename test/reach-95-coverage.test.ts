@@ -119,11 +119,12 @@ describe('reach 95% coverage branches', () => {
     expect(models['gemini-3.7-flash']).toBeDefined();
     expect(models['gemini-3.6-flash']).toBeDefined();
     expect(models['gemini-3.1-pro']).toBeDefined();
-    expect(models['claude-sonnet-4-6']).toBeDefined();
+    expect(models['claude-opus-5-5']).toBeDefined();
+    expect(models['claude-sonnet-5-5']).toBeDefined();
     expect(models['gpt-oss-120b-medium']).toBeDefined();
 
     // Verify Claude model capabilities (no audio/video)
-    const claudeModel = models['claude-sonnet-4-6'];
+    const claudeModel = models['claude-sonnet-5-5'];
     expect(claudeModel.capabilities.input.audio).toBe(false);
     expect(claudeModel.capabilities.input.video).toBe(false);
     expect(claudeModel.modalities.input).not.toContain('audio');

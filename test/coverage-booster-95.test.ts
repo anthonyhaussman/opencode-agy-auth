@@ -41,9 +41,9 @@ describe('Coverage Booster - 95%+ Target', () => {
     expect(models['gpt-oss-120b-medium'].modalities.input).toEqual(['text']);
     expect(models['gpt-oss-120b-medium'].capabilities.input.audio).toBe(false);
 
-    expect(models['claude-sonnet-4-6']).toBeDefined();
-    expect(models['claude-sonnet-4-6'].capabilities.input.image).toBe(true);
-    expect(models['claude-sonnet-4-6'].capabilities.input.audio).toBe(false);
+    expect(models['claude-sonnet-5-5']).toBeDefined();
+    expect(models['claude-sonnet-5-5'].capabilities.input.image).toBe(true);
+    expect(models['claude-sonnet-5-5'].capabilities.input.audio).toBe(false);
 
     expect(models['gemini-3.6-flash']).toBeDefined();
     expect(models['gemini-3.6-flash'].variants.minimal).toBeDefined();
