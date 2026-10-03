@@ -97,7 +97,7 @@ describe('OpenCode v2 Integration and Edge Cases', () => {
 
       const models = catalog.providers[AGY_PROVIDER_ID].models;
       expect(models['gemini-3.8-flash'].family).toBe('gemini');
-      expect(models['claude-sonnet-4-6'].family).toBe('claude');
+      expect(models['claude-sonnet-5-5'].family).toBe('claude');
       expect(models['gpt-oss-120b-medium'].family).toBe('gpt');
     });
   });

@@ -190,8 +190,12 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
       { id: 'low' },
       { id: 'high' }
     ]);
-    expect(catalog.providers[AGY_PROVIDER_ID].models['claude-sonnet-4-6']).toBeDefined();
-    expect(catalog.providers[AGY_PROVIDER_ID].models['claude-sonnet-4-6'].variants).toBeUndefined();
+    expect(catalog.providers[AGY_PROVIDER_ID].models['claude-sonnet-5-5']).toBeDefined();
+    expect(catalog.providers[AGY_PROVIDER_ID].models['claude-sonnet-5-5'].variants).toEqual([
+      { id: 'low' },
+      { id: 'medium' },
+      { id: 'high' }
+    ]);
     expect(catalog.providers[AGY_PROVIDER_ID].models['gpt-oss-120b-medium']).toBeDefined();
 
     // Test with catalog having existing provider without settings
@@ -246,11 +250,15 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
       { id: 'high' }
     ]);
 
-    const claudeCall = modelCalls.find((c: any) => c[0] === AGY_PROVIDER_ID && c[1] === 'claude-sonnet-4-6');
+    const claudeCall = modelCalls.find((c: any) => c[0] === AGY_PROVIDER_ID && c[1] === 'claude-sonnet-5-5');
     expect(claudeCall).toBeDefined();
     const claudeModelObj: any = {};
     claudeCall[2](claudeModelObj);
-    expect(claudeModelObj.variants).toBeUndefined();
+    expect(claudeModelObj.variants).toEqual([
+      { id: 'low' },
+      { id: 'medium' },
+      { id: 'high' }
+    ]);
 
     // Verify catalog transform handles null safely
     await catalogTransformFn!(null);
