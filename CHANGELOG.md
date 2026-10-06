@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.17](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.2.16...1.2.17) (2026-10-06)
+
+
+### Features
+
+* **sdk:** bump agy cli to 1.2.17 ([a3040f9](https://github.com/anthonyhaussman/opencode-agy-auth/commit/a3040f908ab4a953e2ec7f477e59c5288187a28d))
+
+
+### Bug Fixes
+
+* **sdk:** sanitize invalid thinking blocks for Claude models ([3bb55ae](https://github.com/anthonyhaussman/opencode-agy-auth/commit/3bb55aeedba548c422f975fe9723c4a877aa1dd0))
+* **sdk:** set dynamic used_claude label for Claude models ([5ef40df](https://github.com/anthonyhaussman/opencode-agy-auth/commit/5ef40df3ca09b8467630b310741723533997e9d2))
+
 ## [1.2.16](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.2.14...1.2.16) (2026-10-03)
 
 
