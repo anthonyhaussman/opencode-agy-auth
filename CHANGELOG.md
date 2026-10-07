@@ -1,5 +1,54 @@
 # Changelog
 
+## [1.3.0](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.2.17...1.3.0) (2026-10-07)
+
+
+### Features
+
+* **agy:** bump agy CLI to v1.3.0 ([7f69062](https://github.com/anthonyhaussman/opencode-agy-auth/commit/7f6906207c0bed84e25a0285ba0e631f02ed8696))
+* **agy:** refresh models catalogue for agy v1.3.0 ([8c56988](https://github.com/anthonyhaussman/opencode-agy-auth/commit/8c569883ecc815cb6943bd03ef4e9195d2e831b5))
+* export dual v1/v2 plugin entrypoint from index.ts ([3072ab2](https://github.com/anthonyhaussman/opencode-agy-auth/commit/3072ab23c77aeb5bf9653082602e5d07a25f6f6f))
+* **types:** define opencode v2 plugin contracts and helpers ([64ce65b](https://github.com/anthonyhaussman/opencode-agy-auth/commit/64ce65bc5c524e1890f29a62046cc2455f9d3396))
+* **v2:** implement opencode v2 plugin setup adapter ([610027f](https://github.com/anthonyhaussman/opencode-agy-auth/commit/610027feae3edb101d21c77c1cc8535f176a00af))
+
+
+### Bug Fixes
+
+* **prepare:** sanitize parameters_json_schema in tool definitions ([c1f8bde](https://github.com/anthonyhaussman/opencode-agy-auth/commit/c1f8bdedf51954091dd04271a3d40c381531622b))
+* **test:** mock browser launcher and stub stored auth in v2 tests ([cdb90e9](https://github.com/anthonyhaussman/opencode-agy-auth/commit/cdb90e93dd9bf3c53798e5c17975c4e9dd5e36f0))
+* **test:** prevent browser popup during coverage runs ([e24a421](https://github.com/anthonyhaussman/opencode-agy-auth/commit/e24a421d2111e642838ddc8542a7c6924ad3f954))
+* **v2:** add integration transform and filter session hooks ([8b62da4](https://github.com/anthonyhaussman/opencode-agy-auth/commit/8b62da4599fa7067fe19355d0d0f7514d07c207b))
+* **v2:** align oauth credential schema and request transforms ([0b7f1d6](https://github.com/anthonyhaussman/opencode-agy-auth/commit/0b7f1d6d81695d38374be92cafc95636c5cd5c41))
+* **v2:** avoid mutating read-only Request url ([958e0c7](https://github.com/anthonyhaussman/opencode-agy-auth/commit/958e0c734972f32ecca1d85a48f226036d2a6f3a))
+* **v2:** await transform response in http hook ([2cefe73](https://github.com/anthonyhaussman/opencode-agy-auth/commit/2cefe736a38a4e698e9a95d288112b5ca3fb92ed))
+* **v2:** configure aisdk provider package and register model variants ([2d1c856](https://github.com/anthonyhaussman/opencode-agy-auth/commit/2d1c856cff13003acd46ec3e2456f2e844a00b2c))
+* **v2:** implement aisdk hook and complete oauth authorize flow ([a2751cf](https://github.com/anthonyhaussman/opencode-agy-auth/commit/a2751cfbd433fdff7bfda5fd212bfbf551361f0a))
+* **v2:** persist AGY OAuth auth atomically ([9cf6aef](https://github.com/anthonyhaussman/opencode-agy-auth/commit/9cf6aefa5b735357e849f1b75e9d3ada56642c3c))
+* **v2:** support opencode v2 catalog and tool editor apis ([f268725](https://github.com/anthonyhaussman/opencode-agy-auth/commit/f268725f0631dec1a2ad947832bbd472415e8bcb))
+* **v2:** support provider and model registries ([268b1a2](https://github.com/anthonyhaussman/opencode-agy-auth/commit/268b1a2a4ce045f75d437599b00f97ec8109c1ce))
+* **v2:** use pkce authorize flow and inject stored auth ([9a1e181](https://github.com/anthonyhaussman/opencode-agy-auth/commit/9a1e18181ce52995881597d92842c59279dee454))
+
+
+### Refactor
+
+* **v2:** modularize opencode v2 adapter ([d7e9001](https://github.com/anthonyhaussman/opencode-agy-auth/commit/d7e9001207f11466167e855abcdec4ab89ba607d))
+
+
+### Documentation
+
+* **agents:** document opencode v2 adapter and oauth flow ([cf75a69](https://github.com/anthonyhaussman/opencode-agy-auth/commit/cf75a6914fc57d3763bff0a532296ef97bbc25e1))
+* document opencode v1 and v2 dual architecture in agents.md ([bfbfcd6](https://github.com/anthonyhaussman/opencode-agy-auth/commit/bfbfcd6015c8f24dfe80ffa3d07cb2de55d789af))
+* document opencode v1 and v2 dual compatibility ([33a91f3](https://github.com/anthonyhaussman/opencode-agy-auth/commit/33a91f38cab8ef149c7b4de3c7c73297ae47ed01))
+* **readme:** graduate opencode v2 support from alpha ([cae27b9](https://github.com/anthonyhaussman/opencode-agy-auth/commit/cae27b9db8cb1d7c2b0ecb88833b6187433ad9eb))
+
+
+### Tests
+
+* add comprehensive integration tests for opencode v2 adapter ([dfe8c4a](https://github.com/anthonyhaussman/opencode-agy-auth/commit/dfe8c4a4be0a999306be73ac675db00c62ba33d5))
+* **coverage:** replace html reporter with lcov ([2ef0efd](https://github.com/anthonyhaussman/opencode-agy-auth/commit/2ef0efd4ce4bcc383e5eb21a6457c518df2b7a91))
+* **v2:** increase test coverage for http request hook ([7ce1d8d](https://github.com/anthonyhaussman/opencode-agy-auth/commit/7ce1d8d22cf346e3dfa3b432dca60a0972ef8e9c))
+* **v2:** update model assertions for claude 5.5 ([3a774f8](https://github.com/anthonyhaussman/opencode-agy-auth/commit/3a774f8dd113fa7ecfc097a55efda602aa5530d4))
+
 ## [1.2.17](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.2.16...1.2.17) (2026-10-06)
 
 
