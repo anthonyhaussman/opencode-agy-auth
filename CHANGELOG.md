@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.2](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.3.1...1.3.2) (2026-10-09)
+
+
+### Features
+
+* **agy:** bump agy CLI to v1.3.2 ([e63cf5f](https://github.com/anthonyhaussman/opencode-agy-auth/commit/e63cf5fbef47931befe8a715d5a71b080d6225b7))
+
+
+### Build System
+
+* **deps:** bump hashgraph-online/ai-plugin-scanner-action ([5bb5285](https://github.com/anthonyhaussman/opencode-agy-auth/commit/5bb52859baf0e87914e5583ed513d29fe60717d4))
+
 ## [1.3.1](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.3.0...1.3.1) (2026-10-07)
 
 
