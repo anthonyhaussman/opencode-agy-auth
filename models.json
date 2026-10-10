@@ -46,6 +46,8 @@
     }
   },
   "experimentIds": [
+    106826316,
+    106827294,
     106791760,
     106786387,
     106791766,
@@ -380,8 +382,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -463,8 +465,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -546,8 +548,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -626,8 +628,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "requiresImageOutputOutsideFunctionResponses": true,
@@ -707,8 +709,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -788,8 +790,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -856,8 +858,8 @@
       "model": "MODEL_PLACEHOLDER_M21",
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       }
     },
     "gemini-3.1-flash-lite": {
@@ -875,8 +877,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       }
     },
     "gemini-3.1-pro-high": {
@@ -907,8 +909,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -999,8 +1001,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1082,8 +1084,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1163,8 +1165,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1246,8 +1248,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1339,8 +1341,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1434,8 +1436,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1529,8 +1531,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1623,8 +1625,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1710,8 +1712,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1799,8 +1801,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1888,8 +1890,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1952,92 +1954,6 @@
       "tagTitle": "Leaving Soon",
       "thinkingBudget": 4000
     },
-    "gemini-3.7-flash-tiered": {
-      "apiProvider": "API_PROVIDER_GOOGLE_GEMINI",
-      "maxOutputTokens": 65536,
-      "maxTokens": 1048576,
-      "minThinkingBudget": 32,
-      "model": "MODEL_PLACEHOLDER_M301",
-      "modelExperiments": {
-        "experiments": {
-          "CASCADE_USE_EXPERIMENT_CHECKPOINTER": {
-            "stringValue": "{\n    \"strategy\": \"CHECKPOINT_STRATEGY_SAME_MODEL\",\n    \"max_token_limit\": \"256000\",\n    \"token_threshold\": \"50000\",\n    \"max_overhead_ratio\": \"0.15\",\n    \"moving_window_size\": \"1\",\n    \"enabled\": true,\n    \"max_output_tokens\": \"16384\",\n    \"checkpoint_model\": \"MODEL_PLACEHOLDER_M50\",\n    \"use_last_planner_model\": true,\n    \"is_sync\": true,\n    \"max_user_requests\": 10,\n    \"include_last_user_message\": true,\n    \"include_conversation_log\": false,\n    \"include_running_task_snapshots\": true,\n    \"include_subagent_snapshots\": true,\n    \"include_artifact_snapshots\": true,\n    \"retry_config\": {\n        \"max_retries\": 4,\n        \"initial_sleep_duration_ms\": 1000,\n        \"exponential_multiplier\": 2,\n        \"include_error_feedback\": false\n    },\n    \"session_summary_prompt_override\": \"You have been working on the task described above but have not yet completed\\nit. Write a continuation summary that will allow you (or another instance of\\nyourself) to resume work efficiently in a future context window where the\\nfull conversation history will NOT be available\\u2014only this summary.\\n\\nThis summary is all that will be available to you going forward in the future\\ncontext window. Do not call any tools, simply just provide the summary based on\\nthe information available in the current context window.\\n\\nYour summary must be structured, concise, and actionable. Optimize for enabling immediate resumption with zero redundant work.\\n\\nInclude the following sections:\\n\\n1. **Task Overview**\\n   - The user's core request and success criteria\\n   - Constraints, preferences, or scope boundaries they specified\\n   - Any ambiguities that were resolved (and how)\\n\\n2. **Progress**\\n   - What has been completed, with concrete references (file paths,\\n     resource identifiers, tool outputs, URLs, etc.)\\n   - Key artifacts produced and their current state\\n   - What is in progress but incomplete, and its current state\\n\\n3. **Key Findings**\\n   - Technical constraints, requirements, or domain details uncovered\\n   - Decisions made and their rationale\\n   - Errors encountered and their resolutions\\n   - Approaches that were tried and abandoned (and why\\u2014this prevents\\n     the successor from repeating them)\\n\\n4. **Active Context**\\n   - State of any external resources, sessions, or environments in use\\n   - Relevant intermediate results, hypotheses, or working assumptions\\n   - Dependencies between components or steps\\n\\n5. **Next Steps**\\n   - Specific actions needed to complete the task, in priority order\\n   - Known blockers or open questions that must be resolved\\n   - For each step, note any prerequisites or risks\\n\\n6. **Commitments & Constraints**\\n   - Promises made to the user (e.g., \\\"I said I would do X before Y\\\")\\n   - User preferences or style requirements\\n   - Any boundaries the user set on approach, tools, or scope\\n\\nBe concise but complete\\u2014err on the side of including anything that would\\nprevent duplicate work, repeated mistakes, or broken promises. Do not include\\ninformation that is obvious from the task description itself.\\n\\nWrap your response in <summary></summary> tags.\\n\",\n    \"use_model_reported_token_count\": false\n}"
-          },
-          "cascade-include-ephemeral-message": {
-            "stringValue": "{\n    \"enabled\": false,\n    \"disabledHeuristics\": [\"planning_mode\", \"bash_command_reminder\", \"running_tasks_reminder\"],\n    \"staticMessages\": [],\n    \"useAllowlist\": false,\n    \"enabledHeuristics\": []\n}"
-          },
-          "retry_model_capacity_exhausted": {
-            "boolValue": true
-          },
-          "task-details-suffix": {
-            "stringValue": "\nYOU MUST TAKE ONE OF THE FOLLOWING TWO ACTIONS: A) either proceed to other relevant work (if any) or, B) simply update the user with a short message (that you have launched the command and will wait for it to finish) and end the turn.\n DO NOTHING ELSE."
-          }
-        }
-      },
-      "modelProvider": "MODEL_PROVIDER_GOOGLE",
-      "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
-      },
-      "recommended": true,
-      "supportedMimeTypes": {
-        "application/json": true,
-        "application/msword": true,
-        "application/pdf": true,
-        "application/rtf": true,
-        "application/vnd.ms-excel": true,
-        "application/vnd.ms-powerpoint": true,
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
-        "application/x-ipynb+json": true,
-        "application/x-javascript": true,
-        "application/x-python-code": true,
-        "application/x-typescript": true,
-        "audio/aac": true,
-        "audio/flac": true,
-        "audio/l16": true,
-        "audio/m4a": true,
-        "audio/mp3": true,
-        "audio/mp4": true,
-        "audio/mpeg": true,
-        "audio/ogg": true,
-        "audio/opus": true,
-        "audio/vnd.wave": true,
-        "audio/wav": true,
-        "audio/wave": true,
-        "audio/webm": true,
-        "audio/webm;codecs=opus": true,
-        "audio/x-wav": true,
-        "image/heic": true,
-        "image/heif": true,
-        "image/jpeg": true,
-        "image/png": true,
-        "image/webp": true,
-        "text/css": true,
-        "text/csv": true,
-        "text/html": true,
-        "text/javascript": true,
-        "text/markdown": true,
-        "text/plain": true,
-        "text/rtf": true,
-        "text/x-python": true,
-        "text/x-python-script": true,
-        "text/x-typescript": true,
-        "text/xml": true,
-        "video/audio/s16le": true,
-        "video/audio/wav": true,
-        "video/jpeg2000": true,
-        "video/mp4": true,
-        "video/text/timestamp": true,
-        "video/videoframe/jpeg2000": true,
-        "video/webm": true
-      },
-      "supportsImages": true,
-      "supportsThinking": true,
-      "supportsVideo": true,
-      "thinkingBudget": -1
-    },
     "gemini-3.8-flash-high": {
       "apiProvider": "API_PROVIDER_GOOGLE_GEMINI",
       "displayName": "Gemini 3.8 Flash (High)",
@@ -2063,8 +1979,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -2150,8 +2066,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -2237,8 +2153,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -2323,8 +2239,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -2413,8 +2329,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9749444,
-        "resetTime": "2026-10-09T09:49:33Z"
+        "remainingFraction": 0.9730321,
+        "resetTime": "2026-10-10T12:21:26Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
