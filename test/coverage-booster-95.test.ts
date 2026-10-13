@@ -45,13 +45,10 @@ describe('Coverage Booster - 95%+ Target', () => {
     expect(models['claude-sonnet-5-5'].capabilities.input.image).toBe(true);
     expect(models['claude-sonnet-5-5'].capabilities.input.audio).toBe(false);
 
-    expect(models['gemini-3.6-flash']).toBeDefined();
-    expect(models['gemini-3.6-flash'].variants.minimal).toBeDefined();
-    expect(models['gemini-3.6-flash'].variants.minimal.thinkingConfig.thinkingBudget).toBe(1000);
-    expect(models['gemini-3.6-flash'].variants.medium).toBeDefined();
-
-    expect(models['gemini-3.1-pro']).toBeDefined();
-    expect(models['gemini-3.1-pro'].variants.medium).toBeUndefined();
+    expect(models['gemini-3.8-flash']).toBeDefined();
+    expect(models['gemini-3.8-flash'].variants.low).toBeDefined();
+    expect(models['gemini-3.8-flash'].variants.medium).toBeDefined();
+    expect(models['gemini-3.8-flash'].variants.high).toBeDefined();
   });
 
   it('tests plugin.ts auth methods and loader authorization header branching', async () => {

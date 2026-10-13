@@ -32,7 +32,7 @@ describe('Target 95% Coverage Test Suite', () => {
                   'google-agy': {
                     options: {
                       models: {
-                        'gemini-3.7-flash': {
+                        'gemini-3.8-flash': {
                           variants: {
                             low: { thinkingConfig: { maxTokens: 100 } },
                           },
@@ -51,7 +51,7 @@ describe('Target 95% Coverage Test Suite', () => {
         provider: {
           'google-agy': {
             models: {
-              'gemini-3.7-flash': {
+              'gemini-3.8-flash': {
                 modalities: { input: ['text'], output: ['text'] },
                 capabilities: { input: ['text'], output: ['text'] },
               },
@@ -61,7 +61,7 @@ describe('Target 95% Coverage Test Suite', () => {
       };
 
       await plugin.config!(configResult);
-      expect(configResult.provider['google-agy'].models['gemini-3.7-flash']).toBeDefined();
+      expect(configResult.provider['google-agy'].models['gemini-3.8-flash']).toBeDefined();
     });
 
     it('covers custom auth loader and methods', async () => {

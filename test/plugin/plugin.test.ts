@@ -13,8 +13,8 @@ vi.mock('../../src/sdk/retry', () => ({
 
 vi.mock('../../src/plugin/pricing', () => ({
   updateStaticModelsWithPricing: vi.fn((models) => {
-    if (models['gemini-3.7-flash']) {
-      models['gemini-3.7-flash'].cost = { input: 1.25, output: 5, cache: { read: 0.3, write: 1.25 } };
+    if (models['gemini-3.8-flash']) {
+      models['gemini-3.8-flash'].cost = { input: 1.25, output: 5, cache: { read: 0.3, write: 1.25 } };
     }
   })
 }));
@@ -88,7 +88,6 @@ describe('AgyCLIOAuthPlugin', () => {
     expect(configObj.command['agyquotasummary']).toBeDefined();
     expect(configObj.provider[AGY_PROVIDER_ID]).toBeDefined();
     expect(configObj.provider[AGY_PROVIDER_ID].models['gemini-3.8-flash']).toBeDefined();
-    expect(configObj.provider[AGY_PROVIDER_ID].models['gemini-3.7-flash']).toBeDefined();
     expect(configObj.provider[AGY_PROVIDER_ID].models['claude-opus-5-5']).toBeDefined();
     expect(configObj.provider[AGY_PROVIDER_ID].models['claude-sonnet-5-5']).toBeDefined();
     expect(configObj.provider[AGY_PROVIDER_ID].models['gpt-oss-120b-medium']).toBeDefined();
@@ -113,8 +112,8 @@ describe('AgyCLIOAuthPlugin', () => {
     const auth = { type: 'oauth', access: 'token', refresh: 'refresh' };
     const result = await modelsFn({ models: {} }, { auth });
 
-    expect(result['gemini-3.7-flash']).toBeDefined();
-    expect(result['gemini-3.7-flash'].cost.input).toBe(1.25);
+    expect(result['gemini-3.8-flash']).toBeDefined();
+    expect(result['gemini-3.8-flash'].cost.input).toBe(1.25);
   });
 
   it('loader returns null for non-oauth auth', async () => {
@@ -265,7 +264,7 @@ describe('AgyCLIOAuthPlugin', () => {
       provider: {
         [AGY_PROVIDER_ID]: {
           models: {
-            'gemini-3.7-flash': {
+            'gemini-3.8-flash': {
               reasoning: false,
               attachment: false,
               tool_call: false,
@@ -282,7 +281,7 @@ describe('AgyCLIOAuthPlugin', () => {
       }
     };
     await plugin.config?.(configObj);
-    const configuredModel = configObj.provider[AGY_PROVIDER_ID].models['gemini-3.7-flash'];
+    const configuredModel = configObj.provider[AGY_PROVIDER_ID].models['gemini-3.8-flash'];
     expect(configuredModel.reasoning).toBe(false);
     expect(configuredModel.attachment).toBe(false);
   });

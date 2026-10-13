@@ -34,8 +34,8 @@ describe('AgyCLIOAuthPlugin deep coverage', () => {
       provider: {
         'google-agy': {
           models: {
-            'gemini-3.7-flash': {
-              name: 'Custom Gemini 3.7 Flash',
+            'gemini-3.8-flash': {
+              name: 'Custom Gemini 3.8 Flash',
               cost: { input: 1.5, output: 3.0, cache: { read: 0.5, write: 1.0 } },
               capabilities: {
                 input: { text: true, audio: true },
@@ -49,8 +49,8 @@ describe('AgyCLIOAuthPlugin deep coverage', () => {
     await (plugin as any).config(configResult);
 
     expect(configResult.provider?.['google-agy']).toBeDefined();
-    expect(configResult.provider?.['google-agy'].models?.['gemini-3.7-flash']).toBeDefined();
-    expect(configResult.provider?.['google-agy'].models?.['gemini-3.7-flash'].name).toBe('Custom Gemini 3.7 Flash');
+    expect(configResult.provider?.['google-agy'].models?.['gemini-3.8-flash']).toBeDefined();
+    expect(configResult.provider?.['google-agy'].models?.['gemini-3.8-flash'].name).toBe('Custom Gemini 3.8 Flash');
   });
 
   it('normalizes provider model costs when model costs are non-numbers', async () => {

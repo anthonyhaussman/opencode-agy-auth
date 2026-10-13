@@ -186,10 +186,6 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
       { id: 'medium' },
       { id: 'high' }
     ]);
-    expect(catalog.providers[AGY_PROVIDER_ID].models['gemini-3.1-pro'].variants).toEqual([
-      { id: 'low' },
-      { id: 'high' }
-    ]);
     expect(catalog.providers[AGY_PROVIDER_ID].models['claude-sonnet-5-5']).toBeDefined();
     expect(catalog.providers[AGY_PROVIDER_ID].models['claude-sonnet-5-5'].variants).toEqual([
       { id: 'low' },
@@ -238,15 +234,6 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     expect(flashModelObj.variants).toEqual([
       { id: 'low' },
       { id: 'medium' },
-      { id: 'high' }
-    ]);
-
-    const proCall = modelCalls.find((c: any) => c[0] === AGY_PROVIDER_ID && c[1] === 'gemini-3.1-pro');
-    expect(proCall).toBeDefined();
-    const proModelObj: any = {};
-    proCall[2](proModelObj);
-    expect(proModelObj.variants).toEqual([
-      { id: 'low' },
       { id: 'high' }
     ]);
 

@@ -25,33 +25,6 @@ export const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
     reasoning: true,
     attachment: true
   },
-  'gemini-3.7-flash': {
-    name: 'Gemini 3.7 Flash',
-    description: 'Gemini 3.7 Flash base model. Select tier at runtime.',
-    maxTokens: 1048576,
-    maxOutputTokens: 65536,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'gemini-3.6-flash': {
-    name: 'Gemini 3.6 Flash',
-    description: 'Gemini 3.6 Flash base model. Select tier at runtime.',
-    maxTokens: 1048576,
-    maxOutputTokens: 65536,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'gemini-3.1-pro': {
-    name: 'Gemini 3.1 Pro',
-    description: 'Gemini 3.1 Pro base model. Select tier at runtime.',
-    maxTokens: 1048576,
-    maxOutputTokens: 65535,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
   'claude-opus-5-5': {
     name: 'Claude Opus 5.5',
     description: 'Claude Opus 5.5 deep reasoning model. Select tier at runtime.',
@@ -86,21 +59,6 @@ export const TIER_MAPPING: Record<string, { low: string; high: string; medium?: 
     low: 'gemini-3.8-flash-low',
     medium: 'gemini-3.8-flash-medium',
     high: 'gemini-3.8-flash-high'
-  },
-  'gemini-3.7-flash': {
-    low: 'gemini-3.7-flash-low',
-    medium: 'gemini-3.7-flash-medium',
-    high: 'gemini-3.7-flash-high'
-  },
-  'gemini-3.6-flash': {
-    minimal: 'gemini-3.6-flash-low',
-    low: 'gemini-3.6-flash-low',
-    medium: 'gemini-3.6-flash-medium',
-    high: 'gemini-3.6-flash-high'
-  },
-  'gemini-3.1-pro': {
-    low: 'gemini-3.1-pro-low',
-    high: 'gemini-3.1-pro-high'
   },
   'claude-opus-5-5': {
     low: 'claude-opus-5-5-low',

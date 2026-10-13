@@ -116,9 +116,6 @@ describe('reach 95% coverage branches', () => {
     await plugin.config(configObj as any);
     const models = (configObj.provider['google-agy'] as any).models;
     expect(models['gemini-3.8-flash']).toBeDefined();
-    expect(models['gemini-3.7-flash']).toBeDefined();
-    expect(models['gemini-3.6-flash']).toBeDefined();
-    expect(models['gemini-3.1-pro']).toBeDefined();
     expect(models['claude-opus-5-5']).toBeDefined();
     expect(models['claude-sonnet-5-5']).toBeDefined();
     expect(models['gpt-oss-120b-medium']).toBeDefined();
@@ -130,7 +127,7 @@ describe('reach 95% coverage branches', () => {
     expect(claudeModel.modalities.input).not.toContain('audio');
 
     // Verify Gemini model capabilities (has audio/video)
-    const geminiModel = models['gemini-3.7-flash'];
+    const geminiModel = models['gemini-3.8-flash'];
     expect(geminiModel.capabilities.input.audio).toBe(true);
     expect(geminiModel.capabilities.input.video).toBe(true);
     expect(geminiModel.modalities.input).toContain('audio');
