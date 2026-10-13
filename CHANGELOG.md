@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.4](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.3.3...1.3.4) (2026-10-13)
+
+
+### Features
+
+* **agy:** bump agy CLI to v1.3.4 ([8000054](https://github.com/anthonyhaussman/opencode-agy-auth/commit/80000544b0d31b7be00eaf0c3ddbc23589538d07))
+* **models:** prune retired models from tier catalog ([df65bd4](https://github.com/anthonyhaussman/opencode-agy-auth/commit/df65bd48fc010e3fbadc2c28b32af58733c9f2ce))
+
 ## [1.3.3](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.3.2...1.3.3) (2026-10-10)
 
 
