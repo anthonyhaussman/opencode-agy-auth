@@ -87,6 +87,12 @@ describe("v2 session hooks", () => {
           authorization: "Bearer dummy",
         }),
         body: JSON.stringify(requestPayload),
+        auth: {
+          type: "oauth",
+          access: "test-access-token",
+          refresh: "refresh|project|managed",
+          expires: Date.now() + 3600000,
+        },
       };
 
       await reqHook(eventReq);
@@ -101,6 +107,33 @@ describe("v2 session hooks", () => {
 
       await resHook(eventRes);
       expect(eventRes.response).toBeInstanceOf(Response);
+    });
+
+    it("captures sessionId in state even when authRecord is not present", async () => {
+      const state: any = {};
+      const reqHook = createV2HttpRequestHook(state);
+
+      const requestPayload = {
+        sessionId: "v2-unauth-session-456",
+        contents: [{ role: "user", parts: [{ text: "hello" }] }],
+      };
+
+      const eventReq: any = {
+        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent",
+        headers: new Headers({
+          authorization: "Bearer dummy",
+        }),
+        body: JSON.stringify(requestPayload),
+      };
+
+      const originalHome = process.env.HOME;
+      try {
+        process.env.HOME = `/tmp/test-nonexistent-home-${Date.now()}`;
+        await reqHook(eventReq);
+        expect(state.lastSessionId).toBe("v2-unauth-session-456");
+      } finally {
+        process.env.HOME = originalHome;
+      }
     });
   });
 

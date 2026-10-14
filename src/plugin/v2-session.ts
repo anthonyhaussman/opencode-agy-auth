@@ -113,6 +113,31 @@ export function createV2HttpRequestHook(state: V2SessionHooksState = {}) {
         // Ignore invalid URL parse
       }
 
+      // Read body from event.body or event.request early to extract sessionId
+      let bodyPayload: any = event.body;
+      if (bodyPayload === undefined && event.request) {
+        if (typeof event.request.clone === 'function') {
+          try {
+            bodyPayload = await event.request.clone().text();
+          } catch {
+            // Ignore clone read error
+          }
+        } else if (event.request.body !== undefined) {
+          bodyPayload = event.request.body;
+        }
+      }
+
+      if (bodyPayload) {
+        try {
+          const parsed = typeof bodyPayload === 'string' ? JSON.parse(bodyPayload) : bodyPayload;
+          if (parsed && typeof parsed === 'object' && typeof parsed.sessionId === 'string') {
+            state.lastSessionId = parsed.sessionId;
+          }
+        } catch {
+          // Ignore json parse error
+        }
+      }
+
       // If we have auth, perform full URL and body transformation via prepareAgyRequest
       if (authRecord && authRecord.access) {
         let projectContext: { effectiveProjectId: string; auth: any };
@@ -138,20 +163,6 @@ export function createV2HttpRequestHook(state: V2SessionHooksState = {}) {
           const resolvedBase = resolveModelTier(originalBase, { headers: initHeaders });
           if (originalBase !== resolvedBase) {
             modifiedUrl = modifiedUrl.replace(`models/${originalBase}`, `models/${resolvedBase}`);
-          }
-        }
-
-        // Read body from event.body or event.request
-        let bodyPayload: any = event.body;
-        if (bodyPayload === undefined && event.request) {
-          if (typeof event.request.clone === 'function') {
-            try {
-              bodyPayload = await event.request.clone().text();
-            } catch {
-              // Ignore clone read error
-            }
-          } else if (event.request.body !== undefined) {
-            bodyPayload = event.request.body;
           }
         }
 
