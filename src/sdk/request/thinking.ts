@@ -154,7 +154,8 @@ function isThinkingPart(part: any): boolean {
   return (
     part.thought === true ||
     part.type === "thinking" ||
-    part.type === "redacted_thinking"
+    part.type === "redacted_thinking" ||
+    part.type === "reasoning"
   );
 }
 
@@ -194,7 +195,9 @@ function messageHasThinking(msg: any): boolean {
   if (Array.isArray(msg.content)) {
     return msg.content.some(
       (block: any) =>
-        block?.type === "thinking" || block?.type === "redacted_thinking",
+        block?.type === "thinking" ||
+        block?.type === "redacted_thinking" ||
+        block?.type === "reasoning",
     );
   }
 
@@ -357,7 +360,10 @@ export function looksLikeCompactedThinkingTurn(msg: any): boolean {
     (p: any) =>
       p &&
       typeof p === "object" &&
-      (p.thought === true || p.type === "thinking" || p.type === "redacted_thinking"),
+      (p.thought === true ||
+        p.type === "thinking" ||
+        p.type === "redacted_thinking" ||
+        p.type === "reasoning"),
   );
 
   if (hasThinking) return false;
@@ -427,7 +433,7 @@ export function deduplicateThinkingText(
       const newParts = content.parts.map((part: unknown) => {
         const p = part as Record<string, unknown>;
 
-        if (p.thought === true || p.type === "thinking") {
+        if (p.thought === true || p.type === "thinking" || p.type === "reasoning") {
           const fullText = (p.text || p.thinking || "") as string;
 
           // If this thought chain was already rendered, block it directly from the stream to prevent long overlapping rendering in tool call branches
@@ -475,7 +481,7 @@ export function deduplicateThinkingText(
     let thinkingIndex = 0;
     const newContent = resp.content.map((block: unknown) => {
       const b = block as Record<string, unknown> | null;
-      if (b?.type === "thinking") {
+      if (b?.type === "thinking" || b?.type === "reasoning") {
         const fullText = (b.thinking || b.text || "") as string;
 
         if (displayedThinkingHashes) {
@@ -543,7 +549,7 @@ export function cacheThinkingSignaturesFromResponse(
 
       content.parts.forEach((part: unknown) => {
         const p = part as Record<string, unknown>;
-        if (p.thought === true || p.type === "thinking") {
+        if (p.thought === true || p.type === "thinking" || p.type === "reasoning") {
           const text = (p.text || p.thinking || "") as string;
           if (text) {
             const current = thoughtBuffer.get(index) ?? "";
@@ -551,10 +557,14 @@ export function cacheThinkingSignaturesFromResponse(
           }
         }
 
-        if (p.thoughtSignature) {
+        const partSignature =
+          (p.thoughtSignature as string | undefined) ||
+          ((p.state as any)?.thoughtSignature as string | undefined) ||
+          (p.signature as string | undefined);
+        if (partSignature) {
           const fullText = thoughtBuffer.get(index) ?? "";
           if (fullText) {
-            const signature = p.thoughtSignature as string;
+            const signature = partSignature;
             onCacheSignature?.(signatureSessionKey, fullText, signature);
             signatureStore.set(signatureSessionKey, { text: fullText, signature });
           }
@@ -568,17 +578,21 @@ export function cacheThinkingSignaturesFromResponse(
     const CLAUDE_BUFFER_KEY = 0;
     resp.content.forEach((block: unknown) => {
       const b = block as Record<string, unknown> | null;
-      if (b?.type === "thinking") {
+      if (b?.type === "thinking" || b?.type === "reasoning") {
         const text = (b.thinking || b.text || "") as string;
         if (text) {
           const current = thoughtBuffer.get(CLAUDE_BUFFER_KEY) ?? "";
           thoughtBuffer.set(CLAUDE_BUFFER_KEY, current + text);
         }
       }
-      if (b?.signature) {
+      const blockSignature =
+        (b?.signature as string | undefined) ||
+        (b?.thoughtSignature as string | undefined) ||
+        ((b?.state as any)?.thoughtSignature as string | undefined);
+      if (blockSignature) {
         const fullText = thoughtBuffer.get(CLAUDE_BUFFER_KEY) ?? "";
         if (fullText) {
-          const signature = b.signature as string;
+          const signature = blockSignature;
           onCacheSignature?.(signatureSessionKey, fullText, signature);
           signatureStore.set(signatureSessionKey, { text: fullText, signature });
         }
@@ -690,7 +704,10 @@ export function createStreamingTransformer(
           hasSeenUsageMetadata = true;
         }
         if (!streamHasThinking) {
-          streamHasThinking = event.includes('"thought":true') || event.includes('"type":"thinking"');
+          streamHasThinking =
+            event.includes('"thought":true') ||
+            event.includes('"type":"thinking"') ||
+            event.includes('"type":"reasoning"');
         }
         if (!streamHasToolCalls) {
           streamHasToolCalls = event.includes('"functionCall"');
@@ -716,7 +733,10 @@ export function createStreamingTransformer(
           hasSeenUsageMetadata = true;
         }
         if (!streamHasThinking) {
-          streamHasThinking = buffer.includes('"thought":true') || buffer.includes('"type":"thinking"');
+          streamHasThinking =
+            buffer.includes('"thought":true') ||
+            buffer.includes('"type":"thinking"') ||
+            buffer.includes('"type":"reasoning"');
         }
         if (!streamHasToolCalls) {
           streamHasToolCalls = buffer.includes('"functionCall"');

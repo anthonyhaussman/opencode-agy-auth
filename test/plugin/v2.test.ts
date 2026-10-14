@@ -17,6 +17,7 @@ import {
 import { AGY_PROVIDER_ID } from '../../src/constants';
 import { AGY_QUOTA_TOOL_NAME } from '../../src/plugin/quota';
 import { AGY_QUOTA_SUMMARY_TOOL_NAME } from '../../src/plugin/quota-summary';
+import { getDiskSignatureCache, resetDiskSignatureCacheForTesting } from '../../src/plugin/cache';
 import type { OpenCodeV2PluginContext } from '../../src/plugin/types';
 
 describe('OpenCode v2 Plugin Setup Adapter', () => {
@@ -27,6 +28,24 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     const created = createV2PluginDefinition();
     expect(created.id).toBe(AGY_PROVIDER_ID);
     expect(created.setup).toBe(setupOpenCodeV2);
+  });
+
+  it('initializes disk signature cache in setupOpenCodeV2', async () => {
+    resetDiskSignatureCacheForTesting();
+    expect(getDiskSignatureCache()).toBeNull();
+
+    const mockCtx: OpenCodeV2PluginContext = {
+      provider: { transform: vi.fn() },
+      model: { transform: vi.fn() },
+      tool: { transform: vi.fn() },
+      command: { transform: vi.fn() },
+      session: { hook: vi.fn() },
+      location: {},
+    };
+
+    await setupOpenCodeV2(mockCtx);
+
+    expect(getDiskSignatureCache()).not.toBeNull();
   });
 
   it('registers provider and models via provider.transform and model.transform in v2.0.8+', async () => {

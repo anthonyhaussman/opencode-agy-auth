@@ -105,6 +105,36 @@ describe('thinking module', () => {
       expect(state.lastModelHasToolCalls).toBe(true);
     });
 
+    it('supports OpenCode v2 style assistant messages with type reasoning', () => {
+      const v2Msg = [
+        { role: 'user', content: [{ type: 'text', text: 'hi' }] },
+        {
+          role: 'assistant',
+          content: [
+            { type: 'reasoning', text: 'v2 reasoning', state: { thoughtSignature: 'sig-v2' } },
+            { type: 'tool_use', name: 'calc' },
+          ],
+        },
+      ];
+      const state = analyzeConversationState(v2Msg);
+      expect(state.turnStartIdx).toBe(1);
+      expect(state.turnHasThinking).toBe(true);
+      expect(state.lastModelHasThinking).toBe(true);
+      expect(state.lastModelHasToolCalls).toBe(true);
+
+      const partsMsg = [
+        { role: 'user', parts: [{ text: 'hi' }] },
+        {
+          role: 'model',
+          parts: [
+            { type: 'reasoning', text: 'parts reasoning' },
+            { functionCall: { name: 'bash', args: {} } },
+          ],
+        },
+      ];
+      expect(looksLikeCompactedThinkingTurn(partsMsg[1])).toBe(false);
+    });
+
     it('determines needsThinkingRecovery and handles closeToolLoopForThinking', () => {
       const stateInLoopNoThinking = {
         inToolLoop: true,
@@ -251,6 +281,25 @@ describe('thinking module', () => {
       expect(res2.content[0].thinking).toBe('step 2');
     });
 
+    it('deduplicates OpenCode v2 reasoning blocks', () => {
+      const buffer = createThoughtBuffer();
+      const chunk1 = {
+        content: [
+          { type: 'reasoning', text: 'v2 thought step 1 ' },
+        ],
+      };
+      const res1 = deduplicateThinkingText(chunk1, buffer) as any;
+      expect(res1.content[0].text).toBe('v2 thought step 1 ');
+
+      const chunk2 = {
+        content: [
+          { type: 'reasoning', text: 'v2 thought step 1 step 2' },
+        ],
+      };
+      const res2 = deduplicateThinkingText(chunk2, buffer) as any;
+      expect(res2.content[0].text).toBe('step 2');
+    });
+
     it('caches signatures for Gemini and Claude responses', () => {
       const store = createSignatureStore();
       const buffer = createThoughtBuffer();
@@ -286,6 +335,29 @@ describe('thinking module', () => {
         text: 'Claude full thought',
         signature: 'claude-sig',
       });
+    });
+
+    it('caches signatures from OpenCode v2 reasoning blocks with state.thoughtSignature', () => {
+      const store = createSignatureStore();
+      const buffer = createThoughtBuffer();
+      const onCache = vi.fn();
+
+      const v2Resp = {
+        content: [
+          {
+            type: 'reasoning',
+            text: 'OpenCode v2 reasoning text',
+            state: { thoughtSignature: 'v2-sig-xyz' },
+          },
+        ],
+      };
+
+      cacheThinkingSignaturesFromResponse(v2Resp, 'session-v2', store, buffer, onCache);
+      expect(store.get('session-v2')).toEqual({
+        text: 'OpenCode v2 reasoning text',
+        signature: 'v2-sig-xyz',
+      });
+      expect(onCache).toHaveBeenCalledWith('session-v2', 'OpenCode v2 reasoning text', 'v2-sig-xyz');
     });
   });
 
@@ -384,6 +456,46 @@ describe('thinking module', () => {
 
       expect(fullText).toContain('"totalTokenCount":0');
       expect(onTurnUpdate).toHaveBeenCalledWith('sess-123', {
+        turnHasThinking: true,
+        lastModelHasToolCalls: false,
+      });
+    });
+
+    it('detects reasoning blocks in stream events as turnHasThinking', async () => {
+      const store = createSignatureStore();
+      const onTurnUpdate = vi.fn();
+      const transformer = createStreamingTransformer(
+        store,
+        { onTurnStateUpdate: onTurnUpdate },
+        { signatureSessionKey: 'sess-reasoning' }
+      );
+
+      const writer = transformer.writable.getWriter();
+      const reader = transformer.readable.getReader();
+
+      const chunk = new TextEncoder().encode(
+        `data: ${JSON.stringify({
+          response: {
+            content: [{ type: 'reasoning', text: 'thinking...', state: { thoughtSignature: 'sig' } }],
+          },
+        })}\n\n`
+      );
+
+      const readPromise = (async () => {
+        let fullText = '';
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          fullText += new TextDecoder().decode(value);
+        }
+        return fullText;
+      })();
+
+      await writer.write(chunk);
+      await writer.close();
+      await readPromise;
+
+      expect(onTurnUpdate).toHaveBeenCalledWith('sess-reasoning', {
         turnHasThinking: true,
         lastModelHasToolCalls: false,
       });

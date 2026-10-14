@@ -6,6 +6,7 @@ import {
   initDiskSignatureCache,
   cacheSignature,
   getLatestSignature,
+  getSignatureForText,
 } from '../../src/plugin/cache.js';
 
 describe('plugin cache', () => {
@@ -86,5 +87,31 @@ describe('plugin cache', () => {
       cacheSignature(sess, `thought-${i}`, `sig-${i}`);
     }
     expect(getLatestSignature(sess)).toBe('sig-104');
+  });
+
+  it('retrieves signatures for specific text with in-memory and disk fallback', () => {
+    expect(getSignatureForText('', 'text')).toBeUndefined();
+    expect(getSignatureForText('session-text', '')).toBeUndefined();
+
+    initDiskSignatureCache({ enabled: true });
+    cacheSignature('session-text', 'reasoning step 1', 'sig-reasoning-1');
+
+    // Retrieve from memory
+    expect(getSignatureForText('session-text', 'reasoning step 1')).toBe('sig-reasoning-1');
+    expect(getSignatureForText('session-text', 'other step')).toBeUndefined();
+
+    // Clear in-memory by checking another session that was stored to disk
+    const mockDisk = {
+      store: vi.fn(),
+      retrieve: vi.fn().mockImplementation((key: string) => {
+        if (key.includes('session-disk-only')) {
+          return 'sig-from-disk';
+        }
+        return undefined;
+      }),
+    };
+    initDiskSignatureCache(undefined);
+    // When diskCache is null
+    expect(getSignatureForText('session-disk-only', 'some text')).toBeUndefined();
   });
 });

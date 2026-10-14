@@ -18,6 +18,7 @@ import { resolveModelTier } from './tier';
 
 export interface V2SessionHooksState {
   lastInterceptedModel?: string;
+  lastSessionId?: string;
 }
 
 export function createV2HttpRequestHook(state: V2SessionHooksState = {}) {
@@ -180,6 +181,10 @@ export function createV2HttpRequestHook(state: V2SessionHooksState = {}) {
           projectContext.effectiveProjectId
         );
 
+        if (transformed.sessionId) {
+          state.lastSessionId = transformed.sessionId;
+        }
+
         // Update URL to Code Assist endpoint
         const targetUrl = toUrlString(transformed.request);
         if (typeof event.url === 'string') {
@@ -315,7 +320,7 @@ export function createV2HttpResponseHook(state: V2SessionHooksState = {}) {
         !!isStreaming,
         null,
         parsedModel,
-        undefined,
+        state.lastSessionId,
         undefined
       );
       event.response = transformed;

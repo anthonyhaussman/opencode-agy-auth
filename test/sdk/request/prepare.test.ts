@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { prepareAgyRequest, sanitizeClaudeThinkingParts } from "../../../src/sdk/request/prepare";
+import { cacheSignature } from "../../../src/plugin/cache";
 
 describe("prepareAgyRequest Claude model detection and label setting", () => {
   const token = "mock-token";
@@ -175,5 +176,52 @@ describe("prepareAgyRequest Claude model detection and label setting", () => {
     ];
     sanitizeClaudeThinkingParts(assistantContents, "claude-3-7-sonnet");
     expect(assistantContents[0].parts).toEqual([{ text: "" }]);
+  });
+
+  it("sanitizeClaudeThinkingParts recognizes OpenCode v2 reasoning blocks with state.thoughtSignature", () => {
+    const contents = [
+      {
+        role: "assistant",
+        parts: [
+          { type: "reasoning", text: "v2 reasoning step", state: { thoughtSignature: "v2-sig-456" } },
+          { text: "assistant response" },
+        ],
+      },
+    ];
+    sanitizeClaudeThinkingParts(contents, "claude-3-7-sonnet");
+    expect(contents[0].parts).toHaveLength(2);
+    expect((contents[0].parts[0] as any).thoughtSignature).toBe("v2-sig-456");
+    expect((contents[0].parts[0] as any).signature).toBe("v2-sig-456");
+  });
+
+  it("sanitizeClaudeThinkingParts filters out unsigned OpenCode v2 reasoning blocks", () => {
+    const contents = [
+      {
+        role: "assistant",
+        parts: [
+          { type: "reasoning", text: "unsigned reasoning step" },
+          { text: "assistant response" },
+        ],
+      },
+    ];
+    sanitizeClaudeThinkingParts(contents, "claude-3-7-sonnet");
+    expect(contents[0].parts).toEqual([{ text: "assistant response" }]);
+  });
+
+  it("sanitizeClaudeThinkingParts recovers missing signature from signature cache using sessionId", () => {
+    cacheSignature("session-recovery-test", "cached reasoning text", "recovered-sig-999");
+
+    const contents = [
+      {
+        role: "assistant",
+        parts: [
+          { type: "reasoning", text: "cached reasoning text" },
+          { text: "assistant response" },
+        ],
+      },
+    ];
+    sanitizeClaudeThinkingParts(contents, "claude-3-7-sonnet", "session-recovery-test");
+    expect(contents[0].parts).toHaveLength(2);
+    expect((contents[0].parts[0] as any).signature).toBe("recovered-sig-999");
   });
 });

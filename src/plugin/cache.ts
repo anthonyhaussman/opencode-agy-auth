@@ -184,5 +184,56 @@ export function getLatestSignature(sessionId: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Retrieves a cached signature for a specific text in a session.
+ * Checks memory cache first, then falls back to disk cache.
+ */
+export function getSignatureForText(sessionId: string, text: string): string | undefined {
+  if (!sessionId || !text) return undefined;
+
+  const textHash = hashText(text);
+
+  // Check in-memory session cache first
+  const sessionMemCache = signatureCache.get(sessionId);
+  if (sessionMemCache) {
+    const entry = sessionMemCache.get(textHash);
+    if (entry) {
+      if (Date.now() - entry.timestamp <= SIGNATURE_CACHE_TTL_MS) {
+        return entry.signature;
+      }
+      sessionMemCache.delete(textHash);
+    }
+  }
+
+  // Fallback to disk cache
+  if (diskCache) {
+    const diskKey = makeDiskKey(sessionId, textHash);
+    const diskValue = diskCache.retrieve(diskKey);
+    if (diskValue) {
+      if (!sessionMemCache) {
+        const newMemCache = new Map<string, SignatureEntry>();
+        signatureCache.set(sessionId, newMemCache);
+        newMemCache.set(textHash, { signature: diskValue, timestamp: Date.now() });
+      } else {
+        sessionMemCache.set(textHash, { signature: diskValue, timestamp: Date.now() });
+      }
+      return diskValue;
+    }
+  }
+
+  return undefined;
+}
+
+export function getDiskSignatureCache(): SignatureCache | null {
+  return diskCache;
+}
+
+export function resetDiskSignatureCacheForTesting(): void {
+  if (diskCache) {
+    diskCache.shutdown();
+    diskCache = null;
+  }
+}
+
 export type { SignatureCache } from "../sdk/cache/signature-cache";
 export type { SignatureCacheConfig } from "../sdk/cache/signature-cache";

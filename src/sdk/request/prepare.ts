@@ -7,7 +7,7 @@ import { buildAgyCliUserAgent } from "../user-agent";
 import { normalizeRequestPayloadIdentifiers, normalizeWrappedIdentifiers } from "./identifiers";
 import { addThoughtSignaturesToFunctionCalls, transformOpenAIToolCalls } from "./openai";
 import { isGenerativeLanguageRequest, parseGenerativeLanguageRequest } from "./shared";
-import { getLatestSignature } from "../../plugin/cache";
+import { getLatestSignature, getSignatureForText } from "../../plugin/cache";
 import { closeToolLoopForThinking } from "./thinking";
 import { getTurnStateTracker } from "./turn-state-tracker";
 import { getToolMapper, sanitizeToolName, type ToolMapper } from "./tool-mapper";
@@ -122,7 +122,7 @@ export function isClaudeModel(model: string): boolean {
   return model.toLowerCase().includes("claude");
 }
 
-export function sanitizeClaudeThinkingParts(contents: any[], model: string): void {
+export function sanitizeClaudeThinkingParts(contents: any[], model: string, sessionId?: string): void {
   if (!isClaudeModel(model) || !Array.isArray(contents)) {
     return;
   }
@@ -138,23 +138,70 @@ export function sanitizeClaudeThinkingParts(contents: any[], model: string): voi
       const isThinking =
         part.thought === true ||
         part.type === "thinking" ||
+        part.type === "reasoning" ||
         typeof part.thinking === "string";
 
       if (!isThinking) {
         return true;
       }
 
-      const sig =
+      let sig =
         typeof part.signature === "string"
           ? part.signature
           : typeof part.thoughtSignature === "string"
             ? part.thoughtSignature
-            : undefined;
+            : typeof part.state?.thoughtSignature === "string"
+              ? part.state.thoughtSignature
+              : undefined;
+
+      let recovered = false;
+      if ((!sig || sig === "skip_thought_signature_validator") && sessionId) {
+        const text =
+          typeof part.text === "string"
+            ? part.text
+            : typeof part.thinking === "string"
+              ? part.thinking
+              : undefined;
+        if (text) {
+          const recoveredSig = getSignatureForText(sessionId, text);
+          if (recoveredSig) {
+            sig = recoveredSig;
+            recovered = true;
+          }
+        }
+        if (!sig) {
+          const latest = getLatestSignature(sessionId);
+          if (latest) {
+            sig = latest;
+            recovered = true;
+          }
+        }
+      }
 
       const isValidSig =
         typeof sig === "string" &&
         sig.length > 0 &&
         sig !== "skip_thought_signature_validator";
+
+      if (isValidSig) {
+        if (part.type === "reasoning") {
+          part.thoughtSignature = sig;
+          part.signature = sig;
+          if (part.state) {
+            part.state.thoughtSignature = sig;
+          }
+        } else if (recovered) {
+          if (typeof part.thoughtSignature === "string" || part.thought) {
+            part.thoughtSignature = sig;
+          }
+          if (part.type === "thinking" || typeof part.thinking === "string") {
+            part.signature = sig;
+          }
+          if (!part.thoughtSignature && !part.signature) {
+            part.signature = sig;
+          }
+        }
+      }
 
       return isValidSig;
     });
@@ -244,7 +291,7 @@ function transformRequestBody(
 
         const latestSig = getLatestSignature(sessionId);
         applyLatestSignature(contents, latestSig);
-        sanitizeClaudeThinkingParts(contents, effectiveModel || requestedModel);
+        sanitizeClaudeThinkingParts(contents, effectiveModel || requestedModel, sessionId);
         requestPayloadInside.contents = contents;
       }
 
@@ -294,7 +341,7 @@ function transformRequestBody(
 
       const latestSig = getLatestSignature(sessionId);
       applyLatestSignature(contents, latestSig);
-      sanitizeClaudeThinkingParts(contents, effectiveModel || requestedModel);
+      sanitizeClaudeThinkingParts(contents, effectiveModel || requestedModel, sessionId);
       requestPayload.contents = contents;
     }
 

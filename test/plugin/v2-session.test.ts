@@ -70,6 +70,38 @@ describe("v2 session hooks", () => {
 
       expect(output.response).toBe(response);
     });
+
+    it("captures sessionId in state during http.request and passes it to transformAgyResponse in http.response", async () => {
+      const state: any = {};
+      const reqHook = createV2HttpRequestHook(state);
+      const resHook = createV2HttpResponseHook(state);
+
+      const requestPayload = {
+        sessionId: "v2-test-session-123",
+        contents: [{ role: "user", parts: [{ text: "hello" }] }],
+      };
+
+      const eventReq: any = {
+        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent",
+        headers: new Headers({
+          authorization: "Bearer dummy",
+        }),
+        body: JSON.stringify(requestPayload),
+      };
+
+      await reqHook(eventReq);
+      expect(state.lastSessionId).toBe("v2-test-session-123");
+
+      const eventRes: any = {
+        url: "https://daily-cloudcode-pa.googleapis.com/v1internal:streamGenerateCode",
+        response: new Response('data: {"candidates":[{"content":{"parts":[{"type":"reasoning","text":"thinking step","state":{"thoughtSignature":"sig-v2-abc"}}]}}]}\n\n', {
+          headers: { "content-type": "text/event-stream" },
+        }),
+      };
+
+      await resHook(eventRes);
+      expect(eventRes.response).toBeInstanceOf(Response);
+    });
   });
 
   describe("retry hook", () => {

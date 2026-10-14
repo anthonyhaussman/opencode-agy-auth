@@ -23,10 +23,14 @@ import {
 } from './v2-storage';
 import { createV2FetchInterceptor } from './v2-fetch';
 import { registerV2SessionHooks } from './v2-session';
+import { initDiskSignatureCache, getDiskSignatureCache, resetDiskSignatureCacheForTesting } from './cache';
+import { initTurnStateTracker } from '../sdk/request';
+import { initCooldownPersistence } from '../sdk/retry';
 
 // Re-export common symbols for backward compatibility
 export { getSafeHeader, setSafeHeaders, toUrlString } from './headers';
 export { resolveModelTier } from './tier';
+export { getDiskSignatureCache, resetDiskSignatureCacheForTesting } from './cache';
 export {
   loadStoredAuthFromJson,
   saveStoredAuthToJson,
@@ -44,6 +48,30 @@ export {
  * Setup adapter for OpenCode v2 plugin architecture.
  */
 export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<void> {
+  // 0. Initialize persistent caches and tracking
+  try {
+    initDiskSignatureCache({
+      enabled: true,
+      memory_ttl_seconds: 3600,
+      disk_ttl_seconds: 86400,
+      write_interval_seconds: 30
+    });
+  } catch (e) {
+    console.warn(`[Agy Auth] initDiskSignatureCache failed, running without signature disk cache: ${e instanceof Error ? e.message : e}`);
+  }
+
+  try {
+    initTurnStateTracker();
+  } catch (e) {
+    console.warn(`[Agy Auth] initTurnStateTracker failed, running without turn-state tracking: ${e instanceof Error ? e.message : e}`);
+  }
+
+  try {
+    initCooldownPersistence();
+  } catch (e) {
+    console.warn(`[Agy Auth] initCooldownPersistence failed, running without cooldown disk persistence: ${e instanceof Error ? e.message : e}`);
+  }
+
   // 1. Register provider and models
   const resolveVariants = (modelId: string) => {
     const mapping = TIER_MAPPING[modelId];
