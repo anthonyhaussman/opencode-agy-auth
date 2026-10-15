@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.3.6](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.3.5...1.3.6) (2026-10-15)
+
+
+### Features
+
+* **agy:** bump agy CLI to v1.3.6 ([f360b10](https://github.com/anthonyhaussman/opencode-agy-auth/commit/f360b1059bdedb2e6aa368c7ce5229d8d4f2dde1))
+
+
+### Bug Fixes
+
+* **v2:** extract session id early in request hook ([3529ed2](https://github.com/anthonyhaussman/opencode-agy-auth/commit/3529ed298541d35229f4d1c15878c87ad7a8d1ec))
+* **v2:** support reasoning blocks and disk cache ([fe13c64](https://github.com/anthonyhaussman/opencode-agy-auth/commit/fe13c64e17c46feb19c3a58ac9b8f44f5c9f2efd))
+
+
+### Build System
+
+* **deps:** bump actions/setup-node from 7.0.0 to 7.1.0 ([c2b04b9](https://github.com/anthonyhaussman/opencode-agy-auth/commit/c2b04b950f94b4b461bea7837b616ecf6beb7a38))
+* **deps:** bump hashgraph-online/ai-plugin-scanner-action ([323e756](https://github.com/anthonyhaussman/opencode-agy-auth/commit/323e756ae81c2f234cf48f092b54bef6d9c37062))
+
 ## [1.3.5](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.3.4...1.3.5) (2026-10-14)
 
 
