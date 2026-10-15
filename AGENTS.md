@@ -101,7 +101,7 @@ After running `models:refresh`, diff old vs new `models.json` to identify:
 - New `.deprecatedModelIds` entries (model enum migrations).
 - Changes to `.agentModelSorts[0].groups[0].modelIds` (the user-visible recommended list).
 
-Always verify that `.deprecatedModelIds` for `gemini-3.1-pro-high` (mapping to `gemini-pro-agent` with enum `MODEL_PLACEHOLDER_M16`) is preserved. The plugin's `src/sdk/request/shared.ts:10` hardcodes a fallback rewrite of `gemini-3.1-pro-high` to `gemini-pro-agent`, which depends on this deprecation entry being present in `models.json` so `prepare.ts` `getModelEnum` resolves the correct enum.
+`models.json` is a pure upstream reflection of the `fetchAvailableModels` server response without synthetic fields. Legacy model enum mappings (such as `gemini-3.1-pro-high` and `gemini-pro-agent` resolving to `MODEL_PLACEHOLDER_M16`) are decoupled and maintained directly in code within `src/sdk/request/prepare.ts` (`LEGACY_MODEL_ENUM_FALLBACKS`) and `src/sdk/request/shared.ts` (`REQUEST_MODEL_FALLBACKS`), so `models.json` does not require manual patching on refresh.
 
 ## Registering models in src/plugin.ts
 
@@ -161,7 +161,7 @@ When reconciling agy CLI release notes against this plugin's code surface, check
 - When the agy CLI is not logged in (`agy --version` works but `agy` interactive fails with "could not open TTY"), the `agy models` command still works and returns a cached or session-less model list.
 - curl may show `HTTP/1.0 400 Bad Request` from a network security appliance intercepting `Authorization`-header requests against Google APIs. Use Node `fetch` instead (HTTP/2 stream multiplexing works correctly through such appliances). This is why `scripts/fetch-models.mjs` uses Node's built-in `fetch` rather than shelling out to `curl`.
 - The `managedProjectId` (third pipe-separated field of the refresh token, e.g., `citric-engine-kl9s4`) is the value passed as the `project` body parameter to `fetchAvailableModels`, not the user-facing project ID. The user-facing project ID (second field, e.g., `tone-workspace-cli`) is not directly accepted by the API.
-- A fresh `fetchAvailableModels` response will overwrite the entire `models.json` file. Diff old vs new before committing to catch any unintended server-side removals. Pay particular attention to the `deprecatedModelIds` entry for `gemini-3.1-pro-high` which the plugin's `shared.ts:10` fallback depends on.
+- A fresh `fetchAvailableModels` response will overwrite the entire `models.json` file. Diff old vs new before committing to catch any unintended server-side removals. Legacy model fallbacks (`gemini-3.1-pro-high` and `gemini-pro-agent`) are handled in code via `src/sdk/request/prepare.ts` and `src/sdk/request/shared.ts`.
 
 ## Build verification
 

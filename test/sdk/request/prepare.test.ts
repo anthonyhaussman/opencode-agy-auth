@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { prepareAgyRequest, sanitizeClaudeThinkingParts } from "../../../src/sdk/request/prepare";
+import { getModelEnum, prepareAgyRequest, sanitizeClaudeThinkingParts } from "../../../src/sdk/request/prepare";
 import { cacheSignature } from "../../../src/plugin/cache";
 
 describe("prepareAgyRequest Claude model detection and label setting", () => {
@@ -223,5 +223,29 @@ describe("prepareAgyRequest Claude model detection and label setting", () => {
     sanitizeClaudeThinkingParts(contents, "claude-3-7-sonnet", "session-recovery-test");
     expect(contents[0].parts).toHaveLength(2);
     expect((contents[0].parts[0] as any).signature).toBe("recovered-sig-999");
+  });
+
+  describe("getModelEnum and legacy model fallback resolution", () => {
+    it("resolves legacy model aliases and fallbacks to MODEL_PLACEHOLDER_M16", () => {
+      expect(getModelEnum("gemini-3.1-pro-high")).toBe("MODEL_PLACEHOLDER_M16");
+      expect(getModelEnum("gemini-pro-agent")).toBe("MODEL_PLACEHOLDER_M16");
+      expect(getModelEnum("completely-unknown-model")).toBe("MODEL_PLACEHOLDER_M16");
+    });
+
+    it("resolves known models from models.json correctly", () => {
+      expect(getModelEnum("gemini-3.8-flash-low")).toBe("MODEL_PLACEHOLDER_M320");
+    });
+
+    it("sets model_enum to MODEL_PLACEHOLDER_M16 in prepareAgyRequest for gemini-3.1-pro-high", () => {
+      const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-high:generateContent";
+      const result = prepareAgyRequest(
+        url,
+        { method: "POST", body: JSON.stringify({ contents: [] }) },
+        "mock-token",
+        "mock-project",
+      );
+      const payload = JSON.parse(result.init.body as string);
+      expect(payload.request.labels.model_enum).toBe("MODEL_PLACEHOLDER_M16");
+    });
   });
 });

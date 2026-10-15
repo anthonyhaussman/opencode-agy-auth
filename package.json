@@ -47,13 +47,13 @@
   "devDependencies": {
     "@opencode-ai/sdk": "^1.19.0",
     "@types/node": "^26.6.5",
-    "@vitest/coverage-v8": "^5.0.4",
-    "tsup": "^8.5.1",
+    "@vitest/coverage-v8": "^5.0.5",
+    "tsup": "^9.0.0",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.4"
+    "vitest": "^5.0.5"
   },
   "dependencies": {
-    "@ai-sdk/google": "^4.0.95",
+    "@ai-sdk/google": "^4.0.97",
     "@openauthjs/openauth": "^0.4.3",
     "@opencode-ai/plugin": "^1.19.0"
   }

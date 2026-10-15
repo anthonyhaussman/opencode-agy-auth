@@ -103,10 +103,21 @@ export function prepareAgyRequest(
   };
 }
 
-function getModelEnum(modelName: string): string {
+export const LEGACY_MODEL_ENUM_FALLBACKS: Record<string, string> = {
+  "gemini-3.1-pro-high": "MODEL_PLACEHOLDER_M16",
+  "gemini-pro-agent": "MODEL_PLACEHOLDER_M16",
+};
+
+export function getModelEnum(modelName: string): string {
   const deprecated = (modelsJson as any).deprecatedModelIds;
-  if (deprecated && deprecated[modelName] && deprecated[modelName].newModelEnum) {
-    return deprecated[modelName].newModelEnum;
+  if (deprecated && deprecated[modelName]) {
+    const entry = deprecated[modelName];
+    if (typeof entry === "string" && LEGACY_MODEL_ENUM_FALLBACKS[entry]) {
+      return LEGACY_MODEL_ENUM_FALLBACKS[entry];
+    }
+    if (entry.newModelEnum) {
+      return entry.newModelEnum;
+    }
   }
   const models = (modelsJson as any).models;
   if (models && models[modelName] && models[modelName].model) {
@@ -114,6 +125,9 @@ function getModelEnum(modelName: string): string {
   }
   if (deprecated && deprecated[modelName] && deprecated[modelName].oldModelEnum) {
     return deprecated[modelName].oldModelEnum;
+  }
+  if (LEGACY_MODEL_ENUM_FALLBACKS[modelName]) {
+    return LEGACY_MODEL_ENUM_FALLBACKS[modelName];
   }
   return "MODEL_PLACEHOLDER_M16";
 }
