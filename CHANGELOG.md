@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.3.6...1.4.0) (2026-10-16)
+
+
+### Features
+
+* **agy:** bump agy CLI to v1.4.0 ([362fb82](https://github.com/anthonyhaussman/opencode-agy-auth/commit/362fb820c977ab01de0d52a2ab2c1ae4a769e691))
+* **models:** support gemini-4-argon tiers ([ab5d816](https://github.com/anthonyhaussman/opencode-agy-auth/commit/ab5d81659850b6bd4a1a40dc6e5ebaf2d0698f35))
+
+
+### Bug Fixes
+
+* **v2:** add execute to quota commands and tools ([d446118](https://github.com/anthonyhaussman/opencode-agy-auth/commit/d4461188577fb62526c2550a2312809683e0e2b8))
+
 ## [1.3.6](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.3.5...1.3.6) (2026-10-15)
 
 
