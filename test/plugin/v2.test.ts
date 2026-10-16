@@ -294,37 +294,150 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
 
     await setupOpenCodeV2(mockCtx);
 
-    // Map-like editor with .set()
-    const mapEditor = new Map<string, any>();
-    await toolTransformFn!(mapEditor);
-    expect(mapEditor.has(AGY_QUOTA_TOOL_NAME)).toBe(true);
-    expect(mapEditor.has(AGY_QUOTA_SUMMARY_TOOL_NAME)).toBe(true);
+    setStoredAuthOverrideForTesting(null);
+    try {
+      // Map-like editor with .set()
+      const mapEditor = new Map<string, any>();
+      await toolTransformFn!(mapEditor);
+      expect(mapEditor.has(AGY_QUOTA_TOOL_NAME)).toBe(true);
+      expect(mapEditor.has(AGY_QUOTA_SUMMARY_TOOL_NAME)).toBe(true);
 
-    const quotaTool = mapEditor.get(AGY_QUOTA_TOOL_NAME);
-    const quotaSummaryTool = mapEditor.get(AGY_QUOTA_SUMMARY_TOOL_NAME);
+      const quotaTool = mapEditor.get(AGY_QUOTA_TOOL_NAME);
+      const quotaSummaryTool = mapEditor.get(AGY_QUOTA_SUMMARY_TOOL_NAME);
 
-    // Call execute on tools to exercise dependencies
-    const quotaRes = await quotaTool.execute({});
-    expect(quotaRes).toContain('unavailable before Google auth is initialized');
+      // Call execute on tools to exercise dependencies when no auth is initialized
+      const quotaRes = await quotaTool.execute({});
+      expect(quotaRes).toContain('unavailable before Google auth is initialized');
 
-    const quotaSummaryRes = await quotaSummaryTool.execute({});
-    expect(quotaSummaryRes).toContain('unavailable before Google auth is initialized');
+      const quotaSummaryRes = await quotaSummaryTool.execute({});
+      expect(quotaSummaryRes).toContain('unavailable before Google auth is initialized');
 
-    // v2 Editor with .add()
-    const addedTools: any[] = [];
-    const addEditor = {
-      add: vi.fn((toolDef: any) => {
-        addedTools.push(toolDef);
-      })
-    };
-    await toolTransformFn!(addEditor);
-    expect(addEditor.add).toHaveBeenCalledTimes(2);
-    expect(addedTools[0].name).toBe(AGY_QUOTA_TOOL_NAME);
-    expect(addedTools[1].name).toBe(AGY_QUOTA_SUMMARY_TOOL_NAME);
-    const v2QuotaRes = await addedTools[0].execute({}, {});
-    expect(v2QuotaRes).toContain('unavailable before Google auth is initialized');
-    const v2QuotaSummaryRes = await addedTools[1].execute({}, {});
-    expect(v2QuotaSummaryRes).toContain('unavailable before Google auth is initialized');
+      // v2 Editor with .add() must return { content: string } object and define valid JSON schema input
+      const addedTools: any[] = [];
+      const addEditor = {
+        add: vi.fn((toolDef: any) => {
+          addedTools.push(toolDef);
+        })
+      };
+      await toolTransformFn!(addEditor);
+      expect(addEditor.add).toHaveBeenCalledTimes(2);
+      expect(addedTools[0].name).toBe(AGY_QUOTA_TOOL_NAME);
+      expect(addedTools[0].input).toEqual({
+        type: 'object',
+        properties: {},
+        required: [],
+        additionalProperties: false,
+      });
+      expect(addedTools[1].name).toBe(AGY_QUOTA_SUMMARY_TOOL_NAME);
+      expect(addedTools[1].input).toEqual({
+        type: 'object',
+        properties: {},
+        required: [],
+        additionalProperties: false,
+      });
+      const v2QuotaRes = await addedTools[0].execute({}, {});
+      expect(v2QuotaRes).toEqual({
+        content: expect.stringContaining('unavailable before Google auth is initialized'),
+      });
+      const v2QuotaSummaryRes = await addedTools[1].execute({}, {});
+      expect(v2QuotaSummaryRes).toEqual({
+        content: expect.stringContaining('unavailable before Google auth is initialized'),
+      });
+
+      // With stored OAuth credentials and expired token (exercises v2 auth resolver + client.auth.set persistence)
+      setStoredAuthOverrideForTesting({
+        type: 'oauth',
+        access: 'expired-access',
+        refresh: 'valid-refresh|proj-1|mproj-1',
+        expires: Date.now() - 10000,
+      });
+      const origFetch = globalThis.fetch;
+      try {
+        globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+          if (url.includes('oauth2.googleapis.com/token')) {
+            return Promise.resolve(
+              new Response(JSON.stringify({ access_token: 'fresh-access', expires_in: 3600 }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+              }),
+            );
+          }
+          return Promise.resolve(
+            new Response(JSON.stringify({ buckets: [] }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            }),
+          );
+        });
+        const authedQuotaRes = await addedTools[0].execute({}, {});
+        expect(authedQuotaRes).toEqual({
+          content: expect.stringContaining('No Agy quota buckets were returned for project `proj-1`'),
+        });
+        const authedSummaryRes = await addedTools[1].execute({}, {});
+        expect(authedSummaryRes).toEqual({
+          content: expect.stringContaining('Agy quota summary for project `proj-1`'),
+        });
+      } finally {
+        globalThis.fetch = origFetch;
+      }
+
+      // With ctx.integration.connection active credential resolution
+      let connToolTransformFn: ((editor: any) => Promise<void> | void) | undefined;
+      const connCtx: OpenCodeV2PluginContext = {
+        catalog: { transform: vi.fn() },
+        tool: {
+          transform: vi.fn((fn) => {
+            connToolTransformFn = fn;
+          }),
+        },
+        command: { transform: vi.fn() },
+        session: { hook: vi.fn() },
+        integration: {
+          transform: vi.fn(),
+          connection: {
+            active: vi.fn().mockResolvedValue({ id: 'conn-1' }),
+            resolve: vi.fn().mockResolvedValue({
+              type: 'credential',
+              credential: {
+                type: 'oauth',
+                access: 'conn-access',
+                refresh: 'conn-refresh|conn-proj|conn-mproj',
+                expires: Date.now() + 3600000,
+              },
+            }),
+          },
+        } as any,
+        location: {},
+      };
+      await setupOpenCodeV2(connCtx);
+      const connTools: any[] = [];
+      await connToolTransformFn!({ add: (t: any) => connTools.push(t) });
+      setStoredAuthOverrideForTesting(null);
+      const origFetch2 = globalThis.fetch;
+      try {
+        globalThis.fetch = vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ buckets: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+        const connQuotaRes = await connTools[0].execute({}, {});
+        expect(connQuotaRes).toEqual({
+          content: expect.stringContaining('No Agy quota buckets were returned for project `conn-proj`'),
+        });
+
+        // Also test fallback when connection.active throws or returns non-oauth
+        (connCtx.integration as any).connection.active.mockRejectedValueOnce(new Error('conn error'));
+        const fallbackQuotaRes = await connTools[0].execute({}, {});
+        expect(fallbackQuotaRes).toEqual({
+          content: expect.stringContaining('requires OAuth with Google'),
+        });
+      } finally {
+        globalThis.fetch = origFetch2;
+      }
+    } finally {
+      setStoredAuthOverrideForTesting(undefined);
+    }
 
     // Object with tools property
     const toolsPropEditor: any = { tools: {} };
@@ -344,6 +457,7 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
 
   it('registers commands via command.transform', async () => {
     let commandTransformFn: ((editor: any) => Promise<void> | void) | undefined;
+    const promptMock = vi.fn().mockResolvedValue(undefined);
 
     const mockCtx: OpenCodeV2PluginContext = {
       catalog: { transform: vi.fn() },
@@ -353,7 +467,10 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
           commandTransformFn = fn;
         })
       },
-      session: { hook: vi.fn() },
+      session: {
+        hook: vi.fn(),
+        prompt: promptMock,
+      } as any,
       integration: { transform: vi.fn() },
       location: {}
     };
@@ -377,8 +494,34 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     expect(addEditor.add).toHaveBeenCalledTimes(2);
     expect(addedCommands[0].name).toBe(AGY_V2_QUOTA_COMMAND);
     expect(addedCommands[0].template).toContain(AGY_QUOTA_TOOL_NAME);
+    expect(typeof addedCommands[0].execute).toBe('function');
     expect(addedCommands[1].name).toBe(AGY_V2_QUOTA_SUMMARY_COMMAND);
     expect(addedCommands[1].template).toContain(AGY_QUOTA_SUMMARY_TOOL_NAME);
+    expect(typeof addedCommands[1].execute).toBe('function');
+
+    await addedCommands[0].execute({
+      sessionID: 'ses_123',
+      prompt: { parts: [] },
+      delivery: 'steer',
+    });
+    expect(promptMock).toHaveBeenCalledWith({
+      parts: [],
+      sessionID: 'ses_123',
+      text: expect.stringContaining(AGY_QUOTA_TOOL_NAME),
+      delivery: 'steer',
+    });
+
+    await addedCommands[1].execute({
+      sessionID: 'ses_456',
+      prompt: { parts: [] },
+      delivery: 'queue',
+    });
+    expect(promptMock).toHaveBeenCalledWith({
+      parts: [],
+      sessionID: 'ses_456',
+      text: expect.stringContaining(AGY_QUOTA_SUMMARY_TOOL_NAME),
+      delivery: 'queue',
+    });
 
     // Object with commands property
     const commandsPropEditor: any = { commands: {} };

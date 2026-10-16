@@ -225,32 +225,84 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
   ctx.tool.transform(async (editor: any) => {
     if (!editor) return;
 
+    const v2Client = {
+      auth: {
+        set: async ({ body }: any) => {
+          if (body) {
+            saveStoredAuthToJson(body);
+          }
+        },
+      },
+    } as any;
+
+    const resolveV2Auth = (): (() => Promise<any>) | undefined => {
+      const connApi = (ctx.integration as any)?.connection;
+      const stored = loadStoredAuthFromJson();
+      if (!stored && typeof connApi?.active !== 'function') {
+        return undefined;
+      }
+      return async () => {
+        if (typeof connApi?.active === 'function' && typeof connApi?.resolve === 'function') {
+          try {
+            const active = await connApi.active(AGY_PROVIDER_ID);
+            if (active) {
+              const resolved = await connApi.resolve(active);
+              if (resolved?.type === 'credential' && resolved.credential?.type === 'oauth') {
+                return {
+                  type: 'oauth',
+                  access: resolved.credential.access,
+                  refresh: resolved.credential.refresh,
+                  expires: resolved.credential.expires,
+                };
+              }
+            }
+          } catch {
+            // Fall back to stored auth JSON
+          }
+        }
+        return loadStoredAuthFromJson();
+      };
+    };
+
     const quotaTool = createAgyQuotaTool({
-      client: undefined as any,
-      getAuthResolver: () => undefined,
+      client: v2Client,
+      getAuthResolver: resolveV2Auth,
       getConfiguredProjectId: () => undefined,
       getUserAgentModel: () => undefined,
     });
 
     const quotaSummaryTool = createAgyQuotaSummaryTool({
-      client: undefined as any,
-      getAuthResolver: () => undefined,
+      client: v2Client,
+      getAuthResolver: resolveV2Auth,
       getConfiguredProjectId: () => undefined,
       getUserAgentModel: () => undefined,
     });
+
+    const emptyObjectSchema = {
+      type: 'object',
+      properties: {},
+      required: [],
+      additionalProperties: false,
+    };
 
     if (typeof editor.add === 'function') {
       editor.add({
         name: AGY_QUOTA_TOOL_NAME,
         description: quotaTool.description,
-        input: {},
-        execute: async (args: any, context: any) => (quotaTool as any).execute(args, context),
+        input: emptyObjectSchema,
+        execute: async (args: any, context: any) => {
+          const result = await (quotaTool as any).execute(args, context);
+          return typeof result === 'string' ? { content: result } : result;
+        },
       });
       editor.add({
         name: AGY_QUOTA_SUMMARY_TOOL_NAME,
         description: quotaSummaryTool.description,
-        input: {},
-        execute: async (args: any, context: any) => (quotaSummaryTool as any).execute(args, context),
+        input: emptyObjectSchema,
+        execute: async (args: any, context: any) => {
+          const result = await (quotaSummaryTool as any).execute(args, context);
+          return typeof result === 'string' ? { content: result } : result;
+        },
       });
     } else if (typeof editor.set === 'function') {
       editor.set(AGY_QUOTA_TOOL_NAME, quotaTool);
@@ -284,11 +336,27 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
         name: AGY_V2_QUOTA_COMMAND,
         description: 'Display current Antigravity quota usage',
         template: AGY_V2_QUOTA_COMMAND_TEMPLATE,
+        execute: async ({ sessionID, prompt, delivery }: any = {}) => {
+          await ctx.session?.prompt?.({
+            ...prompt,
+            sessionID,
+            text: AGY_V2_QUOTA_COMMAND_TEMPLATE,
+            delivery,
+          });
+        },
       });
       editor.add({
         name: AGY_V2_QUOTA_SUMMARY_COMMAND,
         description: 'Display Antigravity quota summary grouped by model family',
         template: AGY_V2_QUOTA_SUMMARY_COMMAND_TEMPLATE,
+        execute: async ({ sessionID, prompt, delivery }: any = {}) => {
+          await ctx.session?.prompt?.({
+            ...prompt,
+            sessionID,
+            text: AGY_V2_QUOTA_SUMMARY_COMMAND_TEMPLATE,
+            delivery,
+          });
+        },
       });
     } else if (typeof editor.set === 'function') {
       editor.set(AGY_V2_QUOTA_COMMAND, commands[AGY_V2_QUOTA_COMMAND]);

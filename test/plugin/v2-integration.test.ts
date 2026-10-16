@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { setupOpenCodeV2 } from '../../src/plugin/v2';
+import { setupOpenCodeV2, setStoredAuthOverrideForTesting } from '../../src/plugin/v2';
 import { AGY_PROVIDER_ID } from '../../src/constants';
 import { AGY_QUOTA_TOOL_NAME } from '../../src/plugin/quota';
 import { AGY_QUOTA_SUMMARY_TOOL_NAME } from '../../src/plugin/quota-summary';
@@ -117,11 +117,16 @@ describe('OpenCode v2 Integration and Edge Cases', () => {
       expect(quotaTool).toBeDefined();
       expect(summaryTool).toBeDefined();
 
-      const quotaOutput = await quotaTool.execute({});
-      expect(quotaOutput).toContain('unavailable before Google auth is initialized');
+      setStoredAuthOverrideForTesting(null);
+      try {
+        const quotaOutput = await quotaTool.execute({});
+        expect(quotaOutput).toContain('unavailable before Google auth is initialized');
 
-      const summaryOutput = await summaryTool.execute({});
-      expect(summaryOutput).toContain('unavailable before Google auth is initialized');
+        const summaryOutput = await summaryTool.execute({});
+        expect(summaryOutput).toContain('unavailable before Google auth is initialized');
+      } finally {
+        setStoredAuthOverrideForTesting(undefined);
+      }
     });
   });
 

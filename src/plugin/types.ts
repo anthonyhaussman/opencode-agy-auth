@@ -47,6 +47,7 @@ export interface OpenCodeV2TransformRegistry<T = any> {
 
 export interface OpenCodeV2SessionRegistry {
   hook: (name: string, handler: (...args: any[]) => any, options?: { providerID?: string }) => void;
+  prompt?: (input: any) => Promise<any> | any;
 }
 
 export interface OpenCodeV2PluginLocation {
