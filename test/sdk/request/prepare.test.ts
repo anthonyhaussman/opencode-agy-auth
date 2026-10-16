@@ -234,6 +234,9 @@ describe("prepareAgyRequest Claude model detection and label setting", () => {
 
     it("resolves known models from models.json correctly", () => {
       expect(getModelEnum("gemini-3.8-flash-low")).toBe("MODEL_PLACEHOLDER_M320");
+      expect(getModelEnum("gemini-4-argon-low")).toBe("MODEL_PLACEHOLDER_M419");
+      expect(getModelEnum("gemini-4-argon-medium")).toBe("MODEL_PLACEHOLDER_M418");
+      expect(getModelEnum("gemini-4-argon-high")).toBe("MODEL_PLACEHOLDER_M417");
     });
 
     it("sets model_enum to MODEL_PLACEHOLDER_M16 in prepareAgyRequest for gemini-3.1-pro-high", () => {
