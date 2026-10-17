@@ -141,10 +141,37 @@ export function sanitizeClaudeThinkingParts(contents: any[], model: string, sess
     return;
   }
 
-  for (const turn of contents) {
+  // Check if we are in an active in-flight tool continuation (the latest turn contains tool responses)
+  const lastTurn = contents[contents.length - 1];
+  const isTrailingToolResponse =
+    lastTurn &&
+    (lastTurn.role === "user" || lastTurn.role === "tool") &&
+    Array.isArray(lastTurn.parts) &&
+    lastTurn.parts.some((p: any) => p && typeof p === "object" && ("functionResponse" in p || p.type === "tool_result"));
+
+  // Only the active in-flight model turn immediately preceding a tool response may keep thinking.
+  // In all completed turns, or when followed by a new user prompt, thinking blocks MUST be omitted
+  // to avoid Anthropic HMAC prefix-mismatch errors (`Invalid signature in thinking block`).
+  let activeToolModelTurnIdx = -1;
+  if (isTrailingToolResponse) {
+    for (let i = contents.length - 2; i >= 0; i--) {
+      const turn = contents[i];
+      if (turn && (turn.role === "model" || turn.role === "assistant")) {
+        activeToolModelTurnIdx = i;
+        break;
+      }
+    }
+  } else if (contents.length === 1 && (contents[0]?.role === "model" || contents[0]?.role === "assistant")) {
+    activeToolModelTurnIdx = 0;
+  }
+
+  for (let turnIdx = 0; turnIdx < contents.length; turnIdx++) {
+    const turn = contents[turnIdx];
     if (!turn || typeof turn !== "object") continue;
     if (turn.role !== "model" && turn.role !== "assistant") continue;
     if (!Array.isArray(turn.parts)) continue;
+
+    const canPreserveThinking = turnIdx === activeToolModelTurnIdx;
 
     const filteredParts = turn.parts.filter((part: any) => {
       if (!part || typeof part !== "object") return true;
@@ -159,11 +186,15 @@ export function sanitizeClaudeThinkingParts(contents: any[], model: string, sess
         return true;
       }
 
+      if (!canPreserveThinking) {
+        return false;
+      }
+
       let sig =
-        typeof part.signature === "string"
-          ? part.signature
-          : typeof part.thoughtSignature === "string"
-            ? part.thoughtSignature
+        typeof part.thoughtSignature === "string"
+          ? part.thoughtSignature
+          : typeof part.signature === "string"
+            ? part.signature
             : typeof part.state?.thoughtSignature === "string"
               ? part.state.thoughtSignature
               : undefined;
@@ -191,29 +222,15 @@ export function sanitizeClaudeThinkingParts(contents: any[], model: string, sess
         sig !== "skip_thought_signature_validator";
 
       if (isValidSig) {
-        if (part.type === "reasoning") {
-          part.thoughtSignature = sig;
-          part.signature = sig;
-          if (part.state) {
-            part.state.thoughtSignature = sig;
-          }
-        } else if (recovered) {
-          if (typeof part.thoughtSignature === "string" || part.thought) {
-            part.thoughtSignature = sig;
-          }
-          if (part.type === "thinking" || typeof part.thinking === "string") {
-            part.signature = sig;
-          }
-          if (!part.thoughtSignature && !part.signature) {
-            part.signature = sig;
-          }
+        part.thoughtSignature = sig;
+        part.signature = sig;
+        if (part.state) {
+          part.state.thoughtSignature = sig;
         }
         return true;
       }
 
       // If we do not have a valid, verified signature for this thinking block, drop it.
-      // Vertex AI Anthropic API allows historical assistant turns to omit thinking blocks entirely,
-      // but strictly rejects requests if a thinking block has an invalid signature.
       return false;
     });
 
@@ -221,6 +238,28 @@ export function sanitizeClaudeThinkingParts(contents: any[], model: string, sess
       turn.parts = [{ text: "" }];
     } else {
       turn.parts = filteredParts;
+    }
+  }
+}
+
+function cleanProtobufParts(contents: any[], isClaude: boolean): void {
+  if (!Array.isArray(contents)) return;
+  for (const turn of contents) {
+    if (turn && Array.isArray(turn.parts)) {
+      for (const part of turn.parts) {
+        if (part && typeof part === "object") {
+          delete part.signature;
+          delete part.state;
+          if (isClaude) {
+            if (part.thoughtSignature === "skip_thought_signature_validator") {
+              delete part.thoughtSignature;
+            }
+            if (part.functionCall && part.thoughtSignature) {
+              delete part.thoughtSignature;
+            }
+          }
+        }
+      }
     }
   }
 }
@@ -303,6 +342,7 @@ function transformRequestBody(
         const latestSig = getLatestSignature(sessionId);
         applyLatestSignature(contents, latestSig);
         sanitizeClaudeThinkingParts(contents, effectiveModel || requestedModel, sessionId);
+        cleanProtobufParts(contents, isClaudeModel(effectiveModel || requestedModel));
         requestPayloadInside.contents = contents;
       }
 
@@ -322,7 +362,9 @@ function transformRequestBody(
     }
     normalizeToolConfig(requestPayload, toolMapper);
     transformOpenAIToolCalls(requestPayload, toolMapper);
-    addThoughtSignaturesToFunctionCalls(requestPayload);
+    if (!isClaudeModel(effectiveModel || requestedModel)) {
+      addThoughtSignaturesToFunctionCalls(requestPayload);
+    }
     normalizeThinking(
       requestPayload,
       resolveDefaultThinkingConfig(thinkingConfigDefaults, requestedModel, effectiveModel),
@@ -353,6 +395,7 @@ function transformRequestBody(
       const latestSig = getLatestSignature(sessionId);
       applyLatestSignature(contents, latestSig);
       sanitizeClaudeThinkingParts(contents, effectiveModel || requestedModel, sessionId);
+      cleanProtobufParts(contents, isClaudeModel(effectiveModel || requestedModel));
       requestPayload.contents = contents;
     }
 

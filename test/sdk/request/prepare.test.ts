@@ -79,10 +79,10 @@ describe("prepareAgyRequest Claude model detection and label setting", () => {
           { thought: true, text: "Thinking with skip validator", thoughtSignature: "skip_thought_signature_validator" },
           { type: "thinking", thinking: "Thinking with empty sig", signature: "" },
           { thought: true, text: "Thinking with valid sig", thoughtSignature: "valid-sig-123" },
-          { text: "Actual response" },
+          { functionCall: { id: "test_call", name: "test_tool", args: {} } },
         ],
       },
-      { role: "user", parts: [{ text: "Follow up" }] },
+      { role: "user", parts: [{ functionResponse: { id: "test_call", name: "test_tool", response: { result: "ok" } } }] },
     ];
 
     const result = prepareAgyRequest(
@@ -95,11 +95,37 @@ describe("prepareAgyRequest Claude model detection and label setting", () => {
     const payload = JSON.parse(result.init.body as string);
     const modelTurn = payload.request.contents[1];
     expect(modelTurn.role).toBe("model");
-    // Only the valid signature thinking part and the text part should remain
+    // Only the valid signature thinking part and the functionCall part should remain
     expect(modelTurn.parts).toEqual([
       { thought: true, text: "Thinking with valid sig", thoughtSignature: "valid-sig-123" },
-      { text: "Actual response" },
+      { functionCall: { id: "test_call", name: "test_tool", args: {} } },
     ]);
+  });
+
+  it("drops thinking blocks from completed turns when followed by a new user prompt", () => {
+    const claudeUrl = "https://generativelanguage.googleapis.com/v1beta/models/claude-3-7-sonnet:generateContent";
+    const contents = [
+      { role: "user", parts: [{ text: "Hello" }] },
+      {
+        role: "model",
+        parts: [
+          { thought: true, text: "Historical thinking with sig", thoughtSignature: "valid-sig-123" },
+          { text: "Actual response" },
+        ],
+      },
+      { role: "user", parts: [{ text: "New question from user" }] },
+    ];
+
+    const result = prepareAgyRequest(
+      claudeUrl,
+      { method: "POST", body: JSON.stringify({ contents }) },
+      token,
+      project,
+    );
+
+    const payload = JSON.parse(result.init.body as string);
+    const modelTurn = payload.request.contents[1];
+    expect(modelTurn.parts).toEqual([{ text: "Actual response" }]);
   });
 
   it("leaves thinking blocks untouched for non-Claude (Gemini) models", () => {
