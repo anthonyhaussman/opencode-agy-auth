@@ -103,7 +103,8 @@ export function initDiskSignatureCache(config: SignatureCacheConfig | undefined)
  * Calculates a stable sha256 hash of the thought chain content, taking the first 16 characters as the unique key.
  */
 function hashText(text: string): string {
-  return createHash("sha256").update(text, "utf8").digest("hex").slice(0, SIGNATURE_TEXT_HASH_HEX_LEN);
+  const normalized = text.replace(/\r\n/g, "\n").trim();
+  return createHash("sha256").update(normalized, "utf8").digest("hex").slice(0, SIGNATURE_TEXT_HASH_HEX_LEN);
 }
 
 /**

@@ -183,13 +183,6 @@ export function sanitizeClaudeThinkingParts(contents: any[], model: string, sess
             recovered = true;
           }
         }
-        if (!sig) {
-          const latest = getLatestSignature(sessionId);
-          if (latest) {
-            sig = latest;
-            recovered = true;
-          }
-        }
       }
 
       const isValidSig =
@@ -215,9 +208,13 @@ export function sanitizeClaudeThinkingParts(contents: any[], model: string, sess
             part.signature = sig;
           }
         }
+        return true;
       }
 
-      return isValidSig;
+      // If we do not have a valid, verified signature for this thinking block, drop it.
+      // Vertex AI Anthropic API allows historical assistant turns to omit thinking blocks entirely,
+      // but strictly rejects requests if a thinking block has an invalid signature.
+      return false;
     });
 
     if (filteredParts.length === 0) {
