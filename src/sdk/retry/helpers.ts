@@ -6,17 +6,35 @@ const DEFAULT_MAX_DELAY_MS = 30000;
 
 const RETRYABLE_NETWORK_CODES = new Set([
   "ECONNRESET",
+  "ECONNABORTED",
   "ETIMEDOUT",
   "EPIPE",
+  "ENETDOWN",
+  "ENETUNREACH",
+  "EHOSTUNREACH",
   "ENOTFOUND",
   "EAI_AGAIN",
   "ECONNREFUSED",
+  "UND_ERR_SOCKET",
+  "ERR_HTTP2_SESSION_ERROR",
+  "ERR_HTTP2_STREAM_CANCEL",
+  "ERR_HTTP2_GOAWAY_SESSION",
   "ERR_SSL_SSLV3_ALERT_BAD_RECORD_MAC",
   "ERR_SSL_WRONG_VERSION_NUMBER",
   "ERR_SSL_DECRYPTION_FAILED_OR_BAD_RECORD_MAC",
   "ERR_SSL_BAD_RECORD_MAC",
   "EPROTO",
 ]);
+
+const RETRYABLE_NETWORK_MESSAGES = [
+  "fetch failed",
+  "broken pipe",
+  "software caused connection abort",
+  "network is down",
+  "client connection lost",
+  "socket hang up",
+  "other side closed",
+];
 
 /**
  * Ensures the request body is replayable before attempting a retry.
@@ -62,7 +80,7 @@ export function isRetryableNetworkError(error: unknown): boolean {
     return true;
   }
 
-  return error instanceof Error && error.message.toLowerCase().includes("fetch failed");
+  return hasRetryableNetworkMessage(error);
 }
 
 /**
@@ -135,6 +153,36 @@ function getNetworkErrorCode(error: unknown): string | undefined {
     }
   }
   return undefined;
+}
+
+function hasRetryableNetworkMessage(error: unknown): boolean {
+  const matchesMessage = (value: unknown): boolean => {
+    if (!value || typeof value !== "object" || !("message" in value)) {
+      return false;
+    }
+    const msg = (value as { message?: unknown }).message;
+    if (typeof msg !== "string") {
+      return false;
+    }
+    const lower = msg.toLowerCase();
+    return RETRYABLE_NETWORK_MESSAGES.some((phrase) => lower.includes(phrase));
+  };
+
+  if (matchesMessage(error)) {
+    return true;
+  }
+
+  let cursor: unknown = error;
+  for (let depth = 0; depth < 5; depth += 1) {
+    if (!cursor || typeof cursor !== "object" || !("cause" in cursor)) {
+      break;
+    }
+    cursor = (cursor as { cause?: unknown }).cause;
+    if (matchesMessage(cursor)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function parseRetryAfterMs(value: string | null): number | null {

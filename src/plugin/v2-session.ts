@@ -7,7 +7,11 @@ import {
   transformAgyResponse
 } from '../sdk/request';
 import { classifyQuotaResponse, retryInternals } from '../sdk/retry/quota';
-import { resolveRetryDelayMs } from '../sdk/retry/helpers';
+import {
+  getExponentialDelayWithJitter,
+  isRetryableNetworkError,
+  resolveRetryDelayMs
+} from '../sdk/retry/helpers';
 import { resolveCachedAuth } from './cache';
 import { accessTokenExpired, isOAuthAuth, parseRefreshParts } from './auth';
 import { refreshAccessToken } from './token';
@@ -362,6 +366,8 @@ export function createV2RetryHook() {
           event.retryDelayMs = delayMs;
         }
       }
+    } else if (event.error && isRetryableNetworkError(event.error)) {
+      event.retryDelayMs = getExponentialDelayWithJitter(event.attempt || 1);
     }
   };
 }

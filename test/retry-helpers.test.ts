@@ -65,6 +65,36 @@ describe("retry helpers", () => {
       expect(isRetryableNetworkError(new Error("TypeError: fetch failed"))).toBe(true);
     });
 
+    it("recognizes socket disconnect error codes (ECONNABORTED, ENETDOWN, ENETUNREACH, EHOSTUNREACH, UND_ERR_SOCKET, HTTP2 codes)", () => {
+      for (const code of [
+        "ECONNABORTED",
+        "ENETDOWN",
+        "ENETUNREACH",
+        "EHOSTUNREACH",
+        "UND_ERR_SOCKET",
+        "ERR_HTTP2_SESSION_ERROR",
+        "ERR_HTTP2_STREAM_CANCEL",
+        "ERR_HTTP2_GOAWAY_SESSION",
+      ]) {
+        const err = new Error("disconnect");
+        (err as any).code = code;
+        expect(isRetryableNetworkError(err)).toBe(true);
+      }
+    });
+
+    it("recognizes socket disconnect error messages directly and in nested cause", () => {
+      expect(isRetryableNetworkError(new Error("write EPIPE: broken pipe"))).toBe(true);
+      expect(isRetryableNetworkError(new Error("read ECONNABORTED: software caused connection abort"))).toBe(true);
+      expect(isRetryableNetworkError(new Error("connect ENETDOWN: network is down"))).toBe(true);
+      expect(isRetryableNetworkError(new Error("http2: client connection lost"))).toBe(true);
+      expect(isRetryableNetworkError(new Error("socket hang up"))).toBe(true);
+      expect(isRetryableNetworkError(new Error("other side closed"))).toBe(true);
+
+      const wrapped = new Error("Request terminated");
+      (wrapped as any).cause = new Error("http2: client connection lost");
+      expect(isRetryableNetworkError(wrapped)).toBe(true);
+    });
+
     it("returns false for non-network errors", () => {
       expect(isRetryableNetworkError(new Error("SyntaxError: Unexpected token"))).toBe(false);
     });

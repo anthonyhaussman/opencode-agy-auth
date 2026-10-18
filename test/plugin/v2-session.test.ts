@@ -140,16 +140,29 @@ describe("v2 session hooks", () => {
   describe("retry hook", () => {
     it("returns empty or void for non-rate-limit errors", async () => {
       const hook = createV2RetryHook();
-      const result = await hook(
-        {
-          error: new Error("Network error"),
-          attempt: 1,
-          request: new Request("https://daily-cloudcode-pa.googleapis.com/v1internal:generateContent"),
-        },
-        {}
-      );
+      const event: any = {
+        error: new Error("Network error"),
+        attempt: 1,
+        request: new Request("https://daily-cloudcode-pa.googleapis.com/v1internal:generateContent"),
+      };
+      const result = await hook(event, {});
 
       expect(result).toBeUndefined();
+      expect(event.retryDelayMs).toBeUndefined();
+    });
+
+    it("sets exponential retryDelayMs for retryable socket disconnect errors", async () => {
+      const hook = createV2RetryHook();
+      const event: any = {
+        error: new Error("http2: client connection lost"),
+        attempt: 1,
+        request: new Request("https://daily-cloudcode-pa.googleapis.com/v1internal:generateContent"),
+      };
+
+      await hook(event);
+
+      expect(typeof event.retryDelayMs).toBe("number");
+      expect(event.retryDelayMs).toBeGreaterThan(0);
     });
   });
 });
