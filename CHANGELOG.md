@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.2](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.4.0...1.4.2) (2026-10-18)
+
+
+### Features
+
+* **agy:** bump agy CLI to v1.4.2 ([c14420f](https://github.com/anthonyhaussman/opencode-agy-auth/commit/c14420f95c280e90a1e0bb754442b8aa54adb5c7))
+
+
+### Bug Fixes
+
+* **retry:** retry socket disconnect errors ([1a785fb](https://github.com/anthonyhaussman/opencode-agy-auth/commit/1a785fb84f519f2efb198acdb8a5100b2c58e86c))
+
 ## [1.4.0](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.3.6...1.4.0) (2026-10-16)
 
 
