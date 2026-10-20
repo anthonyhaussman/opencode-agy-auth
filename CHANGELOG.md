@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.4.3](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.4.2...1.4.3) (2026-10-20)
+
+
+### Features
+
+* **agy:** bump agy CLI to v1.4.3 ([3a3ce90](https://github.com/anthonyhaussman/opencode-agy-auth/commit/3a3ce90d967645e1fc62544cadc5d64d29d6ea98))
+
+
+### Bug Fixes
+
+* **claude:** address review feedback on fallback signatures, tool loop closure, and Gemini protobuf normalization ([518b783](https://github.com/anthonyhaussman/opencode-agy-auth/commit/518b783aea9017c3210b4f38ba715bb1a1b03d80))
+* **claude:** preserve thinking across multi-step active tool loops and handle redacted_thinking ([70dde4f](https://github.com/anthonyhaussman/opencode-agy-auth/commit/70dde4fccb06bb7cd48498627fbe42eaff21eb0b))
+* **claude:** prevent cross-turn thinking signature poisoning on vertex ai ([c09188f](https://github.com/anthonyhaussman/opencode-agy-auth/commit/c09188f332e401f1c30d9902d9942ec69542e59f))
+* **claude:** strip skip_thought_signature_validator from function calls and sanitize Claude thinking blocks ([987f11a](https://github.com/anthonyhaussman/opencode-agy-auth/commit/987f11aeeda7132a76888e422e69fd5b012f41c7))
+
 ## [1.4.2](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.4.0...1.4.2) (2026-10-18)
 
 
