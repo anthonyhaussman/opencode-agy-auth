@@ -136,6 +136,27 @@ export function isClaudeModel(model: string): boolean {
   return model.toLowerCase().includes("claude");
 }
 
+function isThinkingLikePart(part: any): boolean {
+  return (
+    !!part &&
+    typeof part === "object" &&
+    (part.thought === true ||
+      part.type === "thinking" ||
+      part.type === "redacted_thinking" ||
+      part.type === "reasoning" ||
+      typeof part.thinking === "string")
+  );
+}
+
+function isToolResultTurn(turn: any): boolean {
+  if (!turn || (turn.role !== "user" && turn.role !== "tool") || !Array.isArray(turn.parts)) {
+    return false;
+  }
+  return turn.parts.some(
+    (p: any) => p && typeof p === "object" && ("functionResponse" in p || p.type === "tool_result"),
+  );
+}
+
 export function sanitizeClaudeThinkingParts(contents: any[], model: string, sessionId?: string): void {
   if (!isClaudeModel(model) || !Array.isArray(contents)) {
     return;
@@ -143,26 +164,23 @@ export function sanitizeClaudeThinkingParts(contents: any[], model: string, sess
 
   // Check if we are in an active in-flight tool continuation (the latest turn contains tool responses)
   const lastTurn = contents[contents.length - 1];
-  const isTrailingToolResponse =
-    lastTurn &&
-    (lastTurn.role === "user" || lastTurn.role === "tool") &&
-    Array.isArray(lastTurn.parts) &&
-    lastTurn.parts.some((p: any) => p && typeof p === "object" && ("functionResponse" in p || p.type === "tool_result"));
+  const isTrailingToolResponse = Boolean(lastTurn && isToolResultTurn(lastTurn));
 
-  // Only the active in-flight model turn immediately preceding a tool response may keep thinking.
-  // In all completed turns, or when followed by a new user prompt, thinking blocks MUST be omitted
+  // Track the start of the active tool loop (all messages after the last non-tool-result user message).
+  // In all completed turns before the latest real user prompt, thinking blocks MUST be omitted
   // to avoid Anthropic HMAC prefix-mismatch errors (`Invalid signature in thinking block`).
-  let activeToolModelTurnIdx = -1;
+  let activeLoopStartIdx = -1;
   if (isTrailingToolResponse) {
-    for (let i = contents.length - 2; i >= 0; i--) {
+    let lastRealUserIdx = -1;
+    for (let i = 0; i < contents.length; i++) {
       const turn = contents[i];
-      if (turn && (turn.role === "model" || turn.role === "assistant")) {
-        activeToolModelTurnIdx = i;
-        break;
+      if (turn && (turn.role === "user" || turn.role === "human") && !isToolResultTurn(turn)) {
+        lastRealUserIdx = i;
       }
     }
+    activeLoopStartIdx = lastRealUserIdx + 1;
   } else if (contents.length === 1 && (contents[0]?.role === "model" || contents[0]?.role === "assistant")) {
-    activeToolModelTurnIdx = 0;
+    activeLoopStartIdx = 0;
   }
 
   for (let turnIdx = 0; turnIdx < contents.length; turnIdx++) {
@@ -171,18 +189,12 @@ export function sanitizeClaudeThinkingParts(contents: any[], model: string, sess
     if (turn.role !== "model" && turn.role !== "assistant") continue;
     if (!Array.isArray(turn.parts)) continue;
 
-    const canPreserveThinking = turnIdx === activeToolModelTurnIdx;
+    const canPreserveThinking = activeLoopStartIdx !== -1 && turnIdx >= activeLoopStartIdx;
 
     const filteredParts = turn.parts.filter((part: any) => {
       if (!part || typeof part !== "object") return true;
 
-      const isThinking =
-        part.thought === true ||
-        part.type === "thinking" ||
-        part.type === "reasoning" ||
-        typeof part.thinking === "string";
-
-      if (!isThinking) {
+      if (!isThinkingLikePart(part)) {
         return true;
       }
 
@@ -242,19 +254,29 @@ export function sanitizeClaudeThinkingParts(contents: any[], model: string, sess
     }
   }
 
-  if (isTrailingToolResponse && activeToolModelTurnIdx !== -1) {
-    const activeTurn = contents[activeToolModelTurnIdx];
-    const activeParts = Array.isArray(activeTurn?.parts) ? activeTurn.parts : [];
-    const hasFunctionCall = activeParts.some(
-      (p: any) => p && typeof p === "object" && ("functionCall" in p || p.type === "tool_use"),
-    );
-    const hasValidThinking = activeParts.some(
-      (p: any) =>
-        p &&
-        typeof p === "object" &&
-        (p.thought === true || p.type === "thinking" || p.type === "reasoning" || typeof p.thinking === "string"),
-    );
-    if (hasFunctionCall && !hasValidThinking) {
+  if (isTrailingToolResponse && activeLoopStartIdx !== -1) {
+    let needsLoopClosure = false;
+    for (let i = activeLoopStartIdx; i < contents.length; i++) {
+      const turn = contents[i];
+      if (!turn || (turn.role !== "model" && turn.role !== "assistant")) continue;
+      const parts = Array.isArray(turn.parts) ? turn.parts : [];
+      const hasFunctionCall = parts.some(
+        (p: any) => p && typeof p === "object" && ("functionCall" in p || p.type === "tool_use"),
+      );
+      const hasValidThinking = parts.some(isThinkingLikePart);
+      if (hasFunctionCall && !hasValidThinking) {
+        needsLoopClosure = true;
+        break;
+      }
+    }
+
+    if (needsLoopClosure) {
+      for (let i = activeLoopStartIdx; i < contents.length; i++) {
+        const turn = contents[i];
+        if (!turn || (turn.role !== "model" && turn.role !== "assistant") || !Array.isArray(turn.parts)) continue;
+        const stripped = turn.parts.filter((p: any) => !isThinkingLikePart(p));
+        turn.parts = stripped.length === 0 ? [{ text: "" }] : stripped;
+      }
       const closed = closeToolLoopForThinking(contents);
       contents.splice(0, contents.length, ...closed);
     }
@@ -278,14 +300,19 @@ function cleanProtobufParts(contents: any[], isClaude: boolean): void {
               part.thoughtSignature = fallbackSig;
             }
           }
-          if (part.type === "thinking" || part.type === "reasoning" || typeof part.thinking === "string") {
+          if (
+            part.type === "thinking" ||
+            part.type === "redacted_thinking" ||
+            part.type === "reasoning" ||
+            typeof part.thinking === "string"
+          ) {
             part.thought = true;
             if (typeof part.text !== "string" && typeof part.thinking === "string") {
               part.text = part.thinking;
             }
             delete part.thinking;
-            delete part.type;
           }
+          delete part.type;
           delete part.signature;
           delete part.state;
           if (isClaude) {

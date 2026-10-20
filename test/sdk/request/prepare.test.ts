@@ -332,6 +332,113 @@ describe("prepareAgyRequest Claude model detection and label setting", () => {
     ]);
   });
 
+  it("preserves thinking on all steps of a multi-step active tool loop while stripping earlier completed turns", () => {
+    const contents = [
+      { role: "user", parts: [{ text: "Earlier prompt" }] },
+      {
+        role: "model",
+        parts: [
+          { thought: true, text: "Earlier completed thinking", thoughtSignature: "old-sig" },
+          { text: "Earlier answer" },
+        ],
+      },
+      { role: "user", parts: [{ text: "Current prompt requiring multiple tools" }] },
+      {
+        role: "model",
+        parts: [
+          { thought: true, text: "Step 1 thinking", thoughtSignature: "step1-sig" },
+          { functionCall: { id: "call_1", name: "tool_a", args: {} } },
+        ],
+      },
+      {
+        role: "user",
+        parts: [{ functionResponse: { id: "call_1", name: "tool_a", response: { ok: true } } }],
+      },
+      {
+        role: "model",
+        parts: [
+          { thought: true, text: "Step 2 thinking", thoughtSignature: "step2-sig" },
+          { functionCall: { id: "call_2", name: "tool_b", args: {} } },
+        ],
+      },
+      {
+        role: "user",
+        parts: [{ functionResponse: { id: "call_2", name: "tool_b", response: { ok: true } } }],
+      },
+    ];
+
+    sanitizeClaudeThinkingParts(contents, "claude-opus-5-5-high");
+    expect(contents).toHaveLength(7);
+    // Completed turn before lastRealUserIdx has thinking stripped
+    expect(contents[1].parts).toEqual([{ text: "Earlier answer" }]);
+    // Both steps inside the active tool loop preserve their thinking blocks
+    expect(contents[3].parts).toHaveLength(2);
+    expect((contents[3].parts[0] as any).thoughtSignature).toBe("step1-sig");
+    expect(contents[5].parts).toHaveLength(2);
+    expect((contents[5].parts[0] as any).thoughtSignature).toBe("step2-sig");
+  });
+
+  it("strips all active loop thinking and closes loop when a later step in a multi-step tool loop loses thinking", () => {
+    const contents = [
+      { role: "user", parts: [{ text: "Current prompt" }] },
+      {
+        role: "model",
+        parts: [
+          { thought: true, text: "Step 1 thinking", thoughtSignature: "step1-sig" },
+          { functionCall: { id: "call_1", name: "tool_a", args: {} } },
+        ],
+      },
+      {
+        role: "user",
+        parts: [{ functionResponse: { id: "call_1", name: "tool_a", response: { ok: true } } }],
+      },
+      {
+        role: "model",
+        parts: [
+          { thought: true, text: "Step 2 unsigned thinking" },
+          { functionCall: { id: "call_2", name: "tool_b", args: {} } },
+        ],
+      },
+      {
+        role: "user",
+        parts: [{ functionResponse: { id: "call_2", name: "tool_b", response: { ok: true } } }],
+      },
+    ];
+
+    sanitizeClaudeThinkingParts(contents, "claude-opus-5-5-high", "missing-session");
+    expect(contents).toHaveLength(7);
+    // Step 1 thinking is also stripped when the loop is closed
+    expect(contents[1].parts).toEqual([{ functionCall: { id: "call_1", name: "tool_a", args: {} } }]);
+    expect(contents[3].parts).toEqual([{ functionCall: { id: "call_2", name: "tool_b", args: {} } }]);
+    expect(contents[5]).toEqual({ role: "model", parts: [{ text: "[Tool exec completed.]" }] });
+    expect(contents[6]).toEqual({ role: "user", parts: [{ text: "[Continue]" }] });
+  });
+
+  it("handles redacted_thinking in sanitizeClaudeThinkingParts and cleanProtobufParts", () => {
+    const claudeUrl = "https://generativelanguage.googleapis.com/v1beta/models/claude-3-7-sonnet:generateContent";
+    const contents = [
+      { role: "user", parts: [{ text: "Hello" }] },
+      {
+        role: "model",
+        parts: [
+          { type: "redacted_thinking", text: "redacted historical", signature: "redacted-sig" },
+          { text: "Earlier response" },
+        ],
+      },
+      { role: "user", parts: [{ text: "Follow up" }] },
+    ];
+
+    const result = prepareAgyRequest(
+      claudeUrl,
+      { method: "POST", body: JSON.stringify({ contents }) },
+      token,
+      project,
+    );
+
+    const payload = JSON.parse(result.init.body as string);
+    expect(payload.request.contents[1].parts).toEqual([{ text: "Earlier response" }]);
+  });
+
   describe("getModelEnum and legacy model fallback resolution", () => {
     it("resolves legacy model aliases and fallbacks to MODEL_PLACEHOLDER_M16", () => {
       expect(getModelEnum("gemini-3.1-pro-high")).toBe("MODEL_PLACEHOLDER_M16");
