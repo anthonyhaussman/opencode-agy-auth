@@ -251,6 +251,87 @@ describe("prepareAgyRequest Claude model detection and label setting", () => {
     expect((contents[0].parts[0] as any).signature).toBe("recovered-sig-999");
   });
 
+  it("sanitizeClaudeThinkingParts falls back to signature or state.thoughtSignature when thoughtSignature is empty or skip validator", () => {
+    const contents = [
+      {
+        role: "assistant",
+        parts: [
+          {
+            type: "reasoning",
+            text: "step 1",
+            thoughtSignature: "",
+            signature: "fallback-sig-1",
+          },
+          {
+            type: "reasoning",
+            text: "step 2",
+            thoughtSignature: "skip_thought_signature_validator",
+            state: { thoughtSignature: "fallback-sig-2" },
+          },
+          { text: "assistant response" },
+        ],
+      },
+    ];
+    sanitizeClaudeThinkingParts(contents, "claude-3-7-sonnet");
+    expect(contents[0].parts).toHaveLength(3);
+    expect((contents[0].parts[0] as any).thoughtSignature).toBe("fallback-sig-1");
+    expect((contents[0].parts[1] as any).thoughtSignature).toBe("fallback-sig-2");
+  });
+
+  it("sanitizeClaudeThinkingParts closes tool loop when active tool turn loses unsigned thinking block", () => {
+    const contents = [
+      { role: "user", parts: [{ text: "Run tool" }] },
+      {
+        role: "model",
+        parts: [
+          { thought: true, text: "unrecoverable thinking without sig" },
+          { functionCall: { id: "call_1", name: "my_tool", args: {} } },
+        ],
+      },
+      {
+        role: "user",
+        parts: [{ functionResponse: { id: "call_1", name: "my_tool", response: { ok: true } } }],
+      },
+    ];
+
+    sanitizeClaudeThinkingParts(contents, "claude-3-7-sonnet", "missing-session");
+    expect(contents).toHaveLength(5);
+    expect(contents[1].parts).toEqual([{ functionCall: { id: "call_1", name: "my_tool", args: {} } }]);
+    expect(contents[3]).toEqual({ role: "model", parts: [{ text: "[Tool exec completed.]" }] });
+    expect(contents[4]).toEqual({ role: "user", parts: [{ text: "[Continue]" }] });
+  });
+
+  it("cleanProtobufParts migrates fallback signatures and normalizes v2 reasoning/thinking parts for Gemini models", () => {
+    const geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent";
+    const contents = [
+      { role: "user", parts: [{ text: "Hello" }] },
+      {
+        role: "model",
+        parts: [
+          { type: "reasoning", text: "v2 reasoning", state: { thoughtSignature: "gemini-state-sig" } },
+          { type: "thinking", thinking: "v1 thinking", signature: "gemini-sig" },
+          { text: "Gemini response" },
+        ],
+      },
+      { role: "user", parts: [{ text: "Follow up" }] },
+    ];
+
+    const result = prepareAgyRequest(
+      geminiUrl,
+      { method: "POST", body: JSON.stringify({ contents }) },
+      token,
+      project,
+    );
+
+    const payload = JSON.parse(result.init.body as string);
+    const modelTurn = payload.request.contents[1];
+    expect(modelTurn.parts).toEqual([
+      { thought: true, text: "v2 reasoning", thoughtSignature: "gemini-state-sig" },
+      { thought: true, text: "v1 thinking", thoughtSignature: "gemini-sig" },
+      { text: "Gemini response" },
+    ]);
+  });
+
   describe("getModelEnum and legacy model fallback resolution", () => {
     it("resolves legacy model aliases and fallbacks to MODEL_PLACEHOLDER_M16", () => {
       expect(getModelEnum("gemini-3.1-pro-high")).toBe("MODEL_PLACEHOLDER_M16");

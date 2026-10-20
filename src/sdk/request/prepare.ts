@@ -190,14 +190,15 @@ export function sanitizeClaudeThinkingParts(contents: any[], model: string, sess
         return false;
       }
 
-      let sig =
-        typeof part.thoughtSignature === "string"
-          ? part.thoughtSignature
-          : typeof part.signature === "string"
-            ? part.signature
-            : typeof part.state?.thoughtSignature === "string"
-              ? part.state.thoughtSignature
-              : undefined;
+      const isUsableSig = (s: unknown): s is string =>
+        typeof s === "string" && s.length > 0 && s !== "skip_thought_signature_validator";
+      let sig = isUsableSig(part.thoughtSignature)
+        ? part.thoughtSignature
+        : isUsableSig(part.signature)
+          ? part.signature
+          : isUsableSig(part.state?.thoughtSignature)
+            ? part.state.thoughtSignature
+            : undefined;
 
       let recovered = false;
       if ((!sig || sig === "skip_thought_signature_validator") && sessionId) {
@@ -240,6 +241,24 @@ export function sanitizeClaudeThinkingParts(contents: any[], model: string, sess
       turn.parts = filteredParts;
     }
   }
+
+  if (isTrailingToolResponse && activeToolModelTurnIdx !== -1) {
+    const activeTurn = contents[activeToolModelTurnIdx];
+    const activeParts = Array.isArray(activeTurn?.parts) ? activeTurn.parts : [];
+    const hasFunctionCall = activeParts.some(
+      (p: any) => p && typeof p === "object" && ("functionCall" in p || p.type === "tool_use"),
+    );
+    const hasValidThinking = activeParts.some(
+      (p: any) =>
+        p &&
+        typeof p === "object" &&
+        (p.thought === true || p.type === "thinking" || p.type === "reasoning" || typeof p.thinking === "string"),
+    );
+    if (hasFunctionCall && !hasValidThinking) {
+      const closed = closeToolLoopForThinking(contents);
+      contents.splice(0, contents.length, ...closed);
+    }
+  }
 }
 
 function cleanProtobufParts(contents: any[], isClaude: boolean): void {
@@ -248,6 +267,25 @@ function cleanProtobufParts(contents: any[], isClaude: boolean): void {
     if (turn && Array.isArray(turn.parts)) {
       for (const part of turn.parts) {
         if (part && typeof part === "object") {
+          if (!part.thoughtSignature || part.thoughtSignature === "skip_thought_signature_validator") {
+            const fallbackSig =
+              typeof part.signature === "string" && part.signature.length > 0
+                ? part.signature
+                : typeof part.state?.thoughtSignature === "string" && part.state.thoughtSignature.length > 0
+                  ? part.state.thoughtSignature
+                  : undefined;
+            if (fallbackSig && fallbackSig !== "skip_thought_signature_validator") {
+              part.thoughtSignature = fallbackSig;
+            }
+          }
+          if (part.type === "thinking" || part.type === "reasoning" || typeof part.thinking === "string") {
+            part.thought = true;
+            if (typeof part.text !== "string" && typeof part.thinking === "string") {
+              part.text = part.thinking;
+            }
+            delete part.thinking;
+            delete part.type;
+          }
           delete part.signature;
           delete part.state;
           if (isClaude) {
