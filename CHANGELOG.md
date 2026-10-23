@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.6](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.4.5...1.4.6) (2026-10-23)
+
+
+### Features
+
+* **agy:** bump agy CLI to v1.4.6 ([eaec0ac](https://github.com/anthonyhaussman/opencode-agy-auth/commit/eaec0acdb7647294515ba3ca6b39764fe3042fa4))
+
 ## [1.4.5](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.4.4...1.4.5) (2026-10-22)
 
 
