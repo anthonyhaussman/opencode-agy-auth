@@ -443,6 +443,27 @@ describe("prepareAgyRequest Comprehensive Suite", () => {
     expect(part.text).toContain("unpaired");
   });
 
+  it("strips invisible soft-wrap markers U+FFF9, U+FFFA, U+FFFB from prompt text", () => {
+    const input = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
+    const body = JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: "const\ufff9 x\ufffa = 1;\ufffb",
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = prepareAgyRequest(input, { method: "POST", body }, token, project);
+    const parsed = JSON.parse(result.init.body as string);
+    const part = parsed.request.contents[0].parts[0];
+    expect(part.text).toBe("const x = 1;");
+  });
+
   it("applies latest cached thought signature to the last function call", () => {
     const input = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
     const sessionId = "session-sig-test-123";

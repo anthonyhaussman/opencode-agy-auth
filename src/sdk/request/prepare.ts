@@ -315,6 +315,9 @@ function cleanProtobufParts(contents: any[], isClaude: boolean): void {
           delete part.type;
           delete part.signature;
           delete part.state;
+          if (typeof part.text === "string" && /[\ufff9\ufffa\ufffb]/.test(part.text)) {
+            part.text = part.text.replace(/[\ufff9\ufffa\ufffb]/g, "");
+          }
           if (isClaude) {
             if (part.thoughtSignature === "skip_thought_signature_validator") {
               delete part.thoughtSignature;
