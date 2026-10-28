@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.4.9](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.4.8...1.4.9) (2026-10-28)
+
+
+### Features
+
+* **agy:** bump agy CLI to v1.4.9 ([78a9d3c](https://github.com/anthonyhaussman/opencode-agy-auth/commit/78a9d3c2bcf474457e5da61b9e37d7ef15ce6009))
+* **models:** refresh internal model catalog for agy 1.4.9 ([2632071](https://github.com/anthonyhaussman/opencode-agy-auth/commit/2632071998378c076959e7833b7297cd6bd50f94))
+* **protocol:** support numeric thinking levels and filter soft wraps ([6624b4f](https://github.com/anthonyhaussman/opencode-agy-auth/commit/6624b4f5cd18d1cb62e4b0d2f3c9f74e4fd7c55f))
+
+
+### Build System
+
+* **deps:** upgrade opencode and ai-sdk dependencies ([45366ec](https://github.com/anthonyhaussman/opencode-agy-auth/commit/45366ec301e78a316cc98889d605d5788a421c38))
+
 ## [1.4.8](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.4.7...1.4.8) (2026-10-27)
 
 
