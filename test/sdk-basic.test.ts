@@ -156,6 +156,27 @@ describe("src/sdk/request-helpers/thinking", () => {
       thinkingBudget: 1024,
       includeThoughts: true,
     });
+    expect(normalizeThinkingConfig({ thinkingLevel: 1 })).toEqual({
+      thinkingBudget: 512,
+      includeThoughts: true,
+    });
+    expect(normalizeThinkingConfig({ thinkingLevel: 2 })).toEqual({
+      thinkingBudget: 1024,
+      includeThoughts: true,
+    });
+    expect(normalizeThinkingConfig({ thinkingLevel: 3 })).toEqual({
+      thinkingBudget: 2048,
+      includeThoughts: true,
+    });
+    expect(normalizeThinkingConfig({ thinkingLevel: 4 })).toEqual({
+      thinkingBudget: 0,
+      includeThoughts: false,
+    });
+    expect(normalizeThinkingConfig({ thinkingLevel: 5 })).toEqual({
+      thinkingBudget: 2048,
+      includeThoughts: true,
+    });
+    expect(normalizeThinkingConfig({ thinkingLevel: 0 })).toBeUndefined();
 
     expect(normalizeThinkingConfig({ thinkingBudget: 2048, includeThoughts: false })).toEqual({
       thinkingBudget: 2048,

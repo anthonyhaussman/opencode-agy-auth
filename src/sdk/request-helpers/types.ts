@@ -37,7 +37,7 @@ export interface GeminiUsageMetadata {
  */
 export interface ThinkingConfig {
   thinkingBudget?: number;
-  thinkingLevel?: string;
+  thinkingLevel?: string | number;
   includeThoughts?: boolean;
 }
 

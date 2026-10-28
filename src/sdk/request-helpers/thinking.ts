@@ -14,8 +14,22 @@ export function normalizeThinkingConfig(config: unknown): ThinkingConfig | undef
   const includeRaw = record.includeThoughts ?? record.include_thoughts;
 
   let thinkingBudget = typeof budgetRaw === "number" && Number.isFinite(budgetRaw) ? budgetRaw : undefined;
-  const thinkingLevel =
-    typeof levelRaw === "string" && levelRaw.trim().length > 0 ? levelRaw.trim().toUpperCase() : undefined;
+  let thinkingLevel: string | undefined;
+  if (typeof levelRaw === "string" && levelRaw.trim().length > 0) {
+    thinkingLevel = levelRaw.trim().toUpperCase();
+  } else if (typeof levelRaw === "number" && Number.isFinite(levelRaw)) {
+    if (levelRaw === 1) {
+      thinkingLevel = "LOW";
+    } else if (levelRaw === 2) {
+      thinkingLevel = "MEDIUM";
+    } else if (levelRaw === 3) {
+      thinkingLevel = "HIGH";
+    } else if (levelRaw === 4) {
+      thinkingLevel = "MINIMAL";
+    } else if (levelRaw > 0) {
+      thinkingLevel = "HIGH";
+    }
+  }
   const includeThoughts = typeof includeRaw === "boolean" ? includeRaw : undefined;
 
   if (thinkingBudget === undefined && thinkingLevel === undefined && includeThoughts === undefined) {
