@@ -257,6 +257,123 @@ describe("prepareAgyRequest Comprehensive Suite", () => {
     expect(props.nestedArray.items.enum).toEqual(["true"]);
   });
 
+  it("normalizes array type schemas and sets nullable true for Gemini API", () => {
+    const input = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
+    const body = JSON.stringify({
+      contents: [],
+      tools: [
+        {
+          functionDeclarations: [
+            {
+              name: "nullableTypesTool",
+              parameters: {
+                type: "object",
+                properties: {
+                  strNullable: {
+                    type: ["string", "null"],
+                    description: "nullable string field",
+                  },
+                  intNullable: {
+                    type: ["integer", "null"],
+                  },
+                  boolNullable: {
+                    type: ["boolean", "null"],
+                  },
+                  arrNullable: {
+                    type: ["array", "null"],
+                    items: {
+                      type: ["string", "null"],
+                    },
+                  },
+                  onlyNull: {
+                    type: ["null"],
+                  },
+                  stringNull: {
+                    type: "null",
+                  },
+                  multiTypeUnion: {
+                    type: ["string", "number"],
+                  },
+                  anyOfNullable: {
+                    anyOf: [{ type: "string" }, { type: "null" }],
+                  },
+                  nestedObj: {
+                    type: "object",
+                    properties: {
+                      nestedNullable: {
+                        type: ["number", "null"],
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = prepareAgyRequest(input, { method: "POST", body }, token, project);
+    const parsed = JSON.parse(result.init.body as string);
+    const fn = parsed.request.tools[0].functionDeclarations[0];
+    const props = fn.parameters.properties;
+
+    // Array ["string", "null"] -> STRING, nullable: true
+    expect(props.strNullable.type).toBe("STRING");
+    expect(props.strNullable.nullable).toBe(true);
+
+    // Array ["integer", "null"] -> INTEGER, nullable: true
+    expect(props.intNullable.type).toBe("INTEGER");
+    expect(props.intNullable.nullable).toBe(true);
+
+    // Array ["boolean", "null"] -> BOOLEAN, nullable: true
+    expect(props.boolNullable.type).toBe("BOOLEAN");
+    expect(props.boolNullable.nullable).toBe(true);
+
+    // Array ["array", "null"] -> ARRAY, nullable: true, and items sanitized
+    expect(props.arrNullable.type).toBe("ARRAY");
+    expect(props.arrNullable.nullable).toBe(true);
+    expect(props.arrNullable.items.type).toBe("STRING");
+    expect(props.arrNullable.items.nullable).toBe(true);
+
+    // Only ["null"] -> STRING, nullable: true
+    expect(props.onlyNull.type).toBe("STRING");
+    expect(props.onlyNull.nullable).toBe(true);
+
+    // String "null" -> STRING, nullable: true
+    expect(props.stringNull.type).toBe("STRING");
+    expect(props.stringNull.nullable).toBe(true);
+
+    // Multi-type union ["string", "number"] -> picks first valid non-null: STRING
+    expect(props.multiTypeUnion.type).toBe("STRING");
+
+    // anyOf with null branch -> STRING, nullable: true
+    expect(props.anyOfNullable.type).toBe("STRING");
+    expect(props.anyOfNullable.nullable).toBe(true);
+
+    // Nested object property
+    expect(props.nestedObj.properties.nestedNullable.type).toBe("NUMBER");
+    expect(props.nestedObj.properties.nestedNullable.nullable).toBe(true);
+
+    // Verify absolutely no property has an array type anywhere in the schema
+    const checkNoArrayType = (schema: any) => {
+      if (!schema || typeof schema !== "object") return;
+      if ("type" in schema) {
+        expect(Array.isArray(schema.type)).toBe(false);
+        expect(typeof schema.type).toBe("string");
+      }
+      if (schema.properties) {
+        for (const key of Object.keys(schema.properties)) {
+          checkNoArrayType(schema.properties[key]);
+        }
+      }
+      if (schema.items) {
+        checkNoArrayType(schema.items);
+      }
+    };
+    checkNoArrayType(fn.parameters);
+  });
+
   describe("parameters_json_schema and parametersJsonSchema handling", () => {
     it("deletes parameters_json_schema and parametersJsonSchema when parameters is present", () => {
       const input = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
