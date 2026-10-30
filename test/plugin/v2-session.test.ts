@@ -28,6 +28,18 @@ describe("v2 session hooks", () => {
   });
 
   describe("http.request hook", () => {
+    it("forwards the active account's discovered enum into the request", async () => {
+      const hook = createV2HttpRequestHook({}, async () => ({ "new-model": "MODEL_NEW" }));
+      const event: any = {
+        url: "https://generativelanguage.googleapis.com/v1beta/models/new-model:generateContent",
+        headers: new Headers(),
+        body: JSON.stringify({ contents: [] }),
+        auth: { type: "oauth", access: "test-token", refresh: "enum-refresh|project|managed", expires: Date.now() + 3600000 },
+      };
+      await hook(event);
+      expect(JSON.parse(event.body).request.labels.model_enum).toBe("MODEL_NEW");
+    });
+
     it("ignores non-google requests", async () => {
       const hook = createV2HttpRequestHook();
       const request = new Request("https://api.openai.com/v1/chat/completions", {
