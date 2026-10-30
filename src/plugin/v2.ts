@@ -26,6 +26,7 @@ import { registerV2SessionHooks } from './v2-session';
 import { initDiskSignatureCache, getDiskSignatureCache, resetDiskSignatureCacheForTesting } from './cache';
 import { initTurnStateTracker } from '../sdk/request';
 import { initCooldownPersistence } from '../sdk/retry';
+import { loadAccountModels } from './dynamic-models';
 
 // Re-export common symbols for backward compatibility
 export { getSafeHeader, setSafeHeaders, toUrlString } from './headers';
@@ -47,7 +48,7 @@ export {
 /**
  * Setup adapter for OpenCode v2 plugin architecture.
  */
-export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<void> {
+export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<void | (() => void)> {
   // 0. Initialize persistent caches and tracking
   try {
     initDiskSignatureCache({
@@ -119,15 +120,15 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
   const updateModelRecord = (m: any, modelId: string, simple: any) => {
     m.name = simple.name;
     m.capabilities = {
-      tools: true,
-      input: ['text', 'image'],
+      tools: simple.toolCall,
+      input: simple.attachment ? ['text', 'image'] : ['text'],
       output: ['text'],
     };
     m.limit = {
       context: simple.maxTokens,
       output: simple.maxOutputTokens,
     };
-    m.family = 'gemini';
+    m.family = modelId.startsWith('claude-') ? 'claude' : modelId.startsWith('gpt-') ? 'gpt' : 'gemini';
     if (simple.cost) {
       m.cost = simple.cost;
     }
@@ -155,11 +156,21 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
     });
   }
 
+  let accountModels: typeof STATIC_MODELS_SIMPLE | undefined;
+  const modelService = ctx.model as any;
+  const canDiscover = typeof modelService?.reload === 'function' && typeof (ctx.integration as any)?.connection?.active === 'function';
+  if (canDiscover) {
+    try {
+      accountModels = await loadAccountModels(ctx);
+    } catch {
+      console.warn('[Agy Auth] Model discovery unavailable; using the built-in catalog.');
+    }
+  }
   if (ctx.model?.transform) {
     ctx.model.transform(async (editor: any) => {
       if (!editor) return;
       if (typeof editor.update === 'function') {
-        for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
+        for (const [modelId, simple] of Object.entries(accountModels || STATIC_MODELS_SIMPLE)) {
           editor.update(AGY_PROVIDER_ID, modelId, (m: any) => updateModelRecord(m, modelId, simple));
         }
       } else if (typeof editor.set === 'function') {
@@ -219,6 +230,19 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
         targetModels[modelId] = buildModelRecord(modelId, simple, targetModels[modelId]);
       }
     });
+  }
+
+  let discoveryTimer: ReturnType<typeof setInterval> | undefined;
+  if (canDiscover) {
+    discoveryTimer = setInterval(async () => {
+      try {
+        accountModels = await loadAccountModels(ctx);
+        await modelService.reload();
+      } catch {
+        console.warn('[Agy Auth] Model discovery refresh failed; keeping the last catalog.');
+      }
+    }, 5 * 60 * 1000);
+    discoveryTimer.unref?.();
   }
 
   // 2. Register agy_quota and agy_quota_summary tools via tool transform
@@ -473,6 +497,7 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
 
   // 6. Register session hooks (http.request, http.response, retry)
   registerV2SessionHooks(ctx);
+  return () => { if (discoveryTimer) clearInterval(discoveryTimer); };
 }
 
 export const v2PluginDefinition: OpenCodeV2PluginDefinition = defineOpenCodeV2Plugin({
