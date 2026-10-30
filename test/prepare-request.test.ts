@@ -257,6 +257,12 @@ describe("prepareAgyRequest Comprehensive Suite", () => {
     expect(props.nestedArray.items.enum).toEqual(["true"]);
   });
 
+  it("uses the discovered model enum when preparing a request", () => {
+    const input = "https://generativelanguage.googleapis.com/v1beta/models/new-model:generateContent";
+    const result = prepareAgyRequest(input, { method: "POST", body: JSON.stringify({ contents: [] }) }, token, project, undefined, { "new-model": "MODEL_NEW" });
+    expect(JSON.parse(result.init.body as string).request.labels.model_enum).toBe("MODEL_NEW");
+  });
+
   it("normalizes array type schemas and sets nullable true for Gemini API", () => {
     const input = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
     const body = JSON.stringify({

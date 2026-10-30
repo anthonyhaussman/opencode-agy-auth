@@ -26,7 +26,7 @@ import { registerV2SessionHooks } from './v2-session';
 import { initDiskSignatureCache, getDiskSignatureCache, resetDiskSignatureCacheForTesting } from './cache';
 import { initTurnStateTracker } from '../sdk/request';
 import { initCooldownPersistence } from '../sdk/retry';
-import { loadAccountModels } from './dynamic-models';
+import { loadAccountModels, type AccountInventory } from './dynamic-models';
 
 // Re-export common symbols for backward compatibility
 export { getSafeHeader, setSafeHeaders, toUrlString } from './headers';
@@ -128,7 +128,13 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
       context: simple.maxTokens,
       output: simple.maxOutputTokens,
     };
-    m.family = modelId.startsWith('claude-') ? 'claude' : modelId.startsWith('gpt-') ? 'gpt' : 'gemini';
+    if (modelId.startsWith('claude-')) {
+      m.family = 'claude';
+    } else if (modelId.startsWith('gpt-')) {
+      m.family = 'gpt';
+    } else {
+      m.family = 'gemini';
+    }
     if (simple.cost) {
       m.cost = simple.cost;
     }
@@ -138,12 +144,27 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
     }
   };
 
+  let inventory: AccountInventory | undefined;
+  const modelService = ctx.model as any;
+  const providerService = ctx.provider as any;
+  const connectionService = (ctx.integration as any)?.connection;
+  const canDiscover =
+    typeof modelService?.reload === 'function' &&
+    typeof providerService?.reload === 'function' &&
+    typeof connectionService?.active === 'function';
+
   // OpenCode v2.0.8+ splits catalog into top-level provider and model services
   if (ctx.provider?.transform) {
     ctx.provider.transform(async (editor: any) => {
       if (!editor) return;
       if (typeof editor.update === 'function') {
         editor.update(AGY_PROVIDER_ID, updateProviderRecord);
+        if (inventory && typeof editor.get === 'function' && typeof editor.add === 'function') {
+          const source = editor.get(AGY_PROVIDER_ID);
+          if (source) {
+            editor.add({ info: source.provider, models: [...source.models.values()], sourceConnection: inventory.connection });
+          }
+        }
       } else if (typeof editor.set === 'function') {
         const p: any = { id: AGY_PROVIDER_ID };
         updateProviderRecord(p);
@@ -156,21 +177,11 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
     });
   }
 
-  let accountModels: typeof STATIC_MODELS_SIMPLE | undefined;
-  const modelService = ctx.model as any;
-  const canDiscover = typeof modelService?.reload === 'function' && typeof (ctx.integration as any)?.connection?.active === 'function';
-  if (canDiscover) {
-    try {
-      accountModels = await loadAccountModels(ctx);
-    } catch {
-      console.warn('[Agy Auth] Model discovery unavailable; using the built-in catalog.');
-    }
-  }
   if (ctx.model?.transform) {
     ctx.model.transform(async (editor: any) => {
       if (!editor) return;
       if (typeof editor.update === 'function') {
-        for (const [modelId, simple] of Object.entries(accountModels || STATIC_MODELS_SIMPLE)) {
+        for (const [modelId, simple] of Object.entries(inventory?.models || STATIC_MODELS_SIMPLE)) {
           editor.update(AGY_PROVIDER_ID, modelId, (m: any) => updateModelRecord(m, modelId, simple));
         }
       } else if (typeof editor.set === 'function') {
@@ -233,17 +244,38 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
   }
 
   let discoveryTimer: ReturnType<typeof setInterval> | undefined;
+  let disposed = false;
+  let refreshPending = false;
   if (canDiscover) {
-    discoveryTimer = setInterval(async () => {
+    const refreshModels = async () => {
+      if (disposed || refreshPending) return;
+      refreshPending = true;
       try {
-        accountModels = await loadAccountModels(ctx);
-        await modelService.reload();
+        const discoveredModels = await loadAccountModels(ctx);
+        if (disposed) return;
+        const active = await connectionService.active(AGY_PROVIDER_ID);
+        if (active?.type !== 'credential' || active.id !== discoveredModels.connection.id || disposed) return;
+        inventory = discoveredModels;
+        await providerService.reload();
       } catch {
         console.warn('[Agy Auth] Model discovery refresh failed; keeping the last catalog.');
+      } finally {
+        refreshPending = false;
       }
-    }, 5 * 60 * 1000);
+    };
+    void refreshModels();
+    discoveryTimer = setInterval(() => void refreshModels(), 5 * 60 * 1000);
     discoveryTimer.unref?.();
   }
+
+  const getModelEnums = async () => {
+    if (!inventory) return undefined;
+    const active = await connectionService?.active(AGY_PROVIDER_ID);
+    if (active?.type !== 'credential' || active.id !== inventory.connection.id) {
+      throw new Error('Antigravity account changed; wait for model discovery to refresh.');
+    }
+    return inventory.enums;
+  };
 
   // 2. Register agy_quota and agy_quota_summary tools via tool transform
   ctx.tool.transform(async (editor: any) => {
@@ -492,12 +524,21 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
 
     event.options = event.options || {};
     event.options.apiKey = 'dummy';
-    event.options.fetch = createV2FetchInterceptor();
+    event.options.fetch = createV2FetchInterceptor(async () => {
+      if (!canDiscover) return undefined;
+      const active = await connectionService.active(AGY_PROVIDER_ID);
+      if (!active) throw new Error('Antigravity OAuth connection is unavailable.');
+      const resolved = await connectionService.resolve(active);
+      return resolved?.type === 'credential' ? resolved.credential : resolved;
+    }, getModelEnums);
   });
 
   // 6. Register session hooks (http.request, http.response, retry)
-  registerV2SessionHooks(ctx);
-  return () => { if (discoveryTimer) clearInterval(discoveryTimer); };
+  registerV2SessionHooks(ctx, getModelEnums);
+  return () => {
+    disposed = true;
+    if (discoveryTimer) clearInterval(discoveryTimer);
+  };
 }
 
 export const v2PluginDefinition: OpenCodeV2PluginDefinition = defineOpenCodeV2Plugin({

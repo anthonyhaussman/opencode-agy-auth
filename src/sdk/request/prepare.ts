@@ -28,6 +28,7 @@ export function prepareAgyRequest(
   accessToken: string,
   projectId: string,
   thinkingConfigDefaults?: ThinkingConfigDefaults,
+  modelEnums?: Readonly<Record<string, string>>,
 ): {
   request: RequestInfo;
   init: RequestInit;
@@ -76,6 +77,7 @@ export function prepareAgyRequest(
       effectiveModel,
       rawModel,
       thinkingConfigDefaults,
+      modelEnums,
     );
     if (transformed.body) {
       body = transformed.body;
@@ -338,6 +340,7 @@ function transformRequestBody(
   effectiveModel: string,
   requestedModel: string,
   thinkingConfigDefaults?: ThinkingConfigDefaults,
+  modelEnums?: Readonly<Record<string, string>>,
 ): { body?: string; userPromptId: string; sessionId?: string } {
   const fallbackId = randomUUID();
   try {
@@ -374,7 +377,7 @@ function transformRequestBody(
         requestPayloadInside.labels = {
           last_execution_id: randomUUID(),
           last_step_index: "0",
-          model_enum: getModelEnum(effectiveModel),
+          model_enum: modelEnums?.[effectiveModel] ?? getModelEnum(effectiveModel),
           trajectory_id: randomUUID(),
           used_claude: isClaudeModel(effectiveModel) || isClaudeModel(requestedModel) ? "true" : "false",
           used_claude_conservative: "false"
@@ -475,7 +478,7 @@ function transformRequestBody(
       requestPayload.labels = {
         last_execution_id: randomUUID(),
         last_step_index: "0",
-        model_enum: getModelEnum(effectiveModel),
+        model_enum: modelEnums?.[effectiveModel] ?? getModelEnum(effectiveModel),
         trajectory_id: randomUUID(),
         used_claude: isClaudeModel(effectiveModel) || isClaudeModel(requestedModel) ? "true" : "false",
         used_claude_conservative: "false"
