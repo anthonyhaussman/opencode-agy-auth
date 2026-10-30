@@ -616,21 +616,54 @@ function normalizeToolSchemaTypes(tools: unknown, toolMapper?: ToolMapper): void
       return;
     }
 
-    if (!obj.type && (Array.isArray(obj.anyOf) || Array.isArray(obj.oneOf))) {
+    if (Array.isArray(obj.anyOf) || Array.isArray(obj.oneOf)) {
       const arr = obj.anyOf || obj.oneOf;
-      if (arr.length > 0 && arr[0] && typeof arr[0].type === "string") {
-        obj.type = arr[0].type;
-        if (arr[0].items) {
-          obj.items = arr[0].items;
+      const hasNullBranch = arr.some(
+        (branch: any) =>
+          branch &&
+          (branch.type === "null" ||
+            branch.nullable === true ||
+            (Array.isArray(branch.type) && branch.type.includes("null"))),
+      );
+      if (hasNullBranch) {
+        obj.nullable = true;
+      }
+      if (!obj.type) {
+        const candidate = arr.find(
+          (b: any) =>
+            b &&
+            (typeof b.type === "string" ? b.type.toLowerCase().trim() !== "null" : Array.isArray(b.type)),
+        );
+        if (candidate) {
+          obj.type = candidate.type;
+          if (candidate.items) {
+            obj.items = candidate.items;
+          }
+        } else {
+          obj.type = "STRING";
         }
-      } else {
-        obj.type = "STRING";
       }
     }
 
-    if (typeof obj.type === "string") {
-      const t = obj.type.toLowerCase();
-      if (["string", "number", "integer", "boolean", "array", "object"].includes(t)) {
+    if (Array.isArray(obj.type)) {
+      const rawTypes = obj.type
+        .map((t: unknown) => (typeof t === "string" ? t.toLowerCase().trim() : ""))
+        .filter(Boolean);
+      if (rawTypes.includes("null")) {
+        obj.nullable = true;
+      }
+      const nonNullType = rawTypes.find((t: string) => t !== "null");
+      if (nonNullType && ["string", "number", "integer", "boolean", "array", "object"].includes(nonNullType)) {
+        obj.type = nonNullType.toUpperCase();
+      } else {
+        obj.type = "STRING";
+      }
+    } else if (typeof obj.type === "string") {
+      const t = obj.type.toLowerCase().trim();
+      if (t === "null") {
+        obj.type = "STRING";
+        obj.nullable = true;
+      } else if (["string", "number", "integer", "boolean", "array", "object"].includes(t)) {
         obj.type = t.toUpperCase();
       }
     }
