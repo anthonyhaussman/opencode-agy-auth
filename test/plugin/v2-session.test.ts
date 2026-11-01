@@ -164,5 +164,44 @@ describe("v2 session hooks", () => {
       expect(typeof event.retryDelayMs).toBe("number");
       expect(event.retryDelayMs).toBeGreaterThan(0);
     });
+
+    it("sets retryDelayMs for 502 Bad Gateway responses", async () => {
+      const hook = createV2RetryHook();
+      const event: any = {
+        response: new Response(JSON.stringify({ error: "Bad Gateway" }), { status: 502 }),
+        attempt: 1,
+        request: new Request("https://daily-cloudcode-pa.googleapis.com/v1internal:generateContent"),
+      };
+
+      await hook(event);
+
+      expect(typeof event.retryDelayMs).toBe("number");
+      expect(event.retryDelayMs).toBeGreaterThan(0);
+    });
+
+    it("sets retryDelayMs for other 5xx errors like 500 and 504", async () => {
+      const hook = createV2RetryHook();
+      for (const status of [500, 504]) {
+        const event: any = {
+          response: new Response("Gateway error", { status }),
+          attempt: 2,
+        };
+        await hook(event);
+        expect(typeof event.retryDelayMs).toBe("number");
+        expect(event.retryDelayMs).toBeGreaterThan(0);
+      }
+    });
+
+    it("does not set retryDelayMs for non-retryable 4xx client errors", async () => {
+      const hook = createV2RetryHook();
+      const event: any = {
+        response: new Response("Bad Request", { status: 400 }),
+        attempt: 1,
+      };
+
+      await hook(event);
+
+      expect(event.retryDelayMs).toBeUndefined();
+    });
   });
 });

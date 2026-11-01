@@ -10,6 +10,7 @@ import { classifyQuotaResponse, retryInternals } from '../sdk/retry/quota';
 import {
   getExponentialDelayWithJitter,
   isRetryableNetworkError,
+  isRetryableStatus,
   resolveRetryDelayMs
 } from '../sdk/retry/helpers';
 import { resolveCachedAuth } from './cache';
@@ -348,7 +349,7 @@ export function createV2RetryHook() {
     if (!event) return;
     const response = event.response;
     if (response instanceof Response) {
-      if (response.status === 429 || response.status === 503) {
+      if (isRetryableStatus(response.status)) {
         const quota = await classifyQuotaResponse(response);
         if (quota?.retryDelayMs) {
           event.retryDelayMs = quota.retryDelayMs;
