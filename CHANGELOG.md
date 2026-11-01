@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.12](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.4.11...1.4.12) (2026-11-01)
+
+
+### Features
+
+* **agy:** bump agy CLI to v1.4.12 ([54f06e8](https://github.com/anthonyhaussman/opencode-agy-auth/commit/54f06e8163991802ec39aef8042c1346ccc8ecb6))
+
+
+### Bug Fixes
+
+* **request:** normalize array types in tool schemas ([2579ac5](https://github.com/anthonyhaussman/opencode-agy-auth/commit/2579ac557063588580051a02724de70166521b68))
+* **retry:** handle 502 and 5xx errors in v2 session ([f514d0f](https://github.com/anthonyhaussman/opencode-agy-auth/commit/f514d0fe4feaf3d50a2709da75c578b5ccacb73d))
+
 ## [1.4.11](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.4.10...1.4.11) (2026-10-30)
 
 
