@@ -18,15 +18,21 @@ import { accessTokenExpired, isOAuthAuth, parseRefreshParts } from './auth';
 import { refreshAccessToken } from './token';
 import { ensureProjectContext } from './project';
 import { loadStoredAuthFromJson, saveStoredAuthToJson } from './v2-storage';
-import { toUrlString } from './headers';
+import { getSafeHeader, toUrlString } from './headers';
 import { resolveModelTier } from './tier';
+import type { V2RuntimeCatalog } from './v2-fetch';
+
+export type { V2RuntimeCatalog } from './v2-fetch';
 
 export interface V2SessionHooksState {
   lastInterceptedModel?: string;
   lastSessionId?: string;
 }
 
-export function createV2HttpRequestHook(state: V2SessionHooksState = {}) {
+export function createV2HttpRequestHook(
+  state: V2SessionHooksState = {},
+  getRuntimeCatalog?: () => Promise<V2RuntimeCatalog | undefined> | V2RuntimeCatalog | undefined
+) {
   return async (event: any) => {
     if (!event) return;
 
@@ -160,12 +166,31 @@ export function createV2HttpRequestHook(state: V2SessionHooksState = {}) {
           };
         }
 
+        let catalog: V2RuntimeCatalog | undefined;
+        try {
+          catalog = await getRuntimeCatalog?.();
+        } catch {
+          catalog = undefined;
+        }
+
         const originalRequestedModel = modelName;
         let modifiedUrl = cleanUrl;
         if (originalRequestedModel) {
           const originalBase = originalRequestedModel.replace('google-agy/', '');
-          const initHeaders = event.headers instanceof Headers ? event.headers : event.request?.headers;
-          const resolvedBase = resolveModelTier(originalBase, { headers: initHeaders });
+          const explicitTierHeader =
+            getSafeHeader(event.headers, 'x-agy-tier') ??
+            getSafeHeader(event.request?.headers, 'x-agy-tier');
+          const rawModelVariant = (event as { model?: { variant?: unknown } }).model?.variant;
+          const modelVariant =
+            typeof rawModelVariant === 'string' && rawModelVariant.length > 0
+              ? rawModelVariant
+              : undefined;
+          const tierHeaders = explicitTierHeader
+            ? { headers: { 'x-agy-tier': explicitTierHeader } }
+            : !originalBase.includes('@') && modelVariant
+              ? { headers: { 'x-agy-tier': modelVariant } }
+              : undefined;
+          const resolvedBase = resolveModelTier(originalBase, tierHeaders, catalog?.tierMapping);
           if (originalBase !== resolvedBase) {
             modifiedUrl = modifiedUrl.replace(`models/${originalBase}`, `models/${resolvedBase}`);
           }
@@ -194,7 +219,9 @@ export function createV2HttpRequestHook(state: V2SessionHooksState = {}) {
             body: bodyPayload
           },
           authRecord.access,
-          projectContext.effectiveProjectId
+          projectContext.effectiveProjectId,
+          undefined,
+          catalog?.enums
         );
 
         if (transformed.sessionId) {
@@ -373,9 +400,12 @@ export function createV2RetryHook() {
   };
 }
 
-export function registerV2SessionHooks(ctx: any) {
+export function registerV2SessionHooks(
+  ctx: any,
+  getRuntimeCatalog?: () => Promise<V2RuntimeCatalog | undefined> | V2RuntimeCatalog | undefined
+) {
   const state: V2SessionHooksState = {};
-  ctx.session.hook('http.request', createV2HttpRequestHook(state), { providerID: AGY_PROVIDER_ID });
+  ctx.session.hook('http.request', createV2HttpRequestHook(state, getRuntimeCatalog), { providerID: AGY_PROVIDER_ID });
   ctx.session.hook('http.response', createV2HttpResponseHook(state), { providerID: AGY_PROVIDER_ID });
   ctx.session.hook('retry', createV2RetryHook(), { providerID: AGY_PROVIDER_ID });
 }
