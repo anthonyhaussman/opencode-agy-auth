@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { prepareAgyRequest } from "../src/sdk/request/prepare";
+import { getModelEnum, prepareAgyRequest } from "../src/sdk/request/prepare";
 import { AGY_CODE_ASSIST_ENDPOINT } from "../src/constants";
 import { initTurnStateTracker } from "../src/sdk/request/turn-state-tracker";
 import { cacheSignature } from "../src/plugin/cache";
@@ -813,5 +813,137 @@ describe("prepareAgyRequest Comprehensive Suite", () => {
     const result = prepareAgyRequest(input, { method: "POST", body: "invalid-json{" }, token, project);
     expect(result.init.body).toBe("invalid-json{");
     expect(result.sessionId).toBeUndefined();
+  });
+
+  describe("dynamic modelEnums override", () => {
+    it("sets labels.model_enum from modelEnums in both unwrapped and wrapped request bodies", () => {
+      const modelEnums = { "gemini-custom-9-high": "MODEL_PLACEHOLDER_M999" };
+      const input = "https://generativelanguage.googleapis.com/v1beta/models/gemini-custom-9-high:generateContent";
+
+      const unwrappedBody = JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: "Hello" }] }],
+      });
+      const unwrappedResult = prepareAgyRequest(
+        input,
+        { method: "POST", body: unwrappedBody },
+        token,
+        project,
+        undefined,
+        modelEnums,
+      );
+      const unwrappedParsed = JSON.parse(unwrappedResult.init.body as string);
+      expect(unwrappedParsed.request.labels.model_enum).toBe("MODEL_PLACEHOLDER_M999");
+
+      const wrappedBody = JSON.stringify({
+        project: "custom-project",
+        request: {
+          contents: [{ role: "user", parts: [{ text: "Hello" }] }],
+        },
+      });
+      const wrappedResult = prepareAgyRequest(
+        input,
+        { method: "POST", body: wrappedBody },
+        token,
+        project,
+        undefined,
+        modelEnums,
+      );
+      const wrappedParsed = JSON.parse(wrappedResult.init.body as string);
+      expect(wrappedParsed.request.labels.model_enum).toBe("MODEL_PLACEHOLDER_M999");
+    });
+
+    it("falls back to getModelEnum when modelEnums is undefined, missing effectiveModel, or empty string", () => {
+      const argonUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-4-argon-high:generateContent";
+      const unknownUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-unknown-999:generateContent";
+      const customUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-custom-9-high:generateContent";
+      const unwrappedBody = JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: "Hello" }] }],
+      });
+      const wrappedBody = JSON.stringify({
+        project: "custom-project",
+        request: {
+          contents: [{ role: "user", parts: [{ text: "Hello" }] }],
+        },
+      });
+
+      const expectedArgonEnum = getModelEnum("gemini-4-argon-high");
+      expect(expectedArgonEnum).toBe("MODEL_PLACEHOLDER_M417");
+
+      // Undefined modelEnums falls back to models.json lookup
+      const undefinedResult = prepareAgyRequest(
+        argonUrl,
+        { method: "POST", body: unwrappedBody },
+        token,
+        project,
+        undefined,
+        undefined,
+      );
+      expect(JSON.parse(undefinedResult.init.body as string).request.labels.model_enum).toBe(expectedArgonEnum);
+
+      // modelEnums without effectiveModel falls back to models.json while active for mapped keys
+      const partialEnums = { "gemini-custom-9-high": "MODEL_PLACEHOLDER_M999" };
+      const mappedResult = prepareAgyRequest(
+        customUrl,
+        { method: "POST", body: unwrappedBody },
+        token,
+        project,
+        undefined,
+        partialEnums,
+      );
+      expect(JSON.parse(mappedResult.init.body as string).request.labels.model_enum).toBe("MODEL_PLACEHOLDER_M999");
+
+      const unmappedArgonUnwrapped = prepareAgyRequest(
+        argonUrl,
+        { method: "POST", body: unwrappedBody },
+        token,
+        project,
+        undefined,
+        partialEnums,
+      );
+      expect(JSON.parse(unmappedArgonUnwrapped.init.body as string).request.labels.model_enum).toBe(expectedArgonEnum);
+
+      const unmappedArgonWrapped = prepareAgyRequest(
+        argonUrl,
+        { method: "POST", body: wrappedBody },
+        token,
+        project,
+        undefined,
+        partialEnums,
+      );
+      expect(JSON.parse(unmappedArgonWrapped.init.body as string).request.labels.model_enum).toBe(expectedArgonEnum);
+
+      // Unknown model falls back to MODEL_PLACEHOLDER_M16
+      const unknownResult = prepareAgyRequest(
+        unknownUrl,
+        { method: "POST", body: unwrappedBody },
+        token,
+        project,
+        undefined,
+        partialEnums,
+      );
+      expect(JSON.parse(unknownResult.init.body as string).request.labels.model_enum).toBe("MODEL_PLACEHOLDER_M16");
+
+      // Empty string in modelEnums falls back safely to getModelEnum
+      const emptyEnums = { "gemini-4-argon-high": "" };
+      const emptyUnwrapped = prepareAgyRequest(
+        argonUrl,
+        { method: "POST", body: unwrappedBody },
+        token,
+        project,
+        undefined,
+        emptyEnums,
+      );
+      expect(JSON.parse(emptyUnwrapped.init.body as string).request.labels.model_enum).toBe(expectedArgonEnum);
+
+      const emptyWrapped = prepareAgyRequest(
+        argonUrl,
+        { method: "POST", body: wrappedBody },
+        token,
+        project,
+        undefined,
+        emptyEnums,
+      );
+      expect(JSON.parse(emptyWrapped.init.body as string).request.labels.model_enum).toBe(expectedArgonEnum);
+    });
   });
 });

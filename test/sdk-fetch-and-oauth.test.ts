@@ -96,6 +96,29 @@ describe("sdk/chat-logger and fetch_* modules and oauth", () => {
         "Google API returned status 403 Forbidden: Access Denied Details"
       );
     });
+
+    it("forwards AbortSignal to agyFetch when provided and omits signal key when undefined", async () => {
+      const fetchSpy = vi.spyOn(fetchModule, "agyFetch").mockImplementation(
+        async () =>
+          new Response(JSON.stringify({ models: {} }), {
+            status: 200,
+          }),
+      );
+
+      const controller = new AbortController();
+      await fetchAvailableModels("fake-token", "fake-project", "gemini-4-argon-high", controller.signal);
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const withSignalInit = fetchSpy.mock.calls[0]?.[1];
+      expect(withSignalInit?.signal).toBe(controller.signal);
+
+      await fetchAvailableModels("fake-token", "fake-project", "gemini-4-argon-high", undefined);
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      const withoutSignalInit = fetchSpy.mock.calls[1]?.[1];
+      expect(withoutSignalInit).toBeDefined();
+      expect("signal" in (withoutSignalInit as RequestInit)).toBe(false);
+    });
   });
 
   describe("fetch_project", () => {
