@@ -55,7 +55,8 @@ export interface FetchAvailableModelsResponse {
 export async function fetchAvailableModels(
   accessToken: string,
   projectId: string,
-  userAgentModel?: string
+  userAgentModel?: string,
+  signal?: AbortSignal
 ): Promise<FetchAvailableModelsResponse> {
   const url = `${AGY_CODE_ASSIST_ENDPOINT}/v1internal:fetchAvailableModels`;
   if (process.env.OPENCODE_AGY_VERBOSE_LOGS === "1") {
@@ -72,7 +73,8 @@ export async function fetchAvailableModels(
   const response = await agyFetch(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ project: projectId })
+    body: JSON.stringify({ project: projectId }),
+    signal
   });
 
   if (!response.ok) {

@@ -19,7 +19,10 @@ import { getSafeHeader, setSafeHeaders, toUrlString } from './headers';
 import { resolveModelTier } from './tier';
 import { loadStoredAuthFromJson } from './v2-storage';
 
-export function createV2FetchInterceptor(getAuthSnapshot?: () => Promise<any> | any) {
+export function createV2FetchInterceptor(
+  getAuthSnapshot?: () => Promise<any> | any,
+  getModelEnums?: () => Promise<Readonly<Record<string, string>> | undefined>,
+) {
   return async function agyV2Fetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
     const isGL = isGenerativeLanguageRequest(input);
     const isInternal = toUrlString(input).includes('cloudcode-pa.googleapis.com');
@@ -105,7 +108,8 @@ export function createV2FetchInterceptor(getAuthSnapshot?: () => Promise<any> | 
       init,
       authRecord.access,
       projectContext.effectiveProjectId,
-      undefined
+      undefined,
+      await getModelEnums?.()
     );
 
     const chatLogger = createChatLogger();

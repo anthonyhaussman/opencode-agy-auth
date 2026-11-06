@@ -73,7 +73,7 @@ export interface OpenCodeV2PluginContext {
 
 export interface OpenCodeV2PluginDefinition {
   id: string;
-  setup: (ctx: OpenCodeV2PluginContext) => Promise<void> | void;
+  setup: (ctx: OpenCodeV2PluginContext) => Promise<void | (() => void)> | void | (() => void);
 }
 
 export interface DualOpenCodePlugin extends OpenCodeV2PluginDefinition {
