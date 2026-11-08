@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fs from 'node:fs';
+import * as pricingModule from '../../src/plugin/pricing';
 import {
   setupOpenCodeV2,
   v2PluginDefinition,
@@ -21,6 +22,10 @@ import { getDiskSignatureCache, resetDiskSignatureCacheForTesting } from '../../
 import type { OpenCodeV2PluginContext } from '../../src/plugin/types';
 
 describe('OpenCode v2 Plugin Setup Adapter', () => {
+  beforeEach(() => {
+    vi.spyOn(pricingModule, 'applyPricingToSimpleModels').mockImplementation(async (m) => m);
+  });
+
   it('defines v2 plugin definition with correct id and setup function', () => {
     expect(v2PluginDefinition.id).toBe(AGY_PROVIDER_ID);
     expect(typeof v2PluginDefinition.setup).toBe('function');

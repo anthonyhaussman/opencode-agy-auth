@@ -1,16 +1,21 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import pluginDefault, {
   AgyCLIOAuthPlugin,
   GoogleOAuthPlugin,
   setupOpenCodeV2,
   v2PluginDefinition,
 } from '../../index';
+import * as pricingModule from '../../src/plugin/pricing';
 import { AGY_PROVIDER_ID } from '../../src/constants';
 import { AGY_QUOTA_TOOL_NAME } from '../../src/plugin/quota';
 import { AGY_QUOTA_SUMMARY_TOOL_NAME } from '../../src/plugin/quota-summary';
 import type { OpenCodeV2PluginContext } from '../../src/plugin/types';
 
 describe('index entrypoint dual v1/v2 export', () => {
+  beforeEach(() => {
+    vi.spyOn(pricingModule, 'applyPricingToSimpleModels').mockImplementation(async (m) => m);
+    vi.spyOn(pricingModule, 'updateStaticModelsWithPricing').mockResolvedValue(undefined);
+  });
   it('exports dual plugin object as default export', () => {
     expect(pluginDefault).toBeDefined();
     expect(pluginDefault.id).toBe(AGY_PROVIDER_ID);

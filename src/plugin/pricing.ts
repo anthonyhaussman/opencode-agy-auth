@@ -39,6 +39,22 @@ function getCachePath(): string {
   }
 }
 
+function isValidPricingResponse(data: unknown): data is ModelsDevResponse {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return false;
+  }
+  const record = data as Record<string, unknown>;
+  return Object.values(record).some(
+    (provider) =>
+      Boolean(provider) &&
+      typeof provider === 'object' &&
+      !Array.isArray(provider) &&
+      Boolean((provider as Record<string, unknown>).models) &&
+      typeof (provider as Record<string, unknown>).models === 'object' &&
+      !Array.isArray((provider as Record<string, unknown>).models)
+  );
+}
+
 function loadCachedPricing(): ModelsDevResponse | null {
   try {
     const cachePath = getCachePath();
@@ -50,7 +66,8 @@ function loadCachedPricing(): ModelsDevResponse | null {
     }
 
     const data = readFileSync(cachePath, 'utf-8');
-    return JSON.parse(data) as ModelsDevResponse;
+    const parsed: unknown = JSON.parse(data);
+    return isValidPricingResponse(parsed) ? parsed : null;
   } catch (err) {
     return null;
   }
@@ -86,11 +103,14 @@ async function fetchPricing(): Promise<ModelsDevResponse | null> {
     if (!response.ok) {
       return null;
     }
-    const data = (await response.json()) as ModelsDevResponse;
-    if (data) {
-      savePricingCache(data);
-      memoryCache = data;
-      return data;
+    const data: unknown = await response.json();
+    if (data && typeof data === 'object') {
+      memoryCache = data as ModelsDevResponse;
+      if (isValidPricingResponse(data)) {
+        savePricingCache(data);
+        return data;
+      }
+      return null;
     }
   } catch (err) {
     clearTimeout(timeoutId);
@@ -175,19 +195,21 @@ function resolveModelCost(
  */
 export function updateStaticModelsWithPricing(
   staticModels: Record<string, ProviderModel>
-): void {
-  fetchPricing().then((pricingData) => {
-    if (!pricingData) return;
+): Promise<void> {
+  return fetchPricing()
+    .then((pricingData) => {
+      if (!pricingData) return;
 
-    for (const [modelId, modelObj] of Object.entries(staticModels)) {
-      const resolvedCost = resolveModelCost(modelId, modelObj.cost, pricingData);
-      if (resolvedCost) {
-        modelObj.cost = resolvedCost;
+      for (const [modelId, modelObj] of Object.entries(staticModels)) {
+        const resolvedCost = resolveModelCost(modelId, modelObj.cost, pricingData);
+        if (resolvedCost) {
+          modelObj.cost = resolvedCost;
+        }
       }
-    }
-  }).catch(() => {
-    // Ignore errors to prevent unhandled rejections
-  });
+    })
+    .catch(() => {
+      // Ignore errors to prevent unhandled rejections
+    });
 }
 
 /**

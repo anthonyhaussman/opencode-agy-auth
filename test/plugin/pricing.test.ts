@@ -1,15 +1,23 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { updateStaticModelsWithPricing } from '../../src/plugin/pricing.js';
 
 describe('pricing', () => {
+  const testTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agy-pricing-test-'));
   const cacheFileName = `agy-pricing-cache.json-${os.userInfo().uid}`;
-  const cacheFilePath = path.join(os.tmpdir(), cacheFileName);
+  const cacheFilePath = path.join(testTmpDir, cacheFileName);
 
   beforeEach(() => {
     vi.resetModules();
+    vi.doMock('node:os', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('node:os')>();
+      return {
+        ...actual,
+        tmpdir: () => testTmpDir,
+      };
+    });
     if (fs.existsSync(cacheFilePath)) {
       fs.unlinkSync(cacheFilePath);
     }
@@ -20,6 +28,10 @@ describe('pricing', () => {
     if (fs.existsSync(cacheFilePath)) {
       fs.unlinkSync(cacheFilePath);
     }
+  });
+
+  afterAll(() => {
+    fs.rmSync(testTmpDir, { recursive: true, force: true });
   });
 
   it('loads pricing from cache when fresh', async () => {
@@ -45,8 +57,7 @@ describe('pricing', () => {
       },
     };
 
-    updatePricing(staticModels);
-    await new Promise((r) => setTimeout(r, 50));
+    await updatePricing(staticModels);
 
     expect(staticModels['gemini-2.5-flash-cached-test'].cost).toEqual({
       input: 0.075,
@@ -86,9 +97,49 @@ describe('pricing', () => {
       },
     };
 
-    updatePricing(staticModels);
+    await updatePricing(staticModels);
 
-    await new Promise((r) => setTimeout(r, 100));
+    expect(staticModels['gemini-2.5-pro'].cost).toEqual({
+      input: 1.25,
+      output: 5.0,
+      cache: {
+        read: 0.3125,
+        write: 0,
+      },
+    });
+  });
+
+  it('ignores non-pricing JSON in disk cache and fetched responses without poisoning cache', async () => {
+    fs.writeFileSync(cacheFilePath, JSON.stringify({ buckets: [] }));
+
+    const mockApiResponse = {
+      google: {
+        models: {
+          'gemini-2.5-pro': {
+            cost: {
+              input: 1.25,
+              output: 5.0,
+              cache_read: 0.3125,
+            },
+          },
+        },
+      },
+    };
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify(mockApiResponse), { status: 200 })
+    );
+
+    const { updateStaticModelsWithPricing: updatePricing } = await import('../../src/plugin/pricing.js');
+
+    const staticModels: any = {
+      'gemini-2.5-pro': {
+        id: 'gemini-2.5-pro',
+        cost: undefined,
+      },
+    };
+
+    await updatePricing(staticModels);
 
     expect(staticModels['gemini-2.5-pro'].cost).toEqual({
       input: 1.25,
@@ -111,8 +162,7 @@ describe('pricing', () => {
       },
     };
 
-    expect(() => updatePricing(staticModels)).not.toThrow();
-    await new Promise((r) => setTimeout(r, 50));
+    await expect(updatePricing(staticModels)).resolves.toBeUndefined();
     expect(staticModels['gemini-unknown-fail'].cost).toBeUndefined();
   });
 
@@ -160,8 +210,7 @@ describe('pricing', () => {
       }
     };
 
-    updatePricing(staticModels);
-    await new Promise((r) => setTimeout(r, 100));
+    await updatePricing(staticModels);
 
     expect(staticModels['claude-3-5-sonnet-thinking'].cost?.input).toBe(3.0);
     expect(staticModels['gpt-4o'].cost?.input).toBe(2.5);
@@ -192,8 +241,7 @@ describe('pricing', () => {
       'gemini-expired': { id: 'gemini-expired' }
     };
 
-    updatePricing(staticModels);
-    await new Promise((r) => setTimeout(r, 100));
+    await updatePricing(staticModels);
     expect(staticModels['gemini-expired'].cost).toBeUndefined();
   });
 
