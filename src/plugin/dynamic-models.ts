@@ -40,24 +40,13 @@ export interface NormalizedModelCatalog {
   enums: Record<string, string>;
 }
 
+export type DiscoveredModelCatalog = NormalizedModelCatalog;
+
 export interface AccountModelInventory extends NormalizedModelCatalog {
   connection: { type: 'credential'; id: string };
 }
 
-export interface V2IntegrationConnectionApi {
-  active?: (providerId: string) => Promise<unknown> | unknown;
-  resolve?: (connection: { type: 'credential'; id: string }) => Promise<unknown> | unknown;
-}
-
-export type AccountModelsContext = Omit<Partial<OpenCodeV2PluginContext>, 'integration'> & {
-  integration?:
-    | (OpenCodeV2PluginContext['integration'] & {
-        connection?: V2IntegrationConnectionApi;
-      })
-    | {
-        connection?: V2IntegrationConnectionApi;
-      };
-};
+export type AccountModelsContext = Partial<OpenCodeV2PluginContext>;
 
 interface ParsedTierSuffix {
   base: string;
@@ -193,7 +182,7 @@ export function normalizeDiscoveredModels(
   for (const entry of selectableEntries) {
     const tierCount = entry.parsedTier ? (tiersByBase.get(entry.parsedTier.base)?.size ?? 0) : 0;
     const collapsed = Boolean(
-      entry.parsedTier && (tierCount >= 2 || Boolean(TIER_MAPPING[entry.parsedTier.base]))
+      entry.parsedTier && (tierCount >= 2 || Object.hasOwn(TIER_MAPPING, entry.parsedTier.base))
     );
     const targetId = collapsed && entry.parsedTier ? entry.parsedTier.base : entry.rawId;
 
@@ -221,7 +210,9 @@ export function normalizeDiscoveredModels(
 
   for (const group of groups.values()) {
     const { targetId, collapsed, entries } = group;
-    const knownStatic = STATIC_MODELS_SIMPLE[targetId];
+    const knownStatic = Object.hasOwn(STATIC_MODELS_SIMPLE, targetId)
+      ? STATIC_MODELS_SIMPLE[targetId]
+      : undefined;
     const firstDisplayName = entries[0]!.details.displayName.trim();
     const strippedName = firstDisplayName.replace(DISPLAY_TIER_SUFFIX_RE, '').trim();
     const name = knownStatic?.name ?? (collapsed ? strippedName || firstDisplayName : firstDisplayName);
@@ -301,8 +292,7 @@ export function normalizeDiscoveredModels(
 export async function loadAccountModels(
   ctx: AccountModelsContext
 ): Promise<AccountModelInventory | undefined> {
-  const connApi = (ctx?.integration as { connection?: V2IntegrationConnectionApi } | undefined)
-    ?.connection;
+  const connApi = ctx?.integration?.connection;
   if (typeof connApi?.active !== 'function' || typeof connApi?.resolve !== 'function') {
     return undefined;
   }
@@ -362,6 +352,7 @@ export async function loadAccountModels(
   if (!project) {
     const ctxResult = await ensureProjectContext(current, client);
     current = ctxResult.auth;
+    storeCachedAuth(current);
     const updatedParts = parseRefreshParts(current.refresh);
 
     if (updatedParts.managedProjectId) {

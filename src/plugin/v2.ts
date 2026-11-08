@@ -1,5 +1,7 @@
 import { AGY_PROVIDER_ID } from '../constants';
-import { STATIC_MODELS_SIMPLE, TIER_MAPPING } from './tier';
+import { STATIC_MODELS_SIMPLE, TIER_MAPPING, type SimpleStaticModel, type TierMap } from './tier';
+import { loadAccountModels, type AccountModelInventory } from './dynamic-models';
+import { applyPricingToSimpleModels } from './pricing';
 import { createAgyQuotaTool, AGY_QUOTA_TOOL_NAME, AGY_V2_QUOTA_COMMAND, AGY_V2_QUOTA_COMMAND_TEMPLATE } from './quota';
 import {
   createAgyQuotaSummaryTool,
@@ -21,7 +23,7 @@ import {
   saveStoredAuthToJson,
   setStoredAuthOverrideForTesting,
 } from './v2-storage';
-import { createV2FetchInterceptor } from './v2-fetch';
+import { createV2FetchInterceptor, type V2RuntimeCatalog } from './v2-fetch';
 import { registerV2SessionHooks } from './v2-session';
 import { initDiskSignatureCache, getDiskSignatureCache, resetDiskSignatureCacheForTesting } from './cache';
 import { initTurnStateTracker } from '../sdk/request';
@@ -47,7 +49,9 @@ export {
 /**
  * Setup adapter for OpenCode v2 plugin architecture.
  */
-export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<void> {
+export async function setupOpenCodeV2(
+  ctx: OpenCodeV2PluginContext
+): Promise<(() => void) | void> {
   // 0. Initialize persistent caches and tracking
   try {
     initDiskSignatureCache({
@@ -72,16 +76,222 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
     console.warn(`[Agy Auth] initCooldownPersistence failed, running without cooldown disk persistence: ${e instanceof Error ? e.message : e}`);
   }
 
+  let inventory: AccountModelInventory | undefined;
+  let activeConnectionId: string | undefined;
+  let inflightRefresh: Promise<AccountModelInventory | undefined> | null = null;
+  let disposed = false;
+
+  const staticModels: Record<string, SimpleStaticModel> = structuredClone(STATIC_MODELS_SIMPLE);
+  void applyPricingToSimpleModels(staticModels);
+
+  const providerService = ctx.provider;
+  const modelService = ctx.model;
+  const connectionService = (ctx.integration as any)?.connection;
+  const canDiscover = typeof connectionService?.active === 'function';
+  const hasReload =
+    typeof providerService?.reload === 'function' || typeof modelService?.reload === 'function';
+
+  const warn = (msg: string) => {
+    if (typeof ctx.logger?.warn === 'function') {
+      ctx.logger.warn(msg);
+    } else {
+      console.warn(msg);
+    }
+  };
+
+  const getActiveInventory = (): AccountModelInventory | undefined => {
+    if (!inventory) return undefined;
+    if (activeConnectionId === undefined || inventory.connection.id !== activeConnectionId) {
+      return undefined;
+    }
+    return inventory;
+  };
+
+  const reloadCatalog = async (): Promise<void> => {
+    if (disposed) return;
+    try {
+      if (typeof providerService?.reload === 'function') {
+        await providerService.reload();
+      } else if (typeof modelService?.reload === 'function') {
+        await modelService.reload();
+      }
+    } catch (err) {
+      warn(`[Agy Auth] Catalog reload failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  const readActiveCredentialConnection = async (): Promise<
+    { type: 'credential'; id: string } | undefined
+  > => {
+    if (typeof connectionService?.active !== 'function') {
+      return undefined;
+    }
+    try {
+      const raw = await connectionService.active(AGY_PROVIDER_ID);
+      if (
+        raw &&
+        typeof raw === 'object' &&
+        (raw as any).type === 'credential' &&
+        typeof (raw as any).id === 'string' &&
+        (raw as any).id.length > 0
+      ) {
+        return { type: 'credential', id: (raw as any).id };
+      }
+    } catch {
+      // Ignore connection lookup failure
+    }
+    return undefined;
+  };
+
+  const refreshModels = (): Promise<AccountModelInventory | undefined> => {
+    if (disposed || !canDiscover) {
+      return Promise.resolve(undefined);
+    }
+    if (inflightRefresh) {
+      return inflightRefresh;
+    }
+
+    const run = (async (): Promise<AccountModelInventory | undefined> => {
+      const active = await readActiveCredentialConnection();
+      if (disposed) return undefined;
+
+      if (!active) {
+        const hadInventory = Boolean(inventory);
+        inventory = undefined;
+        activeConnectionId = undefined;
+        if (hadInventory) {
+          await reloadCatalog();
+        }
+        return undefined;
+      }
+
+      if (activeConnectionId !== active.id) {
+        activeConnectionId = active.id;
+      }
+
+      try {
+        let loaded = await loadAccountModels(ctx);
+        if (disposed) return undefined;
+
+        let currentActive = await readActiveCredentialConnection();
+        if (disposed) return undefined;
+
+        if (!currentActive) {
+          const hadInventory = Boolean(inventory);
+          inventory = undefined;
+          activeConnectionId = undefined;
+          if (hadInventory) {
+            await reloadCatalog();
+          }
+          return undefined;
+        }
+
+        if (loaded && currentActive.id !== loaded.connection.id) {
+          activeConnectionId = currentActive.id;
+          loaded = await loadAccountModels(ctx);
+          if (disposed) return undefined;
+          currentActive = await readActiveCredentialConnection();
+          if (disposed) return undefined;
+          if (!currentActive) {
+            const hadInventory = Boolean(inventory);
+            inventory = undefined;
+            activeConnectionId = undefined;
+            if (hadInventory) {
+              await reloadCatalog();
+            }
+            return undefined;
+          }
+        }
+
+        if (loaded && currentActive.id === loaded.connection.id) {
+          inventory = loaded;
+          activeConnectionId = currentActive.id;
+          await reloadCatalog();
+          return inventory;
+        }
+
+        return getActiveInventory();
+      } catch (err) {
+        warn(
+          `[Agy Auth] Account model discovery failed: ${err instanceof Error ? err.message : String(err)}`
+        );
+        if (!inventory || inventory.connection.id !== active.id) {
+          const hadInventory = Boolean(inventory);
+          inventory = undefined;
+          if (hadInventory) {
+            await reloadCatalog();
+          }
+        }
+        return getActiveInventory();
+      }
+    })();
+
+    const tracked = run.finally(() => {
+      if (inflightRefresh === tracked) {
+        inflightRefresh = null;
+      }
+    });
+
+    inflightRefresh = tracked;
+    return tracked;
+  };
+
+  const resolveRuntimeCatalog = async (variant?: string): Promise<V2RuntimeCatalog | undefined> => {
+    if (canDiscover) {
+      const active = await readActiveCredentialConnection();
+      if (!active) {
+        if (inventory !== undefined) {
+          inventory = undefined;
+          activeConnectionId = undefined;
+          void reloadCatalog();
+        }
+        return variant ? { variant } : undefined;
+      }
+      if (!inventory || inventory.connection.id !== active.id) {
+        await refreshModels();
+      }
+    }
+
+    const activeInv = getActiveInventory();
+    if (!activeInv) {
+      return variant ? { variant } : undefined;
+    }
+
+    return {
+      enums: activeInv.enums,
+      tierMapping: activeInv.tierMapping,
+      ...(variant ? { variant } : {}),
+    };
+  };
+
   // 1. Register provider and models
-  const resolveVariants = (modelId: string) => {
-    const mapping = TIER_MAPPING[modelId];
+  const resolveVariants = (
+    modelId: string,
+    tierMapSource: Readonly<Record<string, TierMap>> = TIER_MAPPING
+  ) => {
+    const mapping = tierMapSource[modelId];
     if (!mapping) return undefined;
-    const variants: Array<{ id: string }> = [];
-    if (mapping.minimal !== undefined) variants.push({ id: 'minimal' });
-    if (mapping.low !== undefined) variants.push({ id: 'low' });
-    if (mapping.medium !== undefined) variants.push({ id: 'medium' });
-    if (mapping.high !== undefined) variants.push({ id: 'high' });
+    const variants: Array<{ id: string; headers: { 'x-agy-tier': string } }> = [];
+    if (mapping.minimal !== undefined) {
+      variants.push({ id: 'minimal', headers: { 'x-agy-tier': 'minimal' } });
+    }
+    if (mapping.low !== undefined) {
+      variants.push({ id: 'low', headers: { 'x-agy-tier': 'low' } });
+    }
+    if (mapping.medium !== undefined) {
+      variants.push({ id: 'medium', headers: { 'x-agy-tier': 'medium' } });
+    }
+    if (mapping.high !== undefined) {
+      variants.push({ id: 'high', headers: { 'x-agy-tier': 'high' } });
+    }
     return variants.length > 0 ? variants : undefined;
+  };
+
+  const resolveModelFamily = (modelId: string): string => {
+    if (modelId.includes('gemini')) return 'gemini';
+    if (modelId.startsWith('claude-') || modelId.startsWith('claude')) return 'claude';
+    if (modelId.startsWith('gpt-') || modelId.startsWith('gpt')) return 'gpt';
+    return 'unknown';
   };
 
   const updateProviderRecord = (p: any) => {
@@ -93,19 +303,28 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
     p.integrationID = AGY_PROVIDER_ID;
   };
 
-  const buildModelRecord = (modelId: string, simple: any, existingModel?: any) => {
-    const isClaude = modelId.startsWith('claude-');
-    const isGpt = modelId.startsWith('gpt-');
-    const variants = resolveVariants(modelId);
-    return {
+  const buildModelRecord = (
+    modelId: string,
+    simple: SimpleStaticModel,
+    existingModel?: any,
+    tierMapSource: Readonly<Record<string, TierMap>> = TIER_MAPPING
+  ) => {
+    const variants = resolveVariants(modelId, tierMapSource);
+    const record: any = {
       id: modelId,
       providerID: AGY_PROVIDER_ID,
       name: simple.name,
       description: simple.description,
-      family: modelId.includes('gemini') ? 'gemini' : (isClaude ? 'claude' : (isGpt ? 'gpt' : 'unknown')),
+      family: resolveModelFamily(modelId),
       reasoning: simple.reasoning,
       attachment: simple.attachment,
       tool_call: simple.toolCall,
+      capabilities: {
+        tools: Boolean(simple.toolCall),
+        reasoning: Boolean(simple.reasoning),
+        input: simple.attachment ? ['text', 'image'] : ['text'],
+        output: ['text'],
+      },
       limit: {
         context: simple.maxTokens,
         output: simple.maxOutputTokens,
@@ -114,26 +333,45 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
       ...(variants ? { variants } : {}),
       ...(existingModel || {}),
     };
+    if (simple.cost) {
+      record.cost = simple.cost;
+    }
+    if (variants) {
+      record.variants = variants;
+    }
+    return record;
   };
 
-  const updateModelRecord = (m: any, modelId: string, simple: any) => {
+  const updateModelRecord = (
+    m: any,
+    modelId: string,
+    simple: SimpleStaticModel,
+    tierMapSource: Readonly<Record<string, TierMap>> = TIER_MAPPING
+  ) => {
     m.name = simple.name;
+    m.description = simple.description;
+    m.reasoning = simple.reasoning;
+    m.attachment = simple.attachment;
+    m.tool_call = simple.toolCall;
     m.capabilities = {
-      tools: true,
-      input: ['text', 'image'],
+      tools: Boolean(simple.toolCall),
+      reasoning: Boolean(simple.reasoning),
+      input: simple.attachment ? ['text', 'image'] : ['text'],
       output: ['text'],
     };
     m.limit = {
       context: simple.maxTokens,
       output: simple.maxOutputTokens,
     };
-    m.family = 'gemini';
+    m.family = resolveModelFamily(modelId);
     if (simple.cost) {
       m.cost = simple.cost;
     }
-    const variants = resolveVariants(modelId);
+    const variants = resolveVariants(modelId, tierMapSource);
     if (variants) {
       m.variants = variants;
+    } else {
+      delete m.variants;
     }
   };
 
@@ -158,19 +396,25 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
   if (ctx.model?.transform) {
     ctx.model.transform(async (editor: any) => {
       if (!editor) return;
+      const activeInv = getActiveInventory();
+      const modelsToRegister = activeInv?.models ?? staticModels;
+      const tierMapSource = activeInv?.tierMapping ?? TIER_MAPPING;
+
       if (typeof editor.update === 'function') {
-        for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
-          editor.update(AGY_PROVIDER_ID, modelId, (m: any) => updateModelRecord(m, modelId, simple));
+        for (const [modelId, simple] of Object.entries(modelsToRegister)) {
+          editor.update(AGY_PROVIDER_ID, modelId, (m: any) =>
+            updateModelRecord(m, modelId, simple, tierMapSource)
+          );
         }
       } else if (typeof editor.set === 'function') {
-        for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
-          const m = buildModelRecord(modelId, simple);
+        for (const [modelId, simple] of Object.entries(modelsToRegister)) {
+          const m = buildModelRecord(modelId, simple, undefined, tierMapSource);
           editor.set(`${AGY_PROVIDER_ID}:${modelId}`, m);
         }
       } else if (typeof editor === 'object') {
-        for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
+        for (const [modelId, simple] of Object.entries(modelsToRegister)) {
           const key = `${AGY_PROVIDER_ID}:${modelId}`;
-          editor[key] = buildModelRecord(modelId, simple, editor[key]);
+          editor[key] = buildModelRecord(modelId, simple, editor[key], tierMapSource);
         }
       }
     });
@@ -180,13 +424,18 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
   if (ctx.catalog?.transform) {
     ctx.catalog.transform(async (editor: any) => {
       if (!editor) return;
+      const activeInv = getActiveInventory();
+      const modelsToRegister = activeInv?.models ?? staticModels;
+      const tierMapSource = activeInv?.tierMapping ?? TIER_MAPPING;
 
       if (typeof editor?.provider?.update === 'function') {
         editor.provider.update(AGY_PROVIDER_ID, updateProviderRecord);
 
         if (typeof editor?.model?.update === 'function') {
-          for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
-            editor.model.update(AGY_PROVIDER_ID, modelId, (m: any) => updateModelRecord(m, modelId, simple));
+          for (const [modelId, simple] of Object.entries(modelsToRegister)) {
+            editor.model.update(AGY_PROVIDER_ID, modelId, (m: any) =>
+              updateModelRecord(m, modelId, simple, tierMapSource)
+            );
           }
         }
         return;
@@ -215,8 +464,13 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
 
       const targetModels = catalog.providers[AGY_PROVIDER_ID].models;
 
-      for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
-        targetModels[modelId] = buildModelRecord(modelId, simple, targetModels[modelId]);
+      for (const [modelId, simple] of Object.entries(modelsToRegister)) {
+        targetModels[modelId] = buildModelRecord(
+          modelId,
+          simple,
+          targetModels[modelId],
+          tierMapSource
+        );
       }
     });
   }
@@ -444,6 +698,11 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
               };
             }
 
+            const refreshTimer = setTimeout(() => {
+              void refreshModels();
+            }, 50);
+            (refreshTimer as any)?.unref?.();
+
             return {
               type: 'oauth',
               methodID: 'oauth',
@@ -458,6 +717,41 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
   });
 
   // 5. Register aisdk hook if supported
+  const resolveActiveOAuthFromConnection = async () => {
+    if (
+      typeof connectionService?.active !== 'function' ||
+      typeof connectionService?.resolve !== 'function'
+    ) {
+      return undefined;
+    }
+    try {
+      const active = await connectionService.active(AGY_PROVIDER_ID);
+      if (!active) return undefined;
+      const resolved = await connectionService.resolve(active);
+      const cred =
+        resolved?.type === 'credential' && resolved.credential
+          ? resolved.credential
+          : resolved?.type === 'oauth'
+            ? resolved
+            : undefined;
+      if (
+        cred?.type === 'oauth' &&
+        typeof cred.access === 'string' &&
+        typeof cred.refresh === 'string'
+      ) {
+        return {
+          type: 'oauth' as const,
+          access: cred.access,
+          refresh: cred.refresh,
+          expires: typeof cred.expires === 'number' ? cred.expires : 0,
+        };
+      }
+    } catch {
+      // Fall back to stored auth JSON
+    }
+    return undefined;
+  };
+
   ctx.aisdk?.hook('sdk', async (event: any) => {
     if (!event) return;
     const isMatchingProvider =
@@ -466,13 +760,49 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
 
     if (!isMatchingProvider) return;
 
+    const rawModelVariant = event.model?.variant;
+    const modelVariant =
+      typeof rawModelVariant === 'string' && rawModelVariant.length > 0
+        ? rawModelVariant
+        : typeof event.variant === 'string' && event.variant.length > 0
+          ? event.variant
+          : undefined;
+
     event.options = event.options || {};
     event.options.apiKey = 'dummy';
-    event.options.fetch = createV2FetchInterceptor();
+    event.options.fetch = createV2FetchInterceptor(
+      resolveActiveOAuthFromConnection,
+      () => resolveRuntimeCatalog(modelVariant)
+    );
   });
 
   // 6. Register session hooks (http.request, http.response, retry)
-  registerV2SessionHooks(ctx);
+  registerV2SessionHooks(ctx, () => resolveRuntimeCatalog());
+
+  // 7. Reactive discovery lifecycle (startup, events, 5-minute interval, disposer)
+  if (canDiscover && hasReload) {
+    const unsubscribe = ctx.event?.subscribe?.((evt: any) => {
+      const type = String(evt?.type ?? evt?.name ?? '');
+      if (/integration|connection|auth|provider|config/i.test(type)) {
+        void refreshModels();
+      }
+    });
+
+    void refreshModels();
+
+    const timer = setInterval(() => {
+      void refreshModels();
+    }, 5 * 60 * 1000);
+    (timer as any)?.unref?.();
+
+    return () => {
+      disposed = true;
+      clearInterval(timer);
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
+  }
 }
 
 export const v2PluginDefinition: OpenCodeV2PluginDefinition = defineOpenCodeV2Plugin({

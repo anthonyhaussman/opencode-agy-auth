@@ -43,6 +43,7 @@ export type { Provider as ProviderV2, Model as ModelV2 } from '@opencode-ai/sdk/
 
 export interface OpenCodeV2TransformRegistry<T = any> {
   transform: (fn: (target: T) => Promise<void> | void) => void;
+  reload?: () => Promise<void> | void;
 }
 
 export interface OpenCodeV2SessionRegistry {
@@ -55,6 +56,11 @@ export interface OpenCodeV2PluginLocation {
   workspace?: string;
 }
 
+export interface OpenCodeV2ConnectionService {
+  active?: (providerId: string) => Promise<any> | any;
+  resolve?: (connection: any) => Promise<any> | any;
+}
+
 export interface OpenCodeV2PluginContext {
   catalog?: OpenCodeV2TransformRegistry;
   provider?: OpenCodeV2TransformRegistry;
@@ -65,15 +71,29 @@ export interface OpenCodeV2PluginContext {
   aisdk?: {
     hook: (name: 'sdk' | 'language', handler: (event: any) => Promise<void> | void) => void;
   };
-  integration?: OpenCodeV2TransformRegistry | {
-    transform?: (transformer: (editor: any) => void) => void;
+  integration?: (
+    | OpenCodeV2TransformRegistry
+    | {
+        transform?: (transformer: (editor: any) => void) => void;
+      }
+  ) & {
+    connection?: OpenCodeV2ConnectionService;
+  };
+  event?: {
+    subscribe?: (fn: (event: any) => void) => (() => void) | void;
+  };
+  logger?: {
+    warn?: (...args: any[]) => void;
+    info?: (...args: any[]) => void;
+    error?: (...args: any[]) => void;
+    debug?: (...args: any[]) => void;
   };
   location: OpenCodeV2PluginLocation;
 }
 
 export interface OpenCodeV2PluginDefinition {
   id: string;
-  setup: (ctx: OpenCodeV2PluginContext) => Promise<void> | void;
+  setup: (ctx: OpenCodeV2PluginContext) => Promise<(() => void) | void> | (() => void) | void;
 }
 
 export interface DualOpenCodePlugin extends OpenCodeV2PluginDefinition {

@@ -201,21 +201,21 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     expect(catalog.providers[AGY_PROVIDER_ID].integrationID).toBe(AGY_PROVIDER_ID);
     expect(catalog.providers[AGY_PROVIDER_ID].models['gemini-3.8-flash']).toBeDefined();
     expect(catalog.providers[AGY_PROVIDER_ID].models['gemini-3.8-flash'].variants).toEqual([
-      { id: 'low' },
-      { id: 'medium' },
-      { id: 'high' }
+      { id: 'low', headers: { 'x-agy-tier': 'low' } },
+      { id: 'medium', headers: { 'x-agy-tier': 'medium' } },
+      { id: 'high', headers: { 'x-agy-tier': 'high' } }
     ]);
     expect(catalog.providers[AGY_PROVIDER_ID].models['gemini-4-argon']).toBeDefined();
     expect(catalog.providers[AGY_PROVIDER_ID].models['gemini-4-argon'].variants).toEqual([
-      { id: 'low' },
-      { id: 'medium' },
-      { id: 'high' }
+      { id: 'low', headers: { 'x-agy-tier': 'low' } },
+      { id: 'medium', headers: { 'x-agy-tier': 'medium' } },
+      { id: 'high', headers: { 'x-agy-tier': 'high' } }
     ]);
     expect(catalog.providers[AGY_PROVIDER_ID].models['claude-sonnet-5-5']).toBeDefined();
     expect(catalog.providers[AGY_PROVIDER_ID].models['claude-sonnet-5-5'].variants).toEqual([
-      { id: 'low' },
-      { id: 'medium' },
-      { id: 'high' }
+      { id: 'low', headers: { 'x-agy-tier': 'low' } },
+      { id: 'medium', headers: { 'x-agy-tier': 'medium' } },
+      { id: 'high', headers: { 'x-agy-tier': 'high' } }
     ]);
     expect(catalog.providers[AGY_PROVIDER_ID].models['gpt-oss-120b-medium']).toBeDefined();
 
@@ -257,9 +257,9 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     expect(flashModelObj.capabilities.input).toEqual(['text', 'image']);
     expect(flashModelObj.capabilities.output).toEqual(['text']);
     expect(flashModelObj.variants).toEqual([
-      { id: 'low' },
-      { id: 'medium' },
-      { id: 'high' }
+      { id: 'low', headers: { 'x-agy-tier': 'low' } },
+      { id: 'medium', headers: { 'x-agy-tier': 'medium' } },
+      { id: 'high', headers: { 'x-agy-tier': 'high' } }
     ]);
 
     const claudeCall = modelCalls.find((c: any) => c[0] === AGY_PROVIDER_ID && c[1] === 'claude-sonnet-5-5');
@@ -267,9 +267,9 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     const claudeModelObj: any = {};
     claudeCall[2](claudeModelObj);
     expect(claudeModelObj.variants).toEqual([
-      { id: 'low' },
-      { id: 'medium' },
-      { id: 'high' }
+      { id: 'low', headers: { 'x-agy-tier': 'low' } },
+      { id: 'medium', headers: { 'x-agy-tier': 'medium' } },
+      { id: 'high', headers: { 'x-agy-tier': 'high' } }
     ]);
 
     // Verify catalog transform handles null safely
