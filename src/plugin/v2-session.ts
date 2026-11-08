@@ -180,11 +180,15 @@ export function createV2HttpRequestHook(
           const explicitTierHeader =
             getSafeHeader(event.headers, 'x-agy-tier') ??
             getSafeHeader(event.request?.headers, 'x-agy-tier');
-          const rawModelVariant = (event as { model?: { variant?: unknown } }).model?.variant;
+          const rawModelVariant = (event.model as { variant?: unknown } | undefined)?.variant;
+          const catalogVariant =
+            typeof catalog?.variant === 'string' && catalog.variant.length > 0
+              ? catalog.variant
+              : undefined;
           const modelVariant =
             typeof rawModelVariant === 'string' && rawModelVariant.length > 0
               ? rawModelVariant
-              : undefined;
+              : catalogVariant;
           const tierHeaders = explicitTierHeader
             ? { headers: { 'x-agy-tier': explicitTierHeader } }
             : !originalBase.includes('@') && modelVariant

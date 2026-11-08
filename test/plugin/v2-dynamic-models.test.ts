@@ -1082,4 +1082,105 @@ describe('OpenCode v2 Dynamic Account Model Discovery', () => {
       dispose?.();
     }
   });
+
+  it('clears inventory and calls provider.reload when switching to a connection whose loadAccountModels returns undefined, and cleans up stale variants on standalone transition', async () => {
+    let activeConn: { type: 'credential'; id: string } | undefined = {
+      type: 'credential',
+      id: 'conn-a',
+    };
+    const invA = makeInventory('conn-a');
+    const invStandalone: AccountModelInventory = {
+      connection: { type: 'credential', id: 'conn-c' },
+      models: {
+        'gemini-5-pro': {
+          name: 'Gemini 5 Pro Standalone',
+          description: 'Standalone Gemini 5 Pro.',
+          maxTokens: 500000,
+          maxOutputTokens: 32000,
+          toolCall: false,
+          reasoning: false,
+          attachment: false,
+        },
+      },
+      tierMapping: {},
+      enums: {
+        'gemini-5-pro': 'MODEL_GEMINI_5_PRO_STANDALONE',
+      },
+    };
+
+    const loadSpy = vi
+      .spyOn(dynamicModelsModule, 'loadAccountModels')
+      .mockResolvedValueOnce(invA)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(invStandalone);
+
+    let modelTransform: ((editor: any) => Promise<void> | void) | undefined;
+    let eventSubscriber: ((evt: any) => void) | undefined;
+    const providerReload = vi.fn().mockResolvedValue(undefined);
+
+    const ctx: OpenCodeV2PluginContext = {
+      provider: {
+        transform: vi.fn(),
+        reload: providerReload,
+      },
+      model: {
+        transform: vi.fn((fn) => {
+          modelTransform = fn;
+        }),
+      },
+      tool: { transform: vi.fn() },
+      command: { transform: vi.fn() },
+      session: { hook: vi.fn() },
+      event: {
+        subscribe: vi.fn((fn) => {
+          eventSubscriber = fn;
+          return () => {};
+        }),
+      },
+      integration: {
+        transform: vi.fn(),
+        connection: {
+          active: vi.fn(async () => activeConn),
+          resolve: vi.fn(),
+        },
+      },
+      location: {},
+    };
+
+    const dispose = await setupOpenCodeV2(ctx);
+    try {
+      await vi.waitFor(() => {
+        expect(providerReload).toHaveBeenCalledTimes(1);
+      });
+
+      const plainEditor: Record<string, any> = {};
+      await modelTransform!(plainEditor);
+      expect(plainEditor[`${AGY_PROVIDER_ID}:gemini-5-pro`].variants).toBeDefined();
+
+      // Switch to conn-b whose loadAccountModels resolves to undefined
+      activeConn = { type: 'credential', id: 'conn-b' };
+      eventSubscriber?.({ type: 'connection.switched' });
+
+      await vi.waitFor(() => {
+        expect(loadSpy).toHaveBeenCalledTimes(2);
+        expect(providerReload).toHaveBeenCalledTimes(2);
+      });
+
+      // Switch to conn-c where gemini-5-pro is standalone (no variants)
+      activeConn = { type: 'credential', id: 'conn-c' };
+      eventSubscriber?.({ type: 'connection.switched' });
+
+      await vi.waitFor(() => {
+        expect(loadSpy).toHaveBeenCalledTimes(3);
+        expect(providerReload).toHaveBeenCalledTimes(3);
+      });
+
+      await modelTransform!(plainEditor);
+      expect(plainEditor[`${AGY_PROVIDER_ID}:gemini-5-pro`].name).toBe('Gemini 5 Pro Standalone');
+      expect(plainEditor[`${AGY_PROVIDER_ID}:gemini-5-pro`].variants).toBeUndefined();
+      expect('variants' in plainEditor[`${AGY_PROVIDER_ID}:gemini-5-pro`]).toBe(false);
+    } finally {
+      dispose?.();
+    }
+  });
 });

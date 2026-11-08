@@ -361,6 +361,21 @@ describe("v2 session hooks", () => {
       await hook(defaultHighEvent);
       expect(JSON.parse(defaultHighEvent.body).model).toBe("gemini-5-ultra-high");
       expect(JSON.parse(defaultHighEvent.body).request.labels.model_enum).toBe("MODEL_PLACEHOLDER_M888");
+
+      // 5. catalog.variant fallback when event.model.variant is omitted
+      const catalogVariantHook = createV2HttpRequestHook({}, () => ({
+        ...dynamicCatalog,
+        variant: "low",
+      }));
+      const catalogVariantEvent: any = {
+        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-5-pro:generateContent",
+        headers: new Headers(),
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "6" }] }] }),
+        auth: validAuth,
+      };
+      await catalogVariantHook(catalogVariantEvent);
+      expect(JSON.parse(catalogVariantEvent.body).model).toBe("gemini-5-pro-low");
+      expect(JSON.parse(catalogVariantEvent.body).request.labels.model_enum).toBe("MODEL_PLACEHOLDER_M776");
     });
 
     it("falls back to loadStoredAuthFromJson when event.auth is absent and still applies runtime catalog", async () => {

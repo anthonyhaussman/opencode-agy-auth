@@ -210,6 +210,11 @@ export async function setupOpenCodeV2(
           return inventory;
         }
 
+        if (inventory) {
+          inventory = undefined;
+          await reloadCatalog();
+        }
+
         return getActiveInventory();
       } catch (err) {
         warn(
@@ -303,6 +308,8 @@ export async function setupOpenCodeV2(
     p.integrationID = AGY_PROVIDER_ID;
   };
 
+  const generatedModelRecords = new WeakSet<object>();
+
   const buildModelRecord = (
     modelId: string,
     simple: SimpleStaticModel,
@@ -310,10 +317,18 @@ export async function setupOpenCodeV2(
     tierMapSource: Readonly<Record<string, TierMap>> = TIER_MAPPING
   ) => {
     const variants = resolveVariants(modelId, tierMapSource);
+    const hasCustomExistingName = Boolean(
+      existingModel &&
+        typeof existingModel === 'object' &&
+        !generatedModelRecords.has(existingModel) &&
+        typeof existingModel.name === 'string' &&
+        existingModel.name.length > 0
+    );
     const record: any = {
+      ...(existingModel || {}),
       id: modelId,
       providerID: AGY_PROVIDER_ID,
-      name: simple.name,
+      name: hasCustomExistingName ? existingModel.name : simple.name,
       description: simple.description,
       family: resolveModelFamily(modelId),
       reasoning: simple.reasoning,
@@ -329,16 +344,14 @@ export async function setupOpenCodeV2(
         context: simple.maxTokens,
         output: simple.maxOutputTokens,
       },
-      cost: simple.cost || { input: 0, output: 0 },
-      ...(variants ? { variants } : {}),
-      ...(existingModel || {}),
+      cost: simple.cost || existingModel?.cost || { input: 0, output: 0 },
     };
-    if (simple.cost) {
-      record.cost = simple.cost;
-    }
     if (variants) {
       record.variants = variants;
+    } else {
+      delete record.variants;
     }
+    generatedModelRecords.add(record);
     return record;
   };
 
