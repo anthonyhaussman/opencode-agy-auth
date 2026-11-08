@@ -9,7 +9,7 @@
       "changelog-path": "CHANGELOG.md",
       "skip-github-release": false,
       "include-v-in-tag": false,
-      "release-as": "1.5.1"
+      "release-as": "1.5.3"
     }
   },
   "changelog-sections": [
