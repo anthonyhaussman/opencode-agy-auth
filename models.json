@@ -17,7 +17,8 @@
             "claude-sonnet-5-5-low",
             "claude-sonnet-5-5-medium",
             "claude-sonnet-5-5-high",
-            "gpt-oss-120b-medium"
+            "gpt-oss-120b-medium",
+            "gemini-4-carbon-disabled"
           ]
         }
       ]
@@ -43,7 +44,7 @@
     106791760,
     106786387,
     106791766,
-    106914024,
+    106865005,
     106865006,
     106865004,
     106828854,
@@ -56,7 +57,7 @@
     106015333,
     106568772,
     105867471,
-    106749606,
+    106749607,
     106123599,
     106121401,
     106100625,
@@ -69,6 +70,8 @@
     105887299,
     106640126,
     106811917,
+    106931269,
+    106931271,
     106793266,
     106798730,
     106833630,
@@ -160,7 +163,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-11-10T10:37:04Z"
+        "resetTime": "2026-11-11T14:23:01Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -201,7 +204,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-11-10T10:37:04Z"
+        "resetTime": "2026-11-11T14:23:01Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -242,7 +245,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-11-10T10:37:04Z"
+        "resetTime": "2026-11-11T14:23:01Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -283,7 +286,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-11-10T10:37:04Z"
+        "resetTime": "2026-11-11T14:23:01Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -324,7 +327,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-11-10T10:37:04Z"
+        "resetTime": "2026-11-11T14:23:01Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -365,7 +368,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-11-10T10:37:04Z"
+        "resetTime": "2026-11-11T14:23:01Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -403,8 +406,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9905213,
-        "resetTime": "2026-11-10T10:29:50Z"
+        "remainingFraction": 0.9773692,
+        "resetTime": "2026-11-11T13:25:17Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -488,8 +491,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9905213,
-        "resetTime": "2026-11-10T10:29:50Z"
+        "remainingFraction": 0.9773692,
+        "resetTime": "2026-11-11T13:25:17Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -573,8 +576,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9905213,
-        "resetTime": "2026-11-10T10:29:50Z"
+        "remainingFraction": 0.9773692,
+        "resetTime": "2026-11-11T13:25:17Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -655,8 +658,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9905213,
-        "resetTime": "2026-11-10T10:29:50Z"
+        "remainingFraction": 0.9773692,
+        "resetTime": "2026-11-11T13:25:17Z"
       },
       "recommended": true,
       "requiresImageOutputOutsideFunctionResponses": true,
@@ -737,8 +740,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9905213,
-        "resetTime": "2026-11-10T10:29:50Z"
+        "remainingFraction": 0.9773692,
+        "resetTime": "2026-11-11T13:25:17Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -811,8 +814,8 @@
       "model": "MODEL_PLACEHOLDER_M21",
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9905213,
-        "resetTime": "2026-11-10T10:29:50Z"
+        "remainingFraction": 0.9773692,
+        "resetTime": "2026-11-11T13:25:17Z"
       },
       "supportedMimeTypes": {
         "application/json": true,
@@ -862,8 +865,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9905213,
-        "resetTime": "2026-11-10T10:29:50Z"
+        "remainingFraction": 0.9773692,
+        "resetTime": "2026-11-11T13:25:17Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -947,8 +950,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9905213,
-        "resetTime": "2026-11-10T10:29:50Z"
+        "remainingFraction": 0.9773692,
+        "resetTime": "2026-11-11T13:25:17Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1038,8 +1041,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9905213,
-        "resetTime": "2026-11-10T10:29:50Z"
+        "remainingFraction": 0.9773692,
+        "resetTime": "2026-11-11T13:25:17Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1129,8 +1132,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9905213,
-        "resetTime": "2026-11-10T10:29:50Z"
+        "remainingFraction": 0.9773692,
+        "resetTime": "2026-11-11T13:25:17Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1220,8 +1223,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9905213,
-        "resetTime": "2026-11-10T10:29:50Z"
+        "remainingFraction": 0.9773692,
+        "resetTime": "2026-11-11T13:25:17Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1310,8 +1313,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9905213,
-        "resetTime": "2026-11-10T10:29:50Z"
+        "remainingFraction": 0.9773692,
+        "resetTime": "2026-11-11T13:25:17Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1670,6 +1673,102 @@
       "tagTitle": "New",
       "thinkingLevel": 2
     },
+    "gemini-4-carbon-disabled": {
+      "apiProvider": "API_PROVIDER_GOOGLE_GEMINI",
+      "disabled": true,
+      "displayName": "Gemini 4 Carbon",
+      "maxOutputTokens": 262144,
+      "maxTokens": 1048576,
+      "minThinkingBudget": 128,
+      "model": "MODEL_PLACEHOLDER_M670",
+      "modelExperimentIds": [
+        "sonar"
+      ],
+      "modelExperiments": {
+        "experiments": {
+          "CASCADE_USE_EXPERIMENT_CHECKPOINTER": {
+            "stringValue": "{\n    \"strategy\": \"CHECKPOINT_STRATEGY_SAME_MODEL\",\n    \"max_token_limit\": \"256000\",\n    \"token_threshold\": \"50000\",\n    \"max_overhead_ratio\": \"0.15\",\n    \"enabled\": true,\n    \"max_output_tokens\": \"32768\",\n    \"checkpoint_model\": \"MODEL_PLACEHOLDER_M50\",\n    \"use_last_planner_model\": true,\n    \"is_sync\": true,\n    \"max_user_requests\": 10,\n    \"include_last_user_message\": true,\n    \"include_conversation_log\": false,\n    \"include_running_task_snapshots\": true,\n    \"include_subagent_snapshots\": true,\n    \"include_artifact_snapshots\": true,\n    \"retry_config\": {\n        \"max_retries\": 4,\n        \"initial_sleep_duration_ms\": 1000,\n        \"exponential_multiplier\": 2,\n        \"include_error_feedback\": false\n    },\n    \"session_summary_prompt_override\": \"You have been working on the task described above but have not yet completed\\nit. Write a continuation summary that will allow you (or another instance of\\nyourself) to resume work efficiently in a future context window where the\\nfull conversation history will NOT be available\\u2014only this summary.\\n\\nThis summary is all that will be available to you going forward in the future\\ncontext window. Do not call any tools, simply just provide the summary based on\\nthe information available in the current context window.\\n\\nYour summary must be structured, concise, and actionable. Optimize for enabling immediate resumption with zero redundant work.\\n\\nInclude the following sections:\\n\\n1. **Task Overview**\\n   - The user's core request, success criteria, and requested deliverables. Record any target IDs, URLs, or reporting recipients from the request.\\n   - Scope boundaries or task-specific constraints\\n   - Any ambiguities that were resolved (and how)\\n\\n2. **Progress**\\n   - What has been completed, with concrete references (file paths,\\n     test or verification commands run and their outcomes, resource identifiers, tool outputs, URLs, etc.)\\n   - Key plans, design docs, or artifacts produced and their current state\\n   - Skills, documentation, or reference files that were read or inspected\\n   - What is in progress or only inspected/planned, and its current state. Distinguish completed edits from files that were only read or partially edited, and do not mark unverified test commands as completed or passed.\\n\\n3. **Key Findings**\\n   - Technical constraints, requirements, or domain details uncovered\\n   - Decisions made and their rationale\\n\\n4. **Errors & Fixes**\\n   This list should be exhaustive across the entire session so that no resolved or unresolved failure is omitted:\\n   - All errors, failed commands, or test/build failures encountered during the session. Include both errors that were resolved or worked around and any unresolved failures, with specific error messages and root causes.\\n   - How each error was fixed or worked around, and any user feedback on the error\\n   - Approaches that were tried and abandoned (and why\\u2014this prevents\\n     the successor from repeating them)\\n\\n5. **Active Context**\\n   - State of any external resources, sessions, environments, or multi-agent context, such as parent or child agents in use.\\n   - Relevant intermediate results, hypotheses, or working assumptions\\n   - Dependencies between components or steps\\n\\n6. **Next Steps**\\n   The next steps should provide all information required to continue working on the task. This includes any remaining features, bugs, points of investigation, and verification items. This list should be exhaustive, so that an agent working with this list can complete the full original task end-to-end. For example:\\n   - Remaining steps from any agreed plan, design doc, or active workflows and instructions, in priority order. Preserve specific uncompleted items rather than collapsing checklists into high-level summaries.\\n   - Remaining files to create, modify, move, copy, or delete, with the key changes needed in each\\n   - Remaining verification steps, test or build commands, or deliverables needed to complete the task\\n   - Any required cleanup, such as removing temporary files, debug code, or temporary configuration changes.\\n   - Known blockers, open questions, prerequisites, or risks for each step\\n\\n7. **Commitments & Constraints**\\n   - Standing rules, personas, or response formatting requirements from user instructions, rules files, or reference documents.\\n   - Promises made to the user (e.g., \\\"I said I would do X before Y\\\")\\n   - User preferences or style requirements\\n   - Any boundaries the user set on approach, tools, or scope\\n\\nBe concise but complete\\u2014err on the side of including concrete details needed to\\nprevent duplicate work, omitted plan steps, repeated mistakes, or broken promises.\\n\\nWrap your response in <summary></summary> tags.\\n\",\n    \"use_model_reported_token_count\": true\n}"
+          },
+          "allow-experimental-monitors": {
+            "boolValue": true
+          },
+          "cascade-include-ephemeral-message": {
+            "stringValue": "{\n    \"enabled\": false,\n    \"disabledHeuristics\": [\"planning_mode\", \"bash_command_reminder\", \"running_tasks_reminder\"],\n    \"staticMessages\": [],\n    \"useAllowlist\": false,\n    \"enabledHeuristics\": []\n}"
+          },
+          "retry_model_capacity_exhausted": {
+            "boolValue": true
+          },
+          "task-details-suffix": {
+            "stringValue": "\nYOU MUST TAKE ONE OF THE FOLLOWING TWO ACTIONS: A) either proceed to other relevant work (if any) or, B) simply update the user with a short message (that you have launched the command and will wait for it to finish) and end the turn.\n DO NOTHING ELSE.\n When updating the user, always respond in the language of the user (defaulting to English). Never mix two or more languages in the same response."
+          }
+        }
+      },
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "recommended": true,
+      "supportedMimeTypes": {
+        "application/json": true,
+        "application/msword": true,
+        "application/pdf": true,
+        "application/rtf": true,
+        "application/vnd.ms-excel": true,
+        "application/vnd.ms-powerpoint": true,
+        "application/vnd.oasis.opendocument.presentation": true,
+        "application/vnd.oasis.opendocument.spreadsheet": true,
+        "application/vnd.oasis.opendocument.text": true,
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
+        "application/x-ipynb+json": true,
+        "application/x-javascript": true,
+        "application/x-python-code": true,
+        "application/x-typescript": true,
+        "audio/aac": true,
+        "audio/flac": true,
+        "audio/l16": true,
+        "audio/m4a": true,
+        "audio/mp3": true,
+        "audio/mp4": true,
+        "audio/mpeg": true,
+        "audio/ogg": true,
+        "audio/opus": true,
+        "audio/vnd.wave": true,
+        "audio/wav": true,
+        "audio/wave": true,
+        "audio/webm": true,
+        "audio/webm;codecs=opus": true,
+        "audio/x-m4a": true,
+        "audio/x-wav": true,
+        "image/heic": true,
+        "image/heif": true,
+        "image/jpeg": true,
+        "image/png": true,
+        "image/webp": true,
+        "text/css": true,
+        "text/csv": true,
+        "text/html": true,
+        "text/javascript": true,
+        "text/markdown": true,
+        "text/plain": true,
+        "text/rtf": true,
+        "text/x-python": true,
+        "text/x-python-script": true,
+        "text/x-typescript": true,
+        "text/xml": true,
+        "video/audio/s16le": true,
+        "video/audio/wav": true,
+        "video/jpeg2000": true,
+        "video/mp4": true,
+        "video/text/timestamp": true,
+        "video/videoframe/jpeg2000": true,
+        "video/webm": true
+      },
+      "supportsImages": true,
+      "supportsThinking": true,
+      "supportsVideo": true,
+      "tagDescription": "Gemini 4 Carbon is currently available to Ultra plan subscribers.",
+      "tagTitle": "Unavailable",
+      "thinkingLevel": 2
+    },
     "gpt-oss-120b-medium": {
       "apiProvider": "API_PROVIDER_OPENAI_VERTEX",
       "displayName": "GPT-OSS 120B (Medium)",
@@ -1686,7 +1785,7 @@
       "modelProvider": "MODEL_PROVIDER_OPENAI",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-11-10T10:37:04Z"
+        "resetTime": "2026-11-11T14:23:01Z"
       },
       "recommended": true,
       "supportsThinking": true,
