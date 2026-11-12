@@ -69,6 +69,7 @@
     106021688,
     105887299,
     106640126,
+    106949161,
     106811917,
     106931269,
     106931271,
@@ -163,7 +164,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-11-11T14:23:01Z"
+        "resetTime": "2026-11-12T14:37:55Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -204,7 +205,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-11-11T14:23:01Z"
+        "resetTime": "2026-11-12T14:37:55Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -245,7 +246,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-11-11T14:23:01Z"
+        "resetTime": "2026-11-12T14:37:55Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -286,7 +287,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-11-11T14:23:01Z"
+        "resetTime": "2026-11-12T14:37:55Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -327,7 +328,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-11-11T14:23:01Z"
+        "resetTime": "2026-11-12T14:37:55Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -368,7 +369,7 @@
       "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-11-11T14:23:01Z"
+        "resetTime": "2026-11-12T14:37:55Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -406,8 +407,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9773692,
-        "resetTime": "2026-11-11T13:25:17Z"
+        "remainingFraction": 0.9752144,
+        "resetTime": "2026-11-12T13:01:43Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -491,8 +492,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9773692,
-        "resetTime": "2026-11-11T13:25:17Z"
+        "remainingFraction": 0.9752144,
+        "resetTime": "2026-11-12T13:01:43Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -576,8 +577,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9773692,
-        "resetTime": "2026-11-11T13:25:17Z"
+        "remainingFraction": 0.9752144,
+        "resetTime": "2026-11-12T13:01:43Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -658,8 +659,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9773692,
-        "resetTime": "2026-11-11T13:25:17Z"
+        "remainingFraction": 0.9752144,
+        "resetTime": "2026-11-12T13:01:43Z"
       },
       "recommended": true,
       "requiresImageOutputOutsideFunctionResponses": true,
@@ -740,8 +741,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9773692,
-        "resetTime": "2026-11-11T13:25:17Z"
+        "remainingFraction": 0.9752144,
+        "resetTime": "2026-11-12T13:01:43Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -814,8 +815,8 @@
       "model": "MODEL_PLACEHOLDER_M21",
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9773692,
-        "resetTime": "2026-11-11T13:25:17Z"
+        "remainingFraction": 0.9752144,
+        "resetTime": "2026-11-12T13:01:43Z"
       },
       "supportedMimeTypes": {
         "application/json": true,
@@ -865,8 +866,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9773692,
-        "resetTime": "2026-11-11T13:25:17Z"
+        "remainingFraction": 0.9752144,
+        "resetTime": "2026-11-12T13:01:43Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -950,8 +951,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9773692,
-        "resetTime": "2026-11-11T13:25:17Z"
+        "remainingFraction": 0.9752144,
+        "resetTime": "2026-11-12T13:01:43Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1041,8 +1042,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9773692,
-        "resetTime": "2026-11-11T13:25:17Z"
+        "remainingFraction": 0.9752144,
+        "resetTime": "2026-11-12T13:01:43Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1132,8 +1133,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9773692,
-        "resetTime": "2026-11-11T13:25:17Z"
+        "remainingFraction": 0.9752144,
+        "resetTime": "2026-11-12T13:01:43Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1223,8 +1224,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9773692,
-        "resetTime": "2026-11-11T13:25:17Z"
+        "remainingFraction": 0.9752144,
+        "resetTime": "2026-11-12T13:01:43Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1313,8 +1314,8 @@
       },
       "modelProvider": "MODEL_PROVIDER_GOOGLE",
       "quotaInfo": {
-        "remainingFraction": 0.9773692,
-        "resetTime": "2026-11-11T13:25:17Z"
+        "remainingFraction": 0.9752144,
+        "resetTime": "2026-11-12T13:01:43Z"
       },
       "recommended": true,
       "supportedMimeTypes": {
@@ -1785,7 +1786,7 @@
       "modelProvider": "MODEL_PROVIDER_OPENAI",
       "quotaInfo": {
         "remainingFraction": 1,
-        "resetTime": "2026-11-11T14:23:01Z"
+        "resetTime": "2026-11-12T14:37:55Z"
       },
       "recommended": true,
       "supportsThinking": true,
