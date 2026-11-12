@@ -26,7 +26,10 @@ export interface V2SessionHooksState {
   lastSessionId?: string;
 }
 
-export function createV2HttpRequestHook(state: V2SessionHooksState = {}) {
+export function createV2HttpRequestHook(
+  state: V2SessionHooksState = {},
+  getModelEnums?: () => Promise<Readonly<Record<string, string>> | undefined>,
+) {
   return async (event: any) => {
     if (!event) return;
 
@@ -194,7 +197,9 @@ export function createV2HttpRequestHook(state: V2SessionHooksState = {}) {
             body: bodyPayload
           },
           authRecord.access,
-          projectContext.effectiveProjectId
+          projectContext.effectiveProjectId,
+          undefined,
+          await getModelEnums?.()
         );
 
         if (transformed.sessionId) {
@@ -373,9 +378,9 @@ export function createV2RetryHook() {
   };
 }
 
-export function registerV2SessionHooks(ctx: any) {
+export function registerV2SessionHooks(ctx: any, getModelEnums?: () => Promise<Readonly<Record<string, string>> | undefined>) {
   const state: V2SessionHooksState = {};
-  ctx.session.hook('http.request', createV2HttpRequestHook(state), { providerID: AGY_PROVIDER_ID });
+  ctx.session.hook('http.request', createV2HttpRequestHook(state, getModelEnums), { providerID: AGY_PROVIDER_ID });
   ctx.session.hook('http.response', createV2HttpResponseHook(state), { providerID: AGY_PROVIDER_ID });
   ctx.session.hook('retry', createV2RetryHook(), { providerID: AGY_PROVIDER_ID });
 }
