@@ -2,6 +2,7 @@ import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
 import { existsSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import type { ProviderModel } from './types';
+import type { SimpleStaticModel } from './tier';
 
 // Using fetch API (available in Node.js 18+)
 const PRICING_API_URL = 'https://models.dev/api.json';
@@ -38,6 +39,22 @@ function getCachePath(): string {
   }
 }
 
+function isValidPricingResponse(data: unknown): data is ModelsDevResponse {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return false;
+  }
+  const record = data as Record<string, unknown>;
+  return Object.values(record).some(
+    (provider) =>
+      Boolean(provider) &&
+      typeof provider === 'object' &&
+      !Array.isArray(provider) &&
+      Boolean((provider as Record<string, unknown>).models) &&
+      typeof (provider as Record<string, unknown>).models === 'object' &&
+      !Array.isArray((provider as Record<string, unknown>).models)
+  );
+}
+
 function loadCachedPricing(): ModelsDevResponse | null {
   try {
     const cachePath = getCachePath();
@@ -49,7 +66,8 @@ function loadCachedPricing(): ModelsDevResponse | null {
     }
 
     const data = readFileSync(cachePath, 'utf-8');
-    return JSON.parse(data) as ModelsDevResponse;
+    const parsed: unknown = JSON.parse(data);
+    return isValidPricingResponse(parsed) ? parsed : null;
   } catch (err) {
     return null;
   }
@@ -85,11 +103,14 @@ async function fetchPricing(): Promise<ModelsDevResponse | null> {
     if (!response.ok) {
       return null;
     }
-    const data = (await response.json()) as ModelsDevResponse;
-    if (data) {
-      savePricingCache(data);
-      memoryCache = data;
-      return data;
+    const data: unknown = await response.json();
+    if (data && typeof data === 'object') {
+      memoryCache = data as ModelsDevResponse;
+      if (isValidPricingResponse(data)) {
+        savePricingCache(data);
+        return data;
+      }
+      return null;
     }
   } catch (err) {
     clearTimeout(timeoutId);
@@ -107,40 +128,109 @@ function determineProvider(modelId: string): string | null {
   return null;
 }
 
+interface ExistingModelCost {
+  input?: number;
+  output?: number;
+  cache?: {
+    read?: number;
+    write?: number;
+  };
+}
+
+interface ResolvedModelCost {
+  input: number;
+  output: number;
+  cache: {
+    read: number;
+    write: number;
+  };
+}
+
+function findApiModelCost(
+  providerModels: Record<string, ModelsDevModel>,
+  modelId: string
+): ModelsDevCost | undefined {
+  const baseWithoutAt = modelId.split('@')[0] || modelId;
+  const exact = providerModels[baseWithoutAt];
+  if (exact?.cost) {
+    return exact.cost;
+  }
+
+  let candidate = baseWithoutAt;
+  while (candidate.includes('-')) {
+    candidate = candidate.slice(0, candidate.lastIndexOf('-'));
+    const fallback = providerModels[candidate];
+    if (fallback?.cost) {
+      return fallback.cost;
+    }
+  }
+
+  return undefined;
+}
+
+function resolveModelCost(
+  modelId: string,
+  existingCost: ExistingModelCost | undefined,
+  pricingData: ModelsDevResponse
+): ResolvedModelCost | undefined {
+  const provider = determineProvider(modelId);
+  const providerModels = provider ? pricingData[provider]?.models : undefined;
+  if (!providerModels) return undefined;
+
+  const apiCost = findApiModelCost(providerModels, modelId);
+  if (!apiCost) return undefined;
+
+  return {
+    input: apiCost.input ?? existingCost?.input ?? 0,
+    output: apiCost.output ?? existingCost?.output ?? 0,
+    cache: {
+      read: apiCost.cache_read ?? existingCost?.cache?.read ?? 0,
+      write: apiCost.cache_write ?? existingCost?.cache?.write ?? 0
+    }
+  };
+}
+
 /**
  * Mutates the STATIC_MODELS object by injecting dynamic costs from models.dev
  */
 export function updateStaticModelsWithPricing(
   staticModels: Record<string, ProviderModel>
-): void {
-  fetchPricing().then((pricingData) => {
-    if (!pricingData) return;
+): Promise<void> {
+  return fetchPricing()
+    .then((pricingData) => {
+      if (!pricingData) return;
 
-    for (const [modelId, modelObj] of Object.entries(staticModels)) {
-      const provider = determineProvider(modelId);
-      if (!provider || !pricingData[provider]?.models) continue;
-
-      // Remove the "-thinking" suffix which is custom for opencode if the base model exists
-      let lookupId = modelId;
-      if (lookupId.endsWith('-thinking') && !pricingData[provider].models[lookupId]) {
-        lookupId = lookupId.replace('-thinking', '');
+      for (const [modelId, modelObj] of Object.entries(staticModels)) {
+        const resolvedCost = resolveModelCost(modelId, modelObj.cost, pricingData);
+        if (resolvedCost) {
+          modelObj.cost = resolvedCost;
+        }
       }
+    })
+    .catch(() => {
+      // Ignore errors to prevent unhandled rejections
+    });
+}
 
-      const apiModel = pricingData[provider].models[lookupId];
-      if (apiModel && apiModel.cost) {
-        const apiCost = apiModel.cost;
+/**
+ * Enriches SimpleStaticModel entries with dynamic costs from models.dev when available.
+ */
+export async function applyPricingToSimpleModels<T extends Record<string, SimpleStaticModel>>(
+  models: T
+): Promise<T> {
+  try {
+    const pricingData = await fetchPricing();
+    if (!pricingData) return models;
 
-        modelObj.cost = {
-          input: apiCost.input ?? modelObj.cost?.input ?? 0,
-          output: apiCost.output ?? modelObj.cost?.output ?? 0,
-          cache: {
-            read: apiCost.cache_read ?? modelObj.cost?.cache?.read ?? 0,
-            write: apiCost.cache_write ?? modelObj.cost?.cache?.write ?? 0
-          }
-        };
+    for (const [modelId, modelObj] of Object.entries(models)) {
+      const resolvedCost = resolveModelCost(modelId, modelObj.cost, pricingData);
+      if (resolvedCost) {
+        modelObj.cost = resolvedCost;
       }
     }
-  }).catch(() => {
-    // Ignore errors to prevent unhandled rejections
-  });
+  } catch {
+    // Ignore pricing errors and preserve existing models
+  }
+
+  return models;
 }

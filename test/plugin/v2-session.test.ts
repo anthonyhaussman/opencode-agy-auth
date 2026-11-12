@@ -1,10 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createV2HttpRequestHook,
   createV2HttpResponseHook,
   createV2RetryHook,
   registerV2SessionHooks,
+  type V2RuntimeCatalog,
 } from "../../src/plugin/v2-session";
+import { setStoredAuthOverrideForTesting } from "../../src/plugin/v2-storage";
+import { getModelEnum } from "../../src/sdk/request/prepare";
 
 describe("v2 session hooks", () => {
   it("registers http.request, http.response, and retry hooks on session", () => {
@@ -202,6 +205,226 @@ describe("v2 session hooks", () => {
       await hook(event);
 
       expect(event.retryDelayMs).toBeUndefined();
+    });
+  });
+
+  describe("runtime catalog and variant resolution", () => {
+    const validAuth = {
+      type: "oauth" as const,
+      access: "session-access-token",
+      refresh: "session-refresh|proj-session|managed-session",
+      expires: Date.now() + 3_600_000,
+    };
+
+    const dynamicCatalog: V2RuntimeCatalog = {
+      tierMapping: {
+        "gemini-5-pro": {
+          low: "gemini-5-pro-low",
+          medium: "gemini-5-pro-medium",
+          high: "gemini-5-pro-high",
+        },
+        "gemini-5-ultra": {
+          low: "gemini-5-ultra-low",
+          high: "gemini-5-ultra-high",
+        },
+      },
+      enums: {
+        "gemini-5-pro-low": "MODEL_PLACEHOLDER_M776",
+        "gemini-5-pro-medium": "MODEL_PLACEHOLDER_M775",
+        "gemini-5-pro-high": "MODEL_PLACEHOLDER_M777",
+        "gemini-5-ultra-high": "MODEL_PLACEHOLDER_M888",
+      },
+    };
+
+    afterEach(() => {
+      setStoredAuthOverrideForTesting(undefined);
+    });
+
+    it("resolves dynamic tierMapping and enums via event.model.variant when x-agy-tier header is absent", async () => {
+      const hook = createV2HttpRequestHook({}, async () => dynamicCatalog);
+
+      const event: any = {
+        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-5-pro:generateContent",
+        headers: new Headers({ "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: "hello dynamic" }] }],
+        }),
+        model: {
+          providerID: "google-agy",
+          id: "gemini-5-pro",
+          variant: "high",
+        },
+        auth: validAuth,
+      };
+
+      await hook(event);
+
+      expect(event.url).toContain("cloudcode-pa.googleapis.com/v1internal:generateContent");
+      const transformedBody = JSON.parse(event.body);
+      expect(transformedBody.model).toBe("gemini-5-pro-high");
+      expect(transformedBody.request.labels.model_enum).toBe("MODEL_PLACEHOLDER_M777");
+      expect(event.headers.get("User-Agent")).toContain("antigravity/cli/");
+    });
+
+    it("forwards getRuntimeCatalog from registerV2SessionHooks to http.request hook", async () => {
+      const hooks: Record<string, Function> = {};
+      const mockCtx = {
+        session: {
+          hook: vi.fn((event: string, handler: Function) => {
+            hooks[event] = handler;
+          }),
+        },
+      };
+
+      registerV2SessionHooks(mockCtx, () => dynamicCatalog);
+
+      const event: any = {
+        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-5-pro:generateContent",
+        headers: { "x-agy-tier": "high" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: "via registerV2SessionHooks" }] }],
+        }),
+        auth: validAuth,
+      };
+
+      await hooks["http.request"](event);
+
+      const transformedBody = JSON.parse(event.body);
+      expect(transformedBody.model).toBe("gemini-5-pro-high");
+      expect(transformedBody.request.labels.model_enum).toBe("MODEL_PLACEHOLDER_M777");
+    });
+
+    it("enforces tier precedence: x-agy-tier header > @tier suffix > event.model.variant > default tier", async () => {
+      const hook = createV2HttpRequestHook({}, () => dynamicCatalog);
+
+      // 1. Explicit x-agy-tier header on event.headers beats event.model.variant ('high') and @medium suffix
+      const headerWinsEvent: any = {
+        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-5-pro@medium:generateContent",
+        headers: new Headers({ "x-agy-tier": "low" }),
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "1" }] }] }),
+        model: { providerID: "google-agy", id: "gemini-5-pro", variant: "high" },
+        auth: validAuth,
+      };
+      await hook(headerWinsEvent);
+      expect(JSON.parse(headerWinsEvent.body).model).toBe("gemini-5-pro-low");
+      expect(JSON.parse(headerWinsEvent.body).request.labels.model_enum).toBe("MODEL_PLACEHOLDER_M776");
+
+      // 2. Explicit x-agy-tier header on event.request.headers beats event.model.variant ('high')
+      const reqWithHeader = new Request(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-5-pro:generateContent",
+        {
+          method: "POST",
+          headers: { "x-agy-tier": "low" },
+          body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "2" }] }] }),
+        },
+      );
+      const reqHeaderWinsEvent: any = {
+        request: reqWithHeader,
+        model: { providerID: "google-agy", id: "gemini-5-pro", variant: "high" },
+        auth: validAuth,
+      };
+      await hook(reqHeaderWinsEvent);
+      const reqTransformedBody = JSON.parse(await reqHeaderWinsEvent.request.text());
+      expect(reqTransformedBody.model).toBe("gemini-5-pro-low");
+      expect(reqTransformedBody.request.labels.model_enum).toBe("MODEL_PLACEHOLDER_M776");
+
+      // 3. @tier suffix in URL beats event.model.variant ('high') when x-agy-tier header is absent
+      const suffixWinsEvent: any = {
+        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-5-pro@low:generateContent",
+        headers: new Headers(),
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "3" }] }] }),
+        model: { providerID: "google-agy", id: "gemini-5-pro", variant: "high" },
+        auth: validAuth,
+      };
+      await hook(suffixWinsEvent);
+      expect(JSON.parse(suffixWinsEvent.body).model).toBe("gemini-5-pro-low");
+      expect(JSON.parse(suffixWinsEvent.body).request.labels.model_enum).toBe("MODEL_PLACEHOLDER_M776");
+
+      // 4. Default tier fallback (medium ?? high) when no header, no suffix, and empty/missing event.model.variant
+      const defaultMediumEvent: any = {
+        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-5-pro:generateContent",
+        headers: new Headers(),
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "4" }] }] }),
+        model: { providerID: "google-agy", id: "gemini-5-pro", variant: "" },
+        auth: validAuth,
+      };
+      await hook(defaultMediumEvent);
+      expect(JSON.parse(defaultMediumEvent.body).model).toBe("gemini-5-pro-medium");
+      expect(JSON.parse(defaultMediumEvent.body).request.labels.model_enum).toBe("MODEL_PLACEHOLDER_M775");
+
+      const defaultHighEvent: any = {
+        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-5-ultra:generateContent",
+        headers: new Headers(),
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "5" }] }] }),
+        auth: validAuth,
+      };
+      await hook(defaultHighEvent);
+      expect(JSON.parse(defaultHighEvent.body).model).toBe("gemini-5-ultra-high");
+      expect(JSON.parse(defaultHighEvent.body).request.labels.model_enum).toBe("MODEL_PLACEHOLDER_M888");
+
+      // 5. catalog.variant fallback when event.model.variant is omitted
+      const catalogVariantHook = createV2HttpRequestHook({}, () => ({
+        ...dynamicCatalog,
+        variant: "low",
+      }));
+      const catalogVariantEvent: any = {
+        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-5-pro:generateContent",
+        headers: new Headers(),
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "6" }] }] }),
+        auth: validAuth,
+      };
+      await catalogVariantHook(catalogVariantEvent);
+      expect(JSON.parse(catalogVariantEvent.body).model).toBe("gemini-5-pro-low");
+      expect(JSON.parse(catalogVariantEvent.body).request.labels.model_enum).toBe("MODEL_PLACEHOLDER_M776");
+    });
+
+    it("falls back to loadStoredAuthFromJson when event.auth is absent and still applies runtime catalog", async () => {
+      setStoredAuthOverrideForTesting(validAuth);
+
+      const hook = createV2HttpRequestHook({}, async () => dynamicCatalog);
+      const event: any = {
+        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-5-pro:generateContent",
+        headers: new Headers(),
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "stored auth" }] }] }),
+        model: { providerID: "google-agy", id: "gemini-5-pro", variant: "high" },
+      };
+
+      await hook(event);
+
+      expect(event.headers.get("Authorization")).toBe(`Bearer ${validAuth.access}`);
+      const transformedBody = JSON.parse(event.body);
+      expect(transformedBody.model).toBe("gemini-5-pro-high");
+      expect(transformedBody.request.labels.model_enum).toBe("MODEL_PLACEHOLDER_M777");
+    });
+
+    it("falls back to static TIER_MAPPING and models.json getModelEnum when getRuntimeCatalog throws or returns undefined", async () => {
+      const throwingHook = createV2HttpRequestHook({}, async () => {
+        throw new Error("catalog failure");
+      });
+
+      const throwEvent: any = {
+        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
+        headers: new Headers({ "x-agy-tier": "high" }),
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "throw fallback" }] }] }),
+        auth: validAuth,
+      };
+      await throwingHook(throwEvent);
+      const throwBody = JSON.parse(throwEvent.body);
+      expect(throwBody.model).toBe("gemini-3.8-flash-high");
+      expect(throwBody.request.labels.model_enum).toBe(getModelEnum("gemini-3.8-flash-high"));
+
+      const undefinedHook = createV2HttpRequestHook({}, () => undefined);
+      const undefinedEvent: any = {
+        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
+        headers: new Headers(),
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "undefined fallback" }] }] }),
+        model: { providerID: "google-agy", id: "gemini-3.8-flash", variant: "high" },
+        auth: validAuth,
+      };
+      await undefinedHook(undefinedEvent);
+      const undefinedBody = JSON.parse(undefinedEvent.body);
+      expect(undefinedBody.model).toBe("gemini-3.8-flash-high");
+      expect(undefinedBody.request.labels.model_enum).toBe(getModelEnum("gemini-3.8-flash-high"));
     });
   });
 });

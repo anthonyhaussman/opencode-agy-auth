@@ -1,11 +1,15 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setupOpenCodeV2, setStoredAuthOverrideForTesting } from '../../src/plugin/v2';
+import * as pricingModule from '../../src/plugin/pricing';
 import { AGY_PROVIDER_ID } from '../../src/constants';
 import { AGY_QUOTA_TOOL_NAME } from '../../src/plugin/quota';
 import { AGY_QUOTA_SUMMARY_TOOL_NAME } from '../../src/plugin/quota-summary';
 import type { OpenCodeV2PluginContext } from '../../src/plugin/types';
 
 describe('OpenCode v2 Integration and Edge Cases', () => {
+  beforeEach(() => {
+    vi.spyOn(pricingModule, 'applyPricingToSimpleModels').mockImplementation(async (m) => m);
+  });
   const createMockContext = () => {
     let catalogTransformFn: ((catalog: any) => Promise<void> | void) | undefined;
     let toolTransformFn: ((editor: any) => Promise<void> | void) | undefined;

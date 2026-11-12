@@ -16,10 +16,19 @@ import {
 import { refreshAccessToken } from './token';
 import { ensureProjectContext } from './project';
 import { getSafeHeader, setSafeHeaders, toUrlString } from './headers';
-import { resolveModelTier } from './tier';
+import { resolveModelTier, type TierMap } from './tier';
 import { loadStoredAuthFromJson } from './v2-storage';
 
-export function createV2FetchInterceptor(getAuthSnapshot?: () => Promise<any> | any) {
+export interface V2RuntimeCatalog {
+  enums?: Readonly<Record<string, string>>;
+  tierMapping?: Readonly<Record<string, TierMap>>;
+  variant?: string;
+}
+
+export function createV2FetchInterceptor(
+  getAuthSnapshot?: () => Promise<any> | any,
+  getRuntimeCatalog?: () => Promise<V2RuntimeCatalog | undefined> | V2RuntimeCatalog | undefined
+) {
   return async function agyV2Fetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
     const isGL = isGenerativeLanguageRequest(input);
     const isInternal = toUrlString(input).includes('cloudcode-pa.googleapis.com');
@@ -85,11 +94,30 @@ export function createV2FetchInterceptor(getAuthSnapshot?: () => Promise<any> | 
       };
     }
 
+    let catalog: V2RuntimeCatalog | undefined;
+    try {
+      catalog = await getRuntimeCatalog?.();
+    } catch {
+      catalog = undefined;
+    }
+
     const originalRequestedModel = parseGenerativeLanguageRequest(input)?.effectiveModel;
-    let modifiedInput = input;
+    let modifiedInput: RequestInfo = input;
     if (isGL && originalRequestedModel) {
       const originalBase = originalRequestedModel.replace('google-agy/', '');
-      const resolvedBase = resolveModelTier(originalBase, init);
+      const existingHeaders =
+        init?.headers ??
+        (typeof Request !== 'undefined' && modifiedInput instanceof Request
+          ? modifiedInput.headers
+          : undefined);
+      const hasExplicitTier = getSafeHeader(existingHeaders, 'x-agy-tier') !== undefined;
+      const tierInit =
+        !hasExplicitTier && !originalBase.includes('@') && catalog?.variant
+          ? { headers: setSafeHeaders(existingHeaders, { 'x-agy-tier': catalog.variant }) as HeadersInit }
+          : existingHeaders !== undefined
+            ? { headers: existingHeaders }
+            : init;
+      const resolvedBase = resolveModelTier(originalBase, tierInit, catalog?.tierMapping);
       if (originalBase !== resolvedBase) {
         if (typeof modifiedInput === 'string') {
           modifiedInput = modifiedInput.replace(`models/${originalBase}`, `models/${resolvedBase}`);
@@ -100,12 +128,31 @@ export function createV2FetchInterceptor(getAuthSnapshot?: () => Promise<any> | 
       }
     }
 
+    let effectiveInit = init;
+    if (typeof Request !== 'undefined' && modifiedInput instanceof Request) {
+      let reqBody = init?.body;
+      if (reqBody === undefined && modifiedInput.body !== null) {
+        try {
+          reqBody = await modifiedInput.clone().text();
+        } catch {
+          // Ignore body read error
+        }
+      }
+      effectiveInit = {
+        ...init,
+        method: init?.method ?? modifiedInput.method,
+        headers: init?.headers ?? modifiedInput.headers,
+        ...(reqBody !== undefined ? { body: reqBody } : {})
+      };
+    }
+
     const transformed = prepareAgyRequest(
       modifiedInput,
-      init,
+      effectiveInit,
       authRecord.access,
       projectContext.effectiveProjectId,
-      undefined
+      undefined,
+      catalog?.enums
     );
 
     const chatLogger = createChatLogger();

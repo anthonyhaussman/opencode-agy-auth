@@ -202,4 +202,46 @@ describe('oauth-authorize', () => {
     setOpenBrowserLauncherForTesting(null);
     expect(() => defaultOpenBrowserLauncher('true', [])).not.toThrow();
   });
+
+  it('invokes onConnected asynchronously after successful OAuth callback and ignores errors', async () => {
+    vi.spyOn(oauthSdk, 'authorizeAgy').mockResolvedValue({
+      url: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=123',
+      verifier: 'verifier-conn',
+      state: 'state-conn',
+    });
+
+    vi.spyOn(oauthSdk, 'exchangeAgyWithVerifier').mockResolvedValue({
+      type: 'success',
+      access: 'access-conn',
+      refresh: 'refresh-conn',
+      expires: Date.now() + 3600000,
+    });
+
+    vi.spyOn(projectModule, 'resolveProjectContextFromAccessToken').mockResolvedValue({
+      auth: {
+        type: 'oauth',
+        access: 'access-conn',
+        refresh: 'refresh-conn|p|m',
+        expires: Date.now() + 3600000,
+      },
+      effectiveProjectId: 'm',
+    });
+
+    const onConnected = vi.fn(() => {
+      throw new Error('listener error');
+    });
+
+    const authorize = createOAuthAuthorizeMethod({ onConnected });
+    const result = await authorize();
+
+    const failRes = await result.callback('');
+    expect(failRes.type).toBe('failed');
+    await new Promise((r) => setTimeout(r, 60));
+    expect(onConnected).not.toHaveBeenCalled();
+
+    const okRes = await result.callback('https://localhost:8080/callback?code=code-ok&state=state-conn');
+    expect(okRes.type).toBe('success');
+    await new Promise((r) => setTimeout(r, 60));
+    expect(onConnected).toHaveBeenCalledTimes(1);
+  });
 });

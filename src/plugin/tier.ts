@@ -63,7 +63,10 @@ export const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
   }
 };
 
-export const TIER_MAPPING: Record<string, { low: string; high: string; medium?: string; minimal?: string } & Record<string, string | undefined>> = {
+export type TierName = 'minimal' | 'low' | 'medium' | 'high';
+export type TierMap = Partial<Record<TierName, string>> & Record<string, string | undefined>;
+
+export const TIER_MAPPING: Record<string, TierMap> = {
   'gemini-3.8-flash': {
     low: 'gemini-3.8-flash-low',
     medium: 'gemini-3.8-flash-medium',
@@ -91,13 +94,14 @@ export const TIER_MAPPING: Record<string, { low: string; high: string; medium?: 
  */
 export function resolveModelTier(
   baseModelId: string,
-  headersOrInit?: RequestInit | unknown
+  headersOrInit?: RequestInit | unknown,
+  customTierMapping?: Readonly<Record<string, TierMap>>
 ): string {
   const parts = baseModelId.split('@');
   const base = parts[0] || '';
   const suffixTier = parts[1]?.toLowerCase();
 
-  const mapping = TIER_MAPPING[base];
+  const mapping = customTierMapping?.[base] ?? TIER_MAPPING[base];
   if (!mapping) {
     return baseModelId;
   }
@@ -114,5 +118,5 @@ export function resolveModelTier(
     return mapping[requestedTier] || baseModelId;
   }
 
-  return mapping['medium'] ?? mapping['high'] ?? baseModelId;
+  return mapping['medium'] ?? mapping['high'] ?? mapping['low'] ?? mapping['minimal'] ?? baseModelId;
 }

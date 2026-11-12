@@ -8,15 +8,18 @@ import { formatRefreshParts } from './auth';
 import type { OAuthAuthDetails, PluginClient } from './types';
 
 
-/**
- * Builds the OAuth authorization callback for the plugin authentication method.
- */
-export function createOAuthAuthorizeMethod(options?: {
+export interface OAuthAuthorizeOptions {
   client?: PluginClient;
   getConfiguredProjectId?: () => Promise<string | undefined> | string | undefined;
   getUserAgentModel?: () => Promise<string | undefined> | string | undefined;
   openBrowser?: (url: string) => void;
-}): () => Promise<{
+  onConnected?: () => void;
+}
+
+/**
+ * Builds the OAuth authorization callback for the plugin authentication method.
+ */
+export function createOAuthAuthorizeMethod(options?: OAuthAuthorizeOptions): () => Promise<{
   url: string;
   instructions: string;
   method: 'code';
@@ -110,7 +113,16 @@ export function createOAuthAuthorizeMethod(options?: {
             return { type: 'failed', error: 'State mismatch in callback input (possible CSRF attempt)' };
           }
           const exchangeResult = await exchangeAgyWithVerifier(code, authorization.verifier);
-          return await maybeHydrateProjectId(exchangeResult);
+          const hydrated = await maybeHydrateProjectId(exchangeResult);
+          if (hydrated.type === 'success' && options?.onConnected) {
+            const timer = setTimeout(() => {
+              try {
+                options.onConnected?.();
+              } catch {}
+            }, 50);
+            (timer as any)?.unref?.();
+          }
+          return hydrated;
         } catch (error) {
           return {
             type: 'failed',
