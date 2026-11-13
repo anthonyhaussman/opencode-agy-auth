@@ -89,7 +89,8 @@ const buildModelFromSimple = (modelId: string, simple: SimpleStaticModel): Provi
       } : {}),
       'low': { id: 'low', name: 'low', displayName: 'low', title: 'low', label: 'low', options: { name: 'low' }, headers: { 'x-agy-tier': 'low' } },
       ...(TIER_MAPPING[modelId].medium !== undefined ? { 'medium': { id: 'medium', name: 'medium', displayName: 'medium', title: 'medium', label: 'medium', options: { name: 'medium' }, headers: { 'x-agy-tier': 'medium' } } } : {}),
-      'high': { id: 'high', name: 'high', displayName: 'high', title: 'high', label: 'high', options: { name: 'high' }, headers: { 'x-agy-tier': 'high' } }
+      'high': { id: 'high', name: 'high', displayName: 'high', title: 'high', label: 'high', options: { name: 'high' }, headers: { 'x-agy-tier': 'high' } },
+      ...(TIER_MAPPING[modelId].xhigh !== undefined ? { 'xhigh': { id: 'xhigh', name: 'xhigh', displayName: 'xhigh', title: 'xhigh', label: 'xhigh', options: { name: 'xhigh' }, headers: { 'x-agy-tier': 'xhigh' } } } : {})
     };
   }
 

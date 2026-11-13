@@ -81,6 +81,7 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
     if (mapping.low !== undefined) variants.push({ id: 'low' });
     if (mapping.medium !== undefined) variants.push({ id: 'medium' });
     if (mapping.high !== undefined) variants.push({ id: 'high' });
+    if (mapping.xhigh !== undefined) variants.push({ id: 'xhigh' });
     return variants.length > 0 ? variants : undefined;
   };
 
