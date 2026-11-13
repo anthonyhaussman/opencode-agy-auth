@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.8](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.5.6...1.5.8) (2026-11-13)
+
+
+### Features
+
+* **agy:** bump agy CLI to v1.5.8 ([0c75e3f](https://github.com/anthonyhaussman/opencode-agy-auth/commit/0c75e3fa2f3dffc7402cae67b6e2ed322b8a6b68))
+* **models:** register gemini-4-hydrogen model ([6e25021](https://github.com/anthonyhaussman/opencode-agy-auth/commit/6e25021809d35ea5470857c169c95116837965e7))
+
 ## [1.5.6](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.5.5...1.5.6) (2026-11-12)
 
 
