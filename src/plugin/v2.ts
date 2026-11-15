@@ -1,5 +1,12 @@
 import { AGY_PROVIDER_ID } from '../constants';
-import { STATIC_MODELS_SIMPLE, TIER_MAPPING } from './tier';
+import {
+  inferModelMetadata,
+  extractBaseModelId,
+  buildTierMapping,
+  resolveModelTier,
+  fetchAvailableModelIds,
+  type SimpleStaticModel
+} from './tier';
 import { createAgyQuotaTool, AGY_QUOTA_TOOL_NAME, AGY_V2_QUOTA_COMMAND, AGY_V2_QUOTA_COMMAND_TEMPLATE } from './quota';
 import {
   createAgyQuotaSummaryTool,
@@ -15,7 +22,7 @@ import {
 import { authorizeAgy, exchangeAgyWithVerifier } from '../sdk/oauth';
 import { parseOAuthCallbackInput } from './oauth-authorize';
 import { formatRefreshParts } from './auth';
-import { ensureProjectContext } from './project';
+import { ensureProjectContext, retrieveUserQuota } from './project';
 import {
   loadStoredAuthFromJson,
   saveStoredAuthToJson,
@@ -26,6 +33,8 @@ import { registerV2SessionHooks } from './v2-session';
 import { initDiskSignatureCache, getDiskSignatureCache, resetDiskSignatureCacheForTesting } from './cache';
 import { initTurnStateTracker } from '../sdk/request';
 import { initCooldownPersistence } from '../sdk/retry';
+import { accessTokenExpired, isOAuthAuth } from './auth';
+import { resolveCachedAuth } from './cache';
 
 // Re-export common symbols for backward compatibility
 export { getSafeHeader, setSafeHeaders, toUrlString } from './headers';
@@ -45,7 +54,53 @@ export {
 };
 
 /**
+ * Build dynamic model catalog from stored auth (for v2 plugin at startup).
+ * Returns empty if no auth available yet.
+ */
+async function buildDynamicModelCatalogForV2(): Promise<{
+  models: Record<string, SimpleStaticModel>;
+  tierMapping: Record<string, Record<string, string>>;
+}> {
+  const storedAuth = loadStoredAuthFromJson();
+  if (!storedAuth || !isOAuthAuth(storedAuth)) {
+    return { models: {}, tierMapping: {} };
+  }
+
+  const authRecord = resolveCachedAuth(storedAuth);
+  if (accessTokenExpired(authRecord) || !authRecord.access) {
+    return { models: {}, tierMapping: {} };
+  }
+
+  // Try to get project ID from stored auth or environment
+  const projectId = process.env.OPENCODE_AGY_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT_ID;
+  if (!projectId) {
+    return { models: {}, tierMapping: {} };
+  }
+
+  const availableModelIds = await fetchAvailableModelIds(
+    retrieveUserQuota,
+    authRecord.access,
+    projectId,
+    undefined
+  );
+
+  if (availableModelIds.size === 0) {
+    return { models: {}, tierMapping: {} };
+  }
+
+  const tierMapping = buildTierMapping(Array.from(availableModelIds));
+  const models: Record<string, SimpleStaticModel> = {};
+
+  for (const baseModelId of Object.keys(tierMapping)) {
+    models[baseModelId] = inferModelMetadata(baseModelId);
+  }
+
+  return { models, tierMapping };
+}
+
+/**
  * Setup adapter for OpenCode v2 plugin architecture.
+ * Fully dynamic — no hardcoded model lists.
  */
 export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<void> {
   // 0. Initialize persistent caches and tracking
@@ -72,9 +127,11 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
     console.warn(`[Agy Auth] initCooldownPersistence failed, running without cooldown disk persistence: ${e instanceof Error ? e.message : e}`);
   }
 
-  // 1. Register provider and models
+  // 1. Build dynamic model catalog from stored auth (if available)
+  const { models: dynamicModels, tierMapping } = await buildDynamicModelCatalogForV2();
+
   const resolveVariants = (modelId: string) => {
-    const mapping = TIER_MAPPING[modelId];
+    const mapping = tierMapping[modelId];
     if (!mapping) return undefined;
     const variants: Array<{ id: string }> = [];
     if (mapping.minimal !== undefined) variants.push({ id: 'minimal' });
@@ -94,7 +151,7 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
     p.integrationID = AGY_PROVIDER_ID;
   };
 
-  const buildModelRecord = (modelId: string, simple: any, existingModel?: any) => {
+  const buildModelRecord = (modelId: string, simple: SimpleStaticModel, existingModel?: any) => {
     const isClaude = modelId.startsWith('claude-');
     const isGpt = modelId.startsWith('gpt-');
     const variants = resolveVariants(modelId);
@@ -117,7 +174,7 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
     };
   };
 
-  const updateModelRecord = (m: any, modelId: string, simple: any) => {
+  const updateModelRecord = (m: any, modelId: string, simple: SimpleStaticModel) => {
     m.name = simple.name;
     m.capabilities = {
       tools: true,
@@ -128,7 +185,7 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
       context: simple.maxTokens,
       output: simple.maxOutputTokens,
     };
-    m.family = 'gemini';
+    m.family = modelId.includes('gemini') ? 'gemini' : (modelId.startsWith('claude-') ? 'claude' : (modelId.startsWith('gpt-') ? 'gpt' : 'unknown'));
     if (simple.cost) {
       m.cost = simple.cost;
     }
@@ -160,16 +217,16 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
     ctx.model.transform(async (editor: any) => {
       if (!editor) return;
       if (typeof editor.update === 'function') {
-        for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
+        for (const [modelId, simple] of Object.entries(dynamicModels)) {
           editor.update(AGY_PROVIDER_ID, modelId, (m: any) => updateModelRecord(m, modelId, simple));
         }
       } else if (typeof editor.set === 'function') {
-        for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
+        for (const [modelId, simple] of Object.entries(dynamicModels)) {
           const m = buildModelRecord(modelId, simple);
           editor.set(`${AGY_PROVIDER_ID}:${modelId}`, m);
         }
       } else if (typeof editor === 'object') {
-        for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
+        for (const [modelId, simple] of Object.entries(dynamicModels)) {
           const key = `${AGY_PROVIDER_ID}:${modelId}`;
           editor[key] = buildModelRecord(modelId, simple, editor[key]);
         }
@@ -186,7 +243,7 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
         editor.provider.update(AGY_PROVIDER_ID, updateProviderRecord);
 
         if (typeof editor?.model?.update === 'function') {
-          for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
+          for (const [modelId, simple] of Object.entries(dynamicModels)) {
             editor.model.update(AGY_PROVIDER_ID, modelId, (m: any) => updateModelRecord(m, modelId, simple));
           }
         }
@@ -216,7 +273,7 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
 
       const targetModels = catalog.providers[AGY_PROVIDER_ID].models;
 
-      for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
+      for (const [modelId, simple] of Object.entries(dynamicModels)) {
         targetModels[modelId] = buildModelRecord(modelId, simple, targetModels[modelId]);
       }
     });
