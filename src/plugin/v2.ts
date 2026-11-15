@@ -308,6 +308,20 @@ export async function setupOpenCodeV2(
     p.integrationID = AGY_PROVIDER_ID;
   };
 
+  const isV2ModelInfo = (m: any): boolean =>
+    Boolean(m) &&
+    typeof m === 'object' &&
+    (Array.isArray(m.cost) || Array.isArray(m.variants) || typeof m.modelID === 'string');
+
+  const toV2ModelCost = (cost: NonNullable<SimpleStaticModel['cost']>) => ({
+    input: cost.input,
+    output: cost.output,
+    cache: {
+      read: cost.cache?.read ?? 0,
+      write: cost.cache?.write ?? 0,
+    },
+  });
+
   const generatedModelRecords = new WeakSet<object>();
 
   const buildModelRecord = (
@@ -336,7 +350,6 @@ export async function setupOpenCodeV2(
       tool_call: simple.toolCall,
       capabilities: {
         tools: Boolean(simple.toolCall),
-        reasoning: Boolean(simple.reasoning),
         input: simple.attachment ? ['text', 'image'] : ['text'],
         output: ['text'],
       },
@@ -361,6 +374,34 @@ export async function setupOpenCodeV2(
     simple: SimpleStaticModel,
     tierMapSource: Readonly<Record<string, TierMap>> = TIER_MAPPING
   ) => {
+    const variants = resolveVariants(modelId, tierMapSource);
+    // OpenCode v2 Model.Info records (additionalProperties: false) carry
+    // array-shaped `cost` and `variants`; only write schema-defined fields.
+    if (isV2ModelInfo(m)) {
+      m.name = simple.name;
+      m.family = resolveModelFamily(modelId);
+      m.capabilities = {
+        ...(m.capabilities && typeof m.capabilities === 'object' ? m.capabilities : {}),
+        tools: Boolean(simple.toolCall),
+        input: simple.attachment ? ['text', 'image'] : ['text'],
+        output: ['text'],
+      };
+      delete m.capabilities.reasoning;
+      m.limit = {
+        ...(m.limit && typeof m.limit === 'object' ? m.limit : {}),
+        context: simple.maxTokens,
+        output: simple.maxOutputTokens,
+      };
+      if (simple.cost) {
+        m.cost = [toV2ModelCost(simple.cost)];
+      }
+      m.variants = variants ?? [];
+      delete m.description;
+      delete m.reasoning;
+      delete m.attachment;
+      delete m.tool_call;
+      return;
+    }
     m.name = simple.name;
     m.description = simple.description;
     m.reasoning = simple.reasoning;
@@ -368,7 +409,6 @@ export async function setupOpenCodeV2(
     m.tool_call = simple.toolCall;
     m.capabilities = {
       tools: Boolean(simple.toolCall),
-      reasoning: Boolean(simple.reasoning),
       input: simple.attachment ? ['text', 'image'] : ['text'],
       output: ['text'],
     };
@@ -380,7 +420,6 @@ export async function setupOpenCodeV2(
     if (simple.cost) {
       m.cost = simple.cost;
     }
-    const variants = resolveVariants(modelId, tierMapSource);
     if (variants) {
       m.variants = variants;
     } else {

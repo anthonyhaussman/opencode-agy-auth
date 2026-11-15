@@ -286,6 +286,23 @@ describe('OpenCode v2 Dynamic Account Model Discovery', () => {
       expect(updated['gpt-oss-120b-medium'].variants).toBeUndefined();
       expect(updated['gpt-oss-120b-medium'].capabilities.input).toEqual(['text']);
 
+      // 1b. editor.update with OpenCode v2 Model.Info records (array cost/variants)
+      const infos: Record<string, any> = {};
+      await modelTransform!({
+        update: (_pid: string, mid: string, fn: (m: any) => void) => {
+          const m: any = { modelID: mid, variants: [], cost: [], capabilities: {} };
+          fn(m);
+          infos[mid] = m;
+        },
+      });
+      expect(infos['gemini-5-pro'].cost).toEqual([
+        { input: 2.5, output: 10.0, cache: { read: 0, write: 0 } },
+      ]);
+      expect(infos['gemini-5-pro'].variants).toEqual(expected5ProVariants);
+      expect(infos['gpt-oss-120b-medium'].variants).toEqual([]);
+      expect(infos['gemini-5-pro']).not.toHaveProperty('reasoning');
+      expect(infos['gemini-5-pro'].capabilities).not.toHaveProperty('reasoning');
+
       // 2. editor.set
       const setMap = new Map<string, any>();
       await modelTransform!({

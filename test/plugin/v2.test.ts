@@ -130,6 +130,40 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     expect(mObj.capabilities.tools).toBe(true);
     expect(mObj.variants).toBeDefined();
 
+    // 5b. OpenCode v2 Model.Info shape: array cost/variants, strict schema fields
+    const infoObj: any = {
+      id: 'gemini-3.8-flash',
+      modelID: 'gemini-3.8-flash',
+      providerID: AGY_PROVIDER_ID,
+      name: '',
+      capabilities: { tools: false, input: [], output: [] },
+      variants: [],
+      cost: [],
+      limit: { context: 0, output: 0 },
+    };
+    flashCall[2](infoObj);
+    expect(Array.isArray(infoObj.cost)).toBe(true);
+    for (const c of infoObj.cost) {
+      expect(c).toEqual({
+        input: expect.any(Number),
+        output: expect.any(Number),
+        cache: { read: expect.any(Number), write: expect.any(Number) },
+      });
+    }
+    expect(Object.keys(infoObj.capabilities).sort()).toEqual(['input', 'output', 'tools']);
+    expect(infoObj.variants.map((v: any) => v.id)).toEqual(['low', 'medium', 'high']);
+    for (const key of ['description', 'reasoning', 'attachment', 'tool_call']) {
+      expect(infoObj).not.toHaveProperty(key);
+    }
+
+    const ossCall = updateModelMock.mock.calls.find(
+      (c: any) => c[0] === AGY_PROVIDER_ID && c[1] === 'gpt-oss-120b-medium'
+    );
+    const ossInfo: any = { modelID: 'gpt-oss-120b-medium', variants: [], cost: [] };
+    ossCall[2](ossInfo);
+    expect(ossInfo.variants).toEqual([]);
+    expect(Array.isArray(ossInfo.cost)).toBe(true);
+
     // 6. Test model editor with .set()
     const setModelMock = vi.fn();
     await modelTransformFn!({ set: setModelMock });
