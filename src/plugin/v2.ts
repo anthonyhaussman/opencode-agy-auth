@@ -54,48 +54,75 @@ export {
 };
 
 /**
- * Build dynamic model catalog from stored auth (for v2 plugin at startup).
- * Returns empty if no auth available yet.
+ * Build dynamic model catalog using the connection API (for v2 plugin).
+ * Uses the connection API to get current auth and config, handling token refresh.
  */
-async function buildDynamicModelCatalogForV2(): Promise<{
+async function buildDynamicModelCatalogForV2(ctx: OpenCodeV2PluginContext): Promise<{
   models: Record<string, SimpleStaticModel>;
   tierMapping: Record<string, Record<string, string>>;
+  projectId: string | undefined;
 }> {
-  const storedAuth = loadStoredAuthFromJson();
-  if (!storedAuth || !isOAuthAuth(storedAuth)) {
-    return { models: {}, tierMapping: {} };
+  // Get auth via connection API (handles token refresh)
+  const connApi = (ctx.integration as any)?.connection;
+  if (!connApi || typeof connApi.active !== 'function' || typeof connApi.resolve !== 'function') {
+    return { models: {}, tierMapping: {}, projectId: undefined };
   }
 
-  const authRecord = resolveCachedAuth(storedAuth);
-  if (accessTokenExpired(authRecord) || !authRecord.access) {
-    return { models: {}, tierMapping: {} };
+  try {
+    const active = await connApi.active(AGY_PROVIDER_ID);
+    if (!active) {
+      return { models: {}, tierMapping: {}, projectId: undefined };
+    }
+
+    const resolved = await connApi.resolve(active);
+    if (!resolved || resolved.type !== 'credential' || resolved.credential?.type !== 'oauth') {
+      return { models: {}, tierMapping: {}, projectId: undefined };
+    }
+
+    const authRecord = resolved.credential;
+    if (!authRecord.access || !authRecord.refresh) {
+      return { models: {}, tierMapping: {}, projectId: undefined };
+    }
+
+    // Get projectId from config via connection API
+    let projectId: string | undefined;
+    try {
+      const configResult = await connApi.config?.get?.();
+      if (configResult?.data?.provider?.[AGY_PROVIDER_ID]?.options?.projectId) {
+        projectId = configResult.data.provider[AGY_PROVIDER_ID].options.projectId;
+      }
+    } catch {
+      // Ignore config read errors
+    }
+
+    // Fallback to env vars
+    projectId = projectId || process.env.OPENCODE_AGY_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT_ID;
+    if (!projectId) {
+      return { models: {}, tierMapping: {}, projectId: undefined };
+    }
+
+    const availableModelIds = await fetchAvailableModelIds(
+      retrieveUserQuota,
+      authRecord.access,
+      projectId,
+      undefined
+    );
+
+    if (availableModelIds.size === 0) {
+      return { models: {}, tierMapping: {}, projectId };
+    }
+
+    const tierMapping = buildTierMapping(Array.from(availableModelIds));
+    const models: Record<string, SimpleStaticModel> = {};
+
+    for (const baseModelId of Object.keys(tierMapping)) {
+      models[baseModelId] = inferModelMetadata(baseModelId);
+    }
+
+    return { models, tierMapping, projectId };
+  } catch {
+    return { models: {}, tierMapping: {}, projectId: undefined };
   }
-
-  // Try to get project ID from stored auth or environment
-  const projectId = process.env.OPENCODE_AGY_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT_ID;
-  if (!projectId) {
-    return { models: {}, tierMapping: {} };
-  }
-
-  const availableModelIds = await fetchAvailableModelIds(
-    retrieveUserQuota,
-    authRecord.access,
-    projectId,
-    undefined
-  );
-
-  if (availableModelIds.size === 0) {
-    return { models: {}, tierMapping: {} };
-  }
-
-  const tierMapping = buildTierMapping(Array.from(availableModelIds));
-  const models: Record<string, SimpleStaticModel> = {};
-
-  for (const baseModelId of Object.keys(tierMapping)) {
-    models[baseModelId] = inferModelMetadata(baseModelId);
-  }
-
-  return { models, tierMapping };
 }
 
 /**
@@ -127,95 +154,105 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
     console.warn(`[Agy Auth] initCooldownPersistence failed, running without cooldown disk persistence: ${e instanceof Error ? e.message : e}`);
   }
 
-  // 1. Build dynamic model catalog from stored auth (if available)
-  const { models: dynamicModels, tierMapping } = await buildDynamicModelCatalogForV2();
-
-  const resolveVariants = (modelId: string) => {
-    const mapping = tierMapping[modelId];
-    if (!mapping) return undefined;
-    const variants: Array<{ id: string }> = [];
-    if (mapping.minimal !== undefined) variants.push({ id: 'minimal' });
-    if (mapping.low !== undefined) variants.push({ id: 'low' });
-    if (mapping.medium !== undefined) variants.push({ id: 'medium' });
-    if (mapping.high !== undefined) variants.push({ id: 'high' });
-    if (mapping.xhigh !== undefined) variants.push({ id: 'xhigh' });
-    return variants.length > 0 ? variants : undefined;
-  };
-
-  const updateProviderRecord = (p: any) => {
-    p.name = 'Antigravity CLI';
-    p.activation = 'enabled';
-    p.package = 'aisdk:@ai-sdk/google';
-    p.description = 'Google Gemini Antigravity Code Assist OAuth provider';
-    p.settings = { ...(p.settings || {}), apiKey: 'dummy' };
-    p.integrationID = AGY_PROVIDER_ID;
-  };
-
-  const buildModelRecord = (modelId: string, simple: SimpleStaticModel, existingModel?: any) => {
-    const isClaude = modelId.startsWith('claude-');
-    const isGpt = modelId.startsWith('gpt-');
-    const variants = resolveVariants(modelId);
-    return {
-      id: modelId,
-      providerID: AGY_PROVIDER_ID,
-      name: simple.name,
-      description: simple.description,
-      family: modelId.includes('gemini') ? 'gemini' : (isClaude ? 'claude' : (isGpt ? 'gpt' : 'unknown')),
-      reasoning: simple.reasoning,
-      attachment: simple.attachment,
-      tool_call: simple.toolCall,
-      limit: {
-        context: simple.maxTokens,
-        output: simple.maxOutputTokens,
-      },
-      cost: simple.cost || { input: 0, output: 0 },
-      ...(variants ? { variants } : {}),
-      ...(existingModel || {}),
-    };
-  };
-
-  const updateModelRecord = (m: any, modelId: string, simple: SimpleStaticModel) => {
-    m.name = simple.name;
-    m.capabilities = {
-      tools: true,
-      input: ['text', 'image'],
-      output: ['text'],
-    };
-    m.limit = {
-      context: simple.maxTokens,
-      output: simple.maxOutputTokens,
-    };
-    m.family = modelId.includes('gemini') ? 'gemini' : (modelId.startsWith('claude-') ? 'claude' : (modelId.startsWith('gpt-') ? 'gpt' : 'unknown'));
-    if (simple.cost) {
-      m.cost = simple.cost;
-    }
-    const variants = resolveVariants(modelId);
-    if (variants) {
-      m.variants = variants;
-    }
-  };
-
   // OpenCode v2.0.8+ splits catalog into top-level provider and model services
   if (ctx.provider?.transform) {
     ctx.provider.transform(async (editor: any) => {
       if (!editor) return;
       if (typeof editor.update === 'function') {
-        editor.update(AGY_PROVIDER_ID, updateProviderRecord);
+        editor.update(AGY_PROVIDER_ID, (p: any) => {
+          p.name = 'Antigravity CLI';
+          p.activation = 'enabled';
+          p.package = 'aisdk:@ai-sdk/google';
+          p.description = 'Google Gemini Antigravity Code Assist OAuth provider';
+          p.settings = { ...(p.settings || {}), apiKey: 'dummy' };
+          p.integrationID = AGY_PROVIDER_ID;
+        });
       } else if (typeof editor.set === 'function') {
         const p: any = { id: AGY_PROVIDER_ID };
-        updateProviderRecord(p);
+        p.name = 'Antigravity CLI';
+        p.activation = 'enabled';
+        p.package = 'aisdk:@ai-sdk/google';
+        p.description = 'Google Gemini Antigravity Code Assist OAuth provider';
+        p.settings = { ...(p.settings || {}), apiKey: 'dummy' };
+        p.integrationID = AGY_PROVIDER_ID;
         editor.set(AGY_PROVIDER_ID, p);
       } else if (typeof editor === 'object') {
         const p: any = editor[AGY_PROVIDER_ID] || { id: AGY_PROVIDER_ID };
-        updateProviderRecord(p);
+        p.name = 'Antigravity CLI';
+        p.activation = 'enabled';
+        p.package = 'aisdk:@ai-sdk/google';
+        p.description = 'Google Gemini Antigravity Code Assist OAuth provider';
+        p.settings = { ...(p.settings || {}), apiKey: 'dummy' };
+        p.integrationID = AGY_PROVIDER_ID;
         editor[AGY_PROVIDER_ID] = p;
       }
     });
   }
 
+  // 2. Register dynamic models via ctx.model.transform (called when catalog is queried)
   if (ctx.model?.transform) {
     ctx.model.transform(async (editor: any) => {
       if (!editor) return;
+
+      // Fetch dynamic models using connection API (handles token refresh & config)
+      const { models: dynamicModels, tierMapping } = await buildDynamicModelCatalogForV2(ctx);
+
+      const resolveVariants = (modelId: string) => {
+        const mapping = tierMapping[modelId];
+        if (!mapping) return undefined;
+        const variants: Array<{ id: string }> = [];
+        if (mapping.minimal !== undefined) variants.push({ id: 'minimal' });
+        if (mapping.low !== undefined) variants.push({ id: 'low' });
+        if (mapping.medium !== undefined) variants.push({ id: 'medium' });
+        if (mapping.high !== undefined) variants.push({ id: 'high' });
+        if (mapping.xhigh !== undefined) variants.push({ id: 'xhigh' });
+        return variants.length > 0 ? variants : undefined;
+      };
+
+      const buildModelRecord = (modelId: string, simple: SimpleStaticModel, existingModel?: any) => {
+        const isClaude = modelId.startsWith('claude-');
+        const isGpt = modelId.startsWith('gpt-');
+        const variants = resolveVariants(modelId);
+        return {
+          id: modelId,
+          providerID: AGY_PROVIDER_ID,
+          name: simple.name,
+          description: simple.description,
+          family: modelId.includes('gemini') ? 'gemini' : (isClaude ? 'claude' : (isGpt ? 'gpt' : 'unknown')),
+          reasoning: simple.reasoning,
+          attachment: simple.attachment,
+          tool_call: simple.toolCall,
+          limit: {
+            context: simple.maxTokens,
+            output: simple.maxOutputTokens,
+          },
+          cost: simple.cost || { input: 0, output: 0 },
+          ...(variants ? { variants } : {}),
+          ...(existingModel || {}),
+        };
+      };
+
+      const updateModelRecord = (m: any, modelId: string, simple: SimpleStaticModel) => {
+        m.name = simple.name;
+        m.capabilities = {
+          tools: true,
+          input: ['text', 'image'],
+          output: ['text'],
+        };
+        m.limit = {
+          context: simple.maxTokens,
+          output: simple.maxOutputTokens,
+        };
+        m.family = modelId.includes('gemini') ? 'gemini' : (modelId.startsWith('claude-') ? 'claude' : (modelId.startsWith('gpt-') ? 'gpt' : 'unknown'));
+        if (simple.cost) {
+          m.cost = simple.cost;
+        }
+        const variants = resolveVariants(modelId);
+        if (variants) {
+          m.variants = variants;
+        }
+      };
+
       if (typeof editor.update === 'function') {
         for (const [modelId, simple] of Object.entries(dynamicModels)) {
           editor.update(AGY_PROVIDER_ID, modelId, (m: any) => updateModelRecord(m, modelId, simple));
@@ -234,13 +271,78 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
     });
   }
 
-  // OpenCode v2 <= 2.0.7 legacy catalog transform fallback
+  // 3. Also register via catalog.transform for v2 <= 2.0.7 compatibility
   if (ctx.catalog?.transform) {
     ctx.catalog.transform(async (editor: any) => {
       if (!editor) return;
 
+      const { models: dynamicModels, tierMapping } = await buildDynamicModelCatalogForV2(ctx);
+
+      const resolveVariants = (modelId: string) => {
+        const mapping = tierMapping[modelId];
+        if (!mapping) return undefined;
+        const variants: Array<{ id: string }> = [];
+        if (mapping.minimal !== undefined) variants.push({ id: 'minimal' });
+        if (mapping.low !== undefined) variants.push({ id: 'low' });
+        if (mapping.medium !== undefined) variants.push({ id: 'medium' });
+        if (mapping.high !== undefined) variants.push({ id: 'high' });
+        if (mapping.xhigh !== undefined) variants.push({ id: 'xhigh' });
+        return variants.length > 0 ? variants : undefined;
+      };
+
+      const buildModelRecord = (modelId: string, simple: SimpleStaticModel, existingModel?: any) => {
+        const isClaude = modelId.startsWith('claude-');
+        const isGpt = modelId.startsWith('gpt-');
+        const variants = resolveVariants(modelId);
+        return {
+          id: modelId,
+          providerID: AGY_PROVIDER_ID,
+          name: simple.name,
+          description: simple.description,
+          family: modelId.includes('gemini') ? 'gemini' : (isClaude ? 'claude' : (isGpt ? 'gpt' : 'unknown')),
+          reasoning: simple.reasoning,
+          attachment: simple.attachment,
+          tool_call: simple.toolCall,
+          limit: {
+            context: simple.maxTokens,
+            output: simple.maxOutputTokens,
+          },
+          cost: simple.cost || { input: 0, output: 0 },
+          ...(variants ? { variants } : {}),
+          ...(existingModel || {}),
+        };
+      };
+
+      const updateModelRecord = (m: any, modelId: string, simple: SimpleStaticModel) => {
+        m.name = simple.name;
+        m.capabilities = {
+          tools: true,
+          input: ['text', 'image'],
+          output: ['text'],
+        };
+        m.limit = {
+          context: simple.maxTokens,
+          output: simple.maxOutputTokens,
+        };
+        m.family = modelId.includes('gemini') ? 'gemini' : (modelId.startsWith('claude-') ? 'claude' : (modelId.startsWith('gpt-') ? 'gpt' : 'unknown'));
+        if (simple.cost) {
+          m.cost = simple.cost;
+        }
+        const variants = resolveVariants(modelId);
+        if (variants) {
+          m.variants = variants;
+        }
+      };
+
       if (typeof editor?.provider?.update === 'function') {
-        editor.provider.update(AGY_PROVIDER_ID, updateProviderRecord);
+        editor.provider.update(AGY_PROVIDER_ID, (p: any) => {
+          p.name = 'Antigravity CLI';
+          p.activation = 'enabled';
+          p.package = 'aisdk:@ai-sdk/google';
+          p.description = 'Google Gemini Antigravity Code Assist OAuth provider';
+          p.settings = { ...(p.settings || {}), apiKey: 'dummy' };
+          p.integrationID = AGY_PROVIDER_ID;
+        });
 
         if (typeof editor?.model?.update === 'function') {
           for (const [modelId, simple] of Object.entries(dynamicModels)) {
@@ -279,7 +381,7 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
     });
   }
 
-  // 2. Register agy_quota and agy_quota_summary tools via tool transform
+  // 4. Register agy_quota and agy_quota_summary tools via tool transform
   ctx.tool.transform(async (editor: any) => {
     if (!editor) return;
 

@@ -7,7 +7,7 @@ import { accessTokenExpired, isOAuthAuth, parseRefreshParts } from './plugin/aut
 import { resolveCachedAuth, initDiskSignatureCache } from './plugin/cache';
 import { initTurnStateTracker } from './sdk/request/turn-state-tracker';
 import { initCooldownPersistence } from './sdk/retry';
-import { ensureProjectContext, retrieveUserQuota } from './plugin/project';
+import { ensureProjectContext, retrieveUserQuota, resolveProjectContextFromAccessToken } from './plugin/project';
 import { createAgyQuotaTool, AGY_QUOTA_TOOL_NAME } from './plugin/quota';
 import { createAgyQuotaSummaryTool, AGY_QUOTA_SUMMARY_TOOL_NAME } from './plugin/quota-summary';
 import { maybeShowAgyCapacityToast, maybeShowAgyTestToast } from './plugin/notify';
@@ -28,6 +28,7 @@ import {
 import { createChatLogger } from './sdk/chat-logger';
 import { fetchWithRetry } from './sdk/retry';
 import { refreshAccessToken } from './plugin/token';
+import { loadStoredAuthFromJson } from './plugin/v2-storage';
 import type {
   GetAuth,
   OAuthAuthDetails,
@@ -224,26 +225,99 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
     return resolvedProjectId;
   };
 
-  // Build dynamic model list for provider hook (used when user opens model picker)
-  const getDynamicModels = async (provider: ProviderV2): Promise<Record<string, ProviderModel>> => {
-    const auth = await latestAgyAuthResolver?.();
+  // Client stub for startup-time paths: the `config` hook runs DURING config
+  // resolution, so touching the real client (config.get/auth.set) can deadlock.
+  // Token refresh works without persistence here; the loader persists on use.
+  const NOOP_CLIENT = { auth: { set: async () => {} } } as unknown as PluginClient;
+
+  const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T | null> =>
+    Promise.race([p, new Promise<null>((resolve) => setTimeout(() => resolve(null), ms))]);
+
+  // Resolve a usable OAuth record: explicit ctx auth → resolver → stored JSON,
+  // refreshing an expired access token when needed.
+  const resolveListingAuth = async (
+    ctxAuth: unknown,
+    useClient: boolean
+  ): Promise<OAuthAuthDetails | null> => {
+    let auth: any = ctxAuth;
+    if (!auth && useClient && latestAgyAuthResolver) {
+      try {
+        auth = await latestAgyAuthResolver();
+      } catch {
+        auth = undefined;
+      }
+    }
     if (!auth || !isOAuthAuth(auth)) {
-      return {};
+      auth = loadStoredAuthFromJson();
+    }
+    if (!auth || !isOAuthAuth(auth)) {
+      return null;
+    }
+    let record = resolveCachedAuth(auth);
+    if (accessTokenExpired(record) || !record.access) {
+      const refreshed = await refreshAccessToken(record, useClient ? client : NOOP_CLIENT);
+      if (!refreshed) {
+        return null;
+      }
+      record = refreshed;
+    }
+    return record;
+  };
+
+  // Resolve project id WITHOUT touching client when useClient=false
+  // (config-hook time). Order: provider options → env → refresh-token parts.
+  const resolveListingProjectId = async (
+    provider: ProviderV2,
+    authRecord: OAuthAuthDetails,
+    useClient: boolean
+  ): Promise<string | undefined> => {
+    if (useClient) {
+      const viaClient = await resolveLatestConfiguredProjectId(provider);
+      if (viaClient) return viaClient;
+    }
+    const viaSync = resolveConfiguredProjectId({ provider: provider as unknown as Provider });
+    if (viaSync) return viaSync;
+    const parts = parseRefreshParts(authRecord.refresh);
+    if (parts.projectId) return parts.projectId;
+    // Last resort (no client needed): discover the managed project from the
+    // AGY backend, mirroring what the loader does via ensureProjectContext.
+    try {
+      const discovered = await withTimeout(
+        resolveProjectContextFromAccessToken(authRecord, authRecord.access, undefined, undefined, latestAgyUserAgentModel).catch(() => null),
+        15000
+      );
+      const effective = discovered?.effectiveProjectId?.trim();
+      if (effective) {
+        return effective;
+      }
+    } catch {
+      // fall through to undefined
+    }
+    return undefined;
+  };
+
+  // Build dynamic model list for provider hook (used when user opens model picker)
+  // Returns null when no usable auth/project is available (caller shows login-required).
+  // useClient=false for startup-time (config hook) callers: never touches `client`.
+  const getDynamicModels = async (
+    provider: ProviderV2,
+    ctxAuth?: unknown,
+    opts?: { useClient?: boolean }
+  ): Promise<Record<string, ProviderModel> | null> => {
+    const useClient = opts?.useClient ?? true;
+    const authRecord = await resolveListingAuth(ctxAuth, useClient);
+    if (!authRecord) {
+      return null;
     }
 
-    const authRecord = resolveCachedAuth(auth);
-    if (accessTokenExpired(authRecord) || !authRecord.access) {
-      return {};
-    }
-
-    const configuredProjectId = await resolveLatestConfiguredProjectId(provider);
-    if (!configuredProjectId) {
-      return {};
+    const projectId = await resolveListingProjectId(provider, authRecord, useClient);
+    if (!projectId) {
+      return null;
     }
 
     const { models, tierMapping } = await buildDynamicModelCatalog(
       authRecord.access,
-      configuredProjectId,
+      projectId,
       latestAgyUserAgentModel
     );
     dynamicTierMapping = tierMapping;
@@ -313,8 +387,26 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
         ...config.provider[AGY_PROVIDER_ID]
       };
 
-      // Initial empty models — will be populated dynamically via provider.models hook
-      config.provider[AGY_PROVIDER_ID].models = {};
+      // Populate dynamic models at config time so `opencode models` lists the live
+      // AGY inventory (same source as `agy models`). useClient=false: the config
+      // hook runs DURING config resolution, so it must never touch `client`
+      // (config.get/auth.set would deadlock). The provider.models hook covers
+      // later TUI-time refreshes. Hard 25s cap so a stalled network can never
+      // hang server startup.
+      try {
+        const load = getDynamicModels(config.provider[AGY_PROVIDER_ID] as ProviderV2, undefined, {
+          useClient: false,
+        }).catch(() => null);
+        const dynamic = await withTimeout(load, 25000);
+        if (dynamic && Object.keys(dynamic).length > 0) {
+          config.provider[AGY_PROVIDER_ID].models = dynamic;
+        } else {
+          config.provider[AGY_PROVIDER_ID].models = {};
+        }
+      } catch (e) {
+        console.warn(`[Agy Auth] dynamic model load at config time failed: ${e instanceof Error ? e.message : e}`);
+        config.provider[AGY_PROVIDER_ID].models = {};
+      }
     },
     tool: {
       [AGY_QUOTA_TOOL_NAME]: createAgyQuotaTool({
@@ -484,25 +576,17 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
     provider: {
       id: AGY_PROVIDER_ID,
       models: async (provider: any, ctx: any): Promise<any> => {
-        let auth = ctx?.auth;
-        if (!auth && latestAgyAuthResolver) {
-          try {
-            auth = await latestAgyAuthResolver();
-          } catch (e) {
-            const errStr = e instanceof Error ? e.stack || e.message : String(e);
-            console.warn(`[Agy Auth] Failed to resolve auth from resolver in models hook: ${errStr}`);
-          }
-        }
-
-        if (!auth || !isOAuthAuth(auth)) {
+        const models = await withTimeout(
+          getDynamicModels(provider, ctx?.auth, { useClient: true }).catch(() => null),
+          25000
+        );
+        if (!models) {
           return {
             'login-required': {
               name: 'No models available'
             }
           };
         }
-
-        const models = await getDynamicModels(provider);
         return models;
       }
     } as any
