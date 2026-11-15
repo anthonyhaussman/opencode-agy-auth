@@ -46,6 +46,7 @@ import {
   type SimpleStaticModel
 } from './plugin/tier';
 import { getSafeHeader, setSafeHeaders, toUrlString } from './plugin/headers';
+import { emitAgyTosWarning } from './plugin/tos-warning';
 export {
   STATIC_MODELS_SIMPLE,
   TIER_MAPPING,
@@ -170,6 +171,8 @@ for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
  */
 export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<PluginResult> => {
   let latestConfig: Config | undefined;
+
+  emitAgyTosWarning(client);
 
   // Dynamically update STATIC_MODELS with latest pricing from models.dev
   updateStaticModelsWithPricing(STATIC_MODELS);

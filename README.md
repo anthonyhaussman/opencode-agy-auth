@@ -6,6 +6,22 @@
 [![License](https://img.shields.io/github/license/anthonyhaussman/opencode-agy-auth)](https://github.com/anthonyhaussman/opencode-agy-auth/blob/main/LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/anthonyhaussman/opencode-agy-auth?style=social)](https://github.com/anthonyhaussman/opencode-agy-auth)
 
+> [!WARNING]
+> **Using this plugin can get your Google account disabled.**
+>
+> Google's current Antigravity terms prohibit using third-party software, tools, or services (explicitly including OpenCode) to access an Antigravity/Gemini CLI login. Accounts detected doing so are blocked with:
+>
+> `This service has been disabled in this account for violation of Terms of Service. Please submit an appeal to continue using this product.`
+>
+> A disabled account can only be restored through [Google's appeal form](https://docs.google.com/forms/d/e/1FAIpQLScOJWibQ_-hYuVv63kJTgEqlgAaOwRLGFTbXm-QY1gz8U0CGA/viewform). The plugin prints this warning on every startup.
+>
+> Supported alternatives that do not rely on an Antigravity login:
+>
+> - OpenCode's native `google` provider with a Gemini API key (`GOOGLE_GENERATIVE_AI_API_KEY`, from Google AI Studio).
+> - OpenCode's native `google-vertex` provider with your own Google Cloud project.
+>
+> Use this plugin at your own risk. The maintainer takes no responsibility for any action Google takes against your account.
+
 An [OpenCode](https://opencode.ai/) authentication plugin that enables seamless interaction with the Antigravity CLI (`agy`) by hooking into its authentication, quota retrieval, and dynamic model fetching layers.
 
 ## Features
@@ -13,7 +29,7 @@ An [OpenCode](https://opencode.ai/) authentication plugin that enables seamless 
 - **OAuth 2.0 Integration**: Uses Antigravity's OAuth flows for authentication.
 - **Dynamic Model Retrieval**: Fetches available models based on user tier and current allocations.
 - **Quota Tracking**: Injects the `agy_quota` tool into OpenCode to check usage limits directly.
-- **Traffic Simulation**: Maintains background heartbeat with `agy` servers.
+- **Background Session Requests**: Sends the session-level requests the Antigravity backend expects alongside model calls.
 - **Dual OpenCode Compatibility**: Natively supports both OpenCode v1 (>= 1.18.29) and OpenCode v2 out of the box without breaking changes.
 
 ## Installation
