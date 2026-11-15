@@ -26,6 +26,7 @@ import { registerV2SessionHooks } from './v2-session';
 import { initDiskSignatureCache, getDiskSignatureCache, resetDiskSignatureCacheForTesting } from './cache';
 import { initTurnStateTracker } from '../sdk/request';
 import { initCooldownPersistence } from '../sdk/retry';
+import { emitAgyTosWarning } from './tos-warning';
 
 // Re-export common symbols for backward compatibility
 export { getSafeHeader, setSafeHeaders, toUrlString } from './headers';
@@ -48,6 +49,8 @@ export {
  * Setup adapter for OpenCode v2 plugin architecture.
  */
 export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<void> {
+  emitAgyTosWarning();
+
   // 0. Initialize persistent caches and tracking
   try {
     initDiskSignatureCache({
