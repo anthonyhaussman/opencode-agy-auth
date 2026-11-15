@@ -63,7 +63,7 @@ describe('plugin/tier (dynamic)', () => {
     expect(claude.maxOutputTokens).toBe(128000);
 
     const gpt = inferModelMetadata('gpt-oss-120b-medium');
-    expect(gpt.name).toBe('Gpt Oss 120b Medium');
+    expect(gpt.name).toBe('GPT OSS 120B MEDIUM');
     expect(gpt.attachment).toBe(false);
     expect(gpt.maxTokens).toBe(131072);
   });
