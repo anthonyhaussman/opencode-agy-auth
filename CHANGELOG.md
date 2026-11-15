@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.9](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.5.8...1.5.9) (2026-11-15)
+
+
+### Features
+
+* **agy:** bump agy CLI to v1.5.9 ([6648232](https://github.com/anthonyhaussman/opencode-agy-auth/commit/6648232628d39f3690a3f6a0516670a17caa488f))
+* **plugin:** warn about Antigravity ToS account risk ([b2c7a7d](https://github.com/anthonyhaussman/opencode-agy-auth/commit/b2c7a7d559f812c806832d387b3fab4aa5950d93))
+
 ## [1.5.8](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.5.6...1.5.8) (2026-11-13)
 
 
