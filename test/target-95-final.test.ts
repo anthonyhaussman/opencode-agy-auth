@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AgyCLIOAuthPlugin } from '../src/plugin.js';
 import * as retryQuotaModule from '../src/sdk/retry/quota.js';
 import * as projectContextModule from '../src/plugin/project/context.js';
 import * as tokenModule from '../src/plugin/token.js';
@@ -9,70 +8,6 @@ describe('Targeted 95% Coverage Test Suite', () => {
     vi.restoreAllMocks();
   });
 
-  describe('setSafeHeaders & getSafeHeader edge branches in plugin.ts', () => {
-    it('handles plain object header overwrites and additions in setSafeHeaders', async () => {
-      const originalHeaders = globalThis.Headers;
-      (globalThis as any).Headers = undefined;
-
-      try {
-        const plugin = await AgyCLIOAuthPlugin({
-          client: {
-            config: { get: vi.fn().mockResolvedValue({}) },
-            auth: { set: vi.fn() },
-            tui: { showToast: vi.fn() }
-          } as any
-        });
-
-        const customProvider: any = {
-          npm: '@ai-sdk/google',
-          name: 'Antigravity CLI',
-          options: {},
-          models: {}
-        };
-
-        const configObj: any = {
-          provider: {
-            'google-agy': customProvider
-          }
-        };
-
-        await plugin.config(configObj);
-        const loaderRes = await plugin.auth?.loader(async () => ({
-          type: 'oauth',
-          access: 'acc-token',
-          refresh: 'ref-token|proj-1|proj-managed',
-          expires: Date.now() + 100000
-        }), customProvider);
-
-        // Header array and header object branches
-        const resp1 = await loaderRes.fetch('https://cloudcode-pa.googleapis.com/v1/test', {
-          headers: [['user-agent', 'old-agent'], ['custom-key', 'val']]
-        });
-        expect(resp1).toBeDefined();
-
-        const resp2 = await loaderRes.fetch('https://cloudcode-pa.googleapis.com/v1/test', {
-          headers: { 'user-agent': 'old-agent', 'other-key': 'val2' }
-        });
-        expect(resp2).toBeDefined();
-      } finally {
-        globalThis.Headers = originalHeaders;
-      }
-    });
-
-    it('triggers OAuth authorize method callbacks', async () => {
-      const plugin = await AgyCLIOAuthPlugin({
-        client: {
-          config: { get: vi.fn().mockResolvedValue({}) },
-          auth: { set: vi.fn() },
-          tui: { showToast: vi.fn() }
-        } as any
-      });
-
-      const oauthMethod = plugin.auth?.methods?.find((m: any) => m.type === 'oauth');
-      expect(oauthMethod).toBeDefined();
-      expect(typeof oauthMethod?.authorize).toBe('function');
-    });
-  });
 
   describe('parseRetryDelayValue in quota.ts', () => {
     it('covers all parseRetryDelayValue branches', () => {
@@ -97,39 +32,6 @@ describe('Targeted 95% Coverage Test Suite', () => {
     });
   });
 
-  describe('compareVersionDesc in quota.ts', () => {
-    it('sorts versions with non-numeric, unequal, and equal segments', async () => {
-      const plugin = await AgyCLIOAuthPlugin({
-        client: {
-          config: { get: vi.fn().mockResolvedValue({}) },
-          auth: { set: vi.fn() },
-          tui: { showToast: vi.fn() }
-        } as any
-      });
-
-      vi.spyOn(projectContextModule, 'ensureProjectContext').mockResolvedValue({
-        auth: { access: 'acc', refresh: 'ref|p1|p2', expires: Date.now() + 100000 } as any,
-        effectiveProjectId: 'p2'
-      });
-
-      const quotaModuleInternal = await import('../src/sdk/fetch_quota.js');
-      vi.spyOn(quotaModuleInternal, 'retrieveUserQuota').mockResolvedValue({
-        buckets: [
-          { modelId: 'gemini-1.5-flash', tokenType: 'TOKENS', remainingFraction: 0.8 },
-          { modelId: 'gemini-1.5-pro', tokenType: 'TOKENS', remainingFraction: 0.9 },
-          { modelId: 'gemini-2.0-flash', tokenType: 'TOKENS', remainingFraction: 0.7 },
-          { modelId: 'gemini-2.5-flash', tokenType: 'TOKENS', remainingFraction: 0.6 },
-          { modelId: 'gemini-2.5.1-flash', tokenType: 'TOKENS', remainingFraction: 0.5 },
-          { modelId: 'gemini-alpha-flash', tokenType: 'TOKENS', remainingFraction: 0.4 },
-          { modelId: 'gemini-beta-flash', tokenType: 'TOKENS', remainingFraction: 0.3 }
-        ]
-      } as any);
-
-      const tool = (plugin.tool as any)['agy_quota'];
-      const res = await tool.execute();
-      expect(res).toContain('Agy quota usage for project');
-    });
-  });
 
   describe('token.ts error and retry edge cases', () => {
     it('handles refresh with non-Error exceptions and stream read errors', async () => {

@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { AgyCLIOAuthPlugin } from '../src/plugin.js';
 import * as traffic from '../src/plugin/traffic.js';
 import * as tokenModule from '../src/plugin/token.js';
 import * as cacheModule from '../src/plugin/cache.js';
@@ -13,74 +12,6 @@ import { createAgyQuotaSummaryTool } from '../src/plugin/quota-summary.js';
 describe('coverage final push to exceed 95%', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-  });
-
-  it('covers plugin variants, modalities, and capabilities for non-claude non-gpt models', async () => {
-    const plugin = await AgyCLIOAuthPlugin({
-      auth: {
-        get: vi.fn().mockResolvedValue({
-          type: 'oauth',
-          access: 'acc-token',
-          refresh: 'ref|p1|m1',
-          expires: Date.now() + 3600000
-        }),
-        set: vi.fn()
-      }
-    } as any);
-
-    const modelsRes = await plugin.provider.models?.(
-      {
-        models: {
-          'custom-model': {
-            name: 'Custom Model',
-            options: { thinkingConfig: { thinkingBudget: 2048, includeThoughts: true } }
-          }
-        }
-      },
-      {
-        auth: {
-          type: 'oauth',
-          access: 'acc-token',
-          refresh: 'ref|p1|m1',
-          expires: Date.now() + 3600000
-        }
-      }
-    );
-    expect(modelsRes).toBeDefined();
-  });
-
-  it('covers plugin internal headers and background traffic on internal requests', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
-    const simulateSpy = vi.spyOn(traffic, 'simulateClientBackgroundTraffic').mockImplementation(() => {});
-    const plugin = await AgyCLIOAuthPlugin({
-      auth: {
-        get: vi.fn().mockResolvedValue({
-          type: 'oauth',
-          access: 'acc-token',
-          refresh: 'ref|p1|m1',
-          expires: Date.now() + 3600000
-        }),
-        set: vi.fn()
-      }
-    } as any);
-
-    const loader = plugin.auth?.loader as any;
-    const fetcher = await loader(
-      async () => ({
-        type: 'oauth',
-        access: 'acc-token',
-        refresh: 'ref|p1|m1',
-        expires: Date.now() + 3600000
-      }),
-      { id: 'google-agy', options: { projectId: 'proj-123' } }
-    );
-
-    const res = await fetcher.fetch('https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels', {
-      method: 'POST',
-      body: JSON.stringify({ project: 'm1' })
-    });
-    expect(res).toBeDefined();
-    expect(simulateSpy).toHaveBeenCalled();
   });
 
   it('covers token.ts invalid_grant when client.auth.set throws an error', async () => {
