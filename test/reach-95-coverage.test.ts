@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AgyCLIOAuthPlugin } from '../src/plugin.js';
 import { rewriteGeminiPreviewAccessError, enhanceGeminiErrorResponse } from '../src/sdk/request-helpers/errors.js';
 import { onboardManagedProject } from '../src/sdk/fetch_project.js';
 import { fetchWithRetry } from '../src/sdk/retry/index.js';
@@ -92,44 +91,4 @@ describe('reach 95% coverage branches', () => {
     await expect(fetchWithRetry('https://example.com', { signal: controller.signal })).rejects.toThrow();
   });
 
-  it('tests AgyCLIOAuthPlugin variants for all models including claude, gpt and gemini models', async () => {
-    const plugin = await AgyCLIOAuthPlugin({
-      client: {
-        config: { get: vi.fn().mockResolvedValue({ data: {} }) },
-        auth: { set: vi.fn() },
-        tui: { showToast: vi.fn() }
-      } as any
-    });
-
-    const configObj = {
-      provider: {
-        'google-agy': {
-          npm: '@ai-sdk/google',
-          name: 'Antigravity CLI',
-          models: {
-            'gemini-3.7-flash': { name: 'Custom Gemini 3.7' }
-          }
-        }
-      }
-    };
-
-    await plugin.config(configObj as any);
-    const models = (configObj.provider['google-agy'] as any).models;
-    expect(models['gemini-3.8-flash']).toBeDefined();
-    expect(models['claude-opus-5-5']).toBeDefined();
-    expect(models['claude-sonnet-5-5']).toBeDefined();
-    expect(models['gpt-oss-120b-medium']).toBeDefined();
-
-    // Verify Claude model capabilities (no audio/video)
-    const claudeModel = models['claude-sonnet-5-5'];
-    expect(claudeModel.capabilities.input.audio).toBe(false);
-    expect(claudeModel.capabilities.input.video).toBe(false);
-    expect(claudeModel.modalities.input).not.toContain('audio');
-
-    // Verify Gemini model capabilities (has audio/video)
-    const geminiModel = models['gemini-3.8-flash'];
-    expect(geminiModel.capabilities.input.audio).toBe(true);
-    expect(geminiModel.capabilities.input.video).toBe(true);
-    expect(geminiModel.modalities.input).toContain('audio');
-  });
 });

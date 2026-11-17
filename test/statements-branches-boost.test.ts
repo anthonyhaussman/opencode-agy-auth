@@ -13,7 +13,6 @@ import * as errorHelpersModule from '../src/sdk/request-helpers/errors.js';
 import { createChatLogger } from '../src/sdk/chat-logger.js';
 import { getAgyCliVersion, buildAgyCliUserAgent, userAgentInternals } from '../src/sdk/user-agent.js';
 import { supportsOsc8Hyperlinks } from '../src/sdk/terminal-hyperlink.js';
-import { AgyCLIOAuthPlugin } from '../src/plugin.js';
 
 describe('Coverage to 95% threshold across Statements and Branches', () => {
   beforeEach(() => {
