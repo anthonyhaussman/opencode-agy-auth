@@ -212,6 +212,92 @@ describe("McpBridge", () => {
   });
 });
 
+describe("McpBridge resilience", () => {
+  async function connect(bridge: McpBridge) {
+    const client = new Client({ name: "t", version: "1" });
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(bridge.url), {
+        requestInit: { headers: { Authorization: `Bearer ${bridge.token}` } },
+      }),
+    );
+    cleanup.push(() => client.close());
+    return client;
+  }
+
+  it("tolerates_2020_12_schema", async () => {
+    const pending = new PendingTools({ softTimeoutMs: null });
+    const tools: BridgeToolDef[] = [
+      {
+        name: "strict",
+        inputSchema: {
+          $schema: "https://json-schema.org/draft/2020-12/schema",
+          type: "object",
+          properties: { n: { type: "number" } },
+          required: ["n"],
+        },
+      },
+    ];
+    const bridge = await McpBridge.start({ tools, pending });
+    cleanup.push(() => bridge.close());
+    const client = await connect(bridge);
+    expect((await client.listTools()).tools.map((t) => t.name)).toEqual(["strict"]);
+    const bad = await client.callTool({ name: "strict", arguments: { n: "x" } });
+    expect(bad.isError).toBe(true);
+    expect(text(bad)).toContain("strict");
+  });
+
+  it("uncompilable_schema_accepts_any", async () => {
+    const pending = new PendingTools({ softTimeoutMs: null });
+    const logs: string[] = [];
+    const tools: BridgeToolDef[] = [
+      { name: "weird", inputSchema: { type: "object", properties: { a: { type: "nonsense" } } } },
+    ];
+    const bridge = await McpBridge.start({ tools, pending, log: (m) => logs.push(m) });
+    cleanup.push(() => bridge.close());
+    expect(logs.some((l) => l.includes("weird"))).toBe(true);
+    const client = await connect(bridge);
+    pending.expect({ callId: "w1", toolName: "weird", input: { a: 5 } });
+    pending.resolve("w1", { text: "fine", isError: false });
+    const r = await client.callTool({ name: "weird", arguments: { a: 5 } });
+    expect(text(r)).toBe("fine");
+  });
+
+  it("reinitialize_after_client_restart", async () => {
+    const pending = new PendingTools({ softTimeoutMs: null });
+    const bridge = await McpBridge.start({ tools: TOOLS, pending });
+    cleanup.push(() => bridge.close());
+    const a = new Client({ name: "a", version: "1" });
+    await a.connect(
+      new StreamableHTTPClientTransport(new URL(bridge.url), {
+        requestInit: { headers: { Authorization: `Bearer ${bridge.token}` } },
+      }),
+    );
+    await a.listTools();
+    pending.expect({ callId: "t1", toolName: "read", input: { path: "a" } });
+    const b = await connect(bridge);
+    expect((await b.listTools()).tools.map((t) => t.name)).toEqual(["read", "ping"]);
+    pending.resolve("t1", { text: "after-swap", isError: false });
+    const r = await b.callTool({ name: "read", arguments: { path: "a" } });
+    expect(text(r)).toBe("after-swap");
+  });
+
+  it("malformed JSON body gets 400", async () => {
+    const pending = new PendingTools({ softTimeoutMs: null });
+    const bridge = await McpBridge.start({ tools: TOOLS, pending });
+    cleanup.push(() => bridge.close());
+    const res = await fetch(bridge.url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${bridge.token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+      },
+      body: "{nope",
+    });
+    expect(res.status).toBe(400);
+  });
+});
+
 describe("PendingTools", () => {
   it("claim_matches_by_name_in_order", async () => {
     const pending = new PendingTools({ softTimeoutMs: null });

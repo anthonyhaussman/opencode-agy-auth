@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 import { Ajv, type ValidateFunction } from "ajv";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import { CallToolRequestSchema, isInitializeRequest, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { STILL_RUNNING_TEXT } from "./constants";
 
 export type JSONSchema7 = Record<string, unknown>;
@@ -163,14 +163,17 @@ export class McpBridge {
   private clientSeen = false;
   private waiters: Array<() => void> = [];
   private closed = false;
+  private current: { mcp: Server; transport: StreamableHTTPServerTransport };
+  private http!: HttpServer;
+  url = "";
 
   private constructor(
-    readonly url: string,
     readonly token: string,
-    private readonly http: HttpServer,
-    private readonly mcp: Server,
-    private readonly transport: StreamableHTTPServerTransport,
-  ) {}
+    private readonly makePair: (onList: () => void) => { mcp: Server; transport: StreamableHTTPServerTransport },
+    private readonly log: ((msg: string) => void) | undefined,
+  ) {
+    this.current = makePair(() => this.markClient());
+  }
 
   static async start(opts: {
     tools: BridgeToolDef[];
@@ -180,60 +183,102 @@ export class McpBridge {
     const { tools, pending, log } = opts;
     const ajv = new Ajv({ strict: false, allErrors: true });
     const validators = new Map<string, ValidateFunction>();
-    for (const tool of tools) validators.set(tool.name, ajv.compile(tool.inputSchema));
+    for (const tool of tools) {
+      try {
+        const { $schema: _ignored, ...schema } = tool.inputSchema;
+        validators.set(tool.name, ajv.compile(schema));
+      } catch (error) {
+        log?.(
+          `schema for tool ${tool.name} could not be compiled, accepting any input: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
+
+    const makePair = (onList: () => void) => {
+      const mcp = new Server({ name: "opencode-bridge", version: "1.0.0" }, { capabilities: { tools: {} } });
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => randomBytes(16).toString("hex"),
+        enableJsonResponse: true,
+      });
+      mcp.setRequestHandler(ListToolsRequestSchema, async () => {
+        onList();
+        return {
+          tools: tools.map((t) => ({
+            name: t.name,
+            ...(t.description === undefined ? {} : { description: t.description }),
+            inputSchema: t.inputSchema as { type: "object"; [k: string]: unknown },
+          })),
+        };
+      });
+      mcp.setRequestHandler(CallToolRequestSchema, async (request) => {
+        const name = request.params.name;
+        if (!tools.some((t) => t.name === name)) return errorResult(`Unknown OpenCode tool: ${name}`);
+        const input = stripToolSummary(request.params.arguments ?? {});
+        const validate = validators.get(name);
+        if (validate && !validate(input)) {
+          const detail = ajv.errorsText(validate.errors);
+          log?.(`invalid input for ${name}: ${detail}`);
+          return errorResult(`Invalid input for OpenCode tool ${name}: ${detail}`);
+        }
+        const outcome = await pending.claim(name, input);
+        return {
+          content: [{ type: "text" as const, text: outcome.text }],
+          ...(outcome.isError ? { isError: true } : {}),
+        };
+      });
+      return { mcp, transport };
+    };
 
     const token = randomBytes(32).toString("hex");
-    const mcp = new Server({ name: "opencode-bridge", version: "1.0.0" }, { capabilities: { tools: {} } });
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => randomBytes(16).toString("hex"),
-      enableJsonResponse: true,
+    const bridge = new McpBridge(token, makePair, log);
+    await bridge.current.mcp.connect(bridge.current.transport);
+    bridge.http = createServer((req, res) => {
+      void bridge.handle(req, res);
     });
-    let self: McpBridge | undefined;
-
-    mcp.setRequestHandler(ListToolsRequestSchema, async () => {
-      self?.markClient();
-      return {
-        tools: tools.map((t) => ({
-          name: t.name,
-          ...(t.description === undefined ? {} : { description: t.description }),
-          inputSchema: t.inputSchema as { type: "object"; [k: string]: unknown },
-        })),
-      };
-    });
-
-    mcp.setRequestHandler(CallToolRequestSchema, async (request) => {
-      const name = request.params.name;
-      const validate = validators.get(name);
-      if (!validate) return errorResult(`Unknown OpenCode tool: ${name}`);
-      const input = stripToolSummary(request.params.arguments ?? {});
-      if (!validate(input)) {
-        const detail = ajv.errorsText(validate.errors);
-        log?.(`invalid input for ${name}: ${detail}`);
-        return errorResult(`Invalid input for OpenCode tool ${name}: ${detail}`);
-      }
-      const outcome = await pending.claim(name, input);
-      return { content: [{ type: "text" as const, text: outcome.text }], ...(outcome.isError ? { isError: true } : {}) };
-    });
-
-    const http = createServer((req: IncomingMessage, res: ServerResponse) => {
-      if (!tokenMatches(req.headers.authorization, token)) {
-        res.writeHead(401, { "Content-Type": "text/plain" }).end("Unauthorized");
-        return;
-      }
-      transport.handleRequest(req, res).catch((error) => {
-        log?.(`bridge request failed: ${error instanceof Error ? error.message : String(error)}`);
-        if (!res.headersSent) res.writeHead(500).end();
-      });
-    });
-
-    await mcp.connect(transport);
     await new Promise<void>((resolve, reject) => {
-      http.once("error", reject);
-      http.listen(0, "127.0.0.1", () => resolve());
+      bridge.http.once("error", reject);
+      bridge.http.listen(0, "127.0.0.1", () => resolve());
     });
-    const port = (http.address() as AddressInfo).port;
-    self = new McpBridge(`http://127.0.0.1:${port}/mcp`, token, http, mcp, transport);
-    return self;
+    bridge.url = `http://127.0.0.1:${(bridge.http.address() as AddressInfo).port}/mcp`;
+    return bridge;
+  }
+
+  private async readBody(req: IncomingMessage): Promise<string> {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(chunk as Buffer);
+    return Buffer.concat(chunks).toString("utf8");
+  }
+
+  private async handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    if (!tokenMatches(req.headers.authorization, this.token)) {
+      res.writeHead(401, { "Content-Type": "text/plain" }).end("Unauthorized");
+      return;
+    }
+    try {
+      let parsed: unknown;
+      if (req.method === "POST") {
+        try {
+          parsed = JSON.parse(await this.readBody(req));
+        } catch {
+          res.writeHead(400, { "Content-Type": "text/plain" }).end("Invalid JSON");
+          return;
+        }
+        const messages = Array.isArray(parsed) ? parsed : [parsed];
+        if (messages.some((m) => isInitializeRequest(m)) && this.current.transport.sessionId !== undefined) {
+          const old = this.current;
+          this.current = this.makePair(() => this.markClient());
+          await this.current.mcp.connect(this.current.transport);
+          this.log?.("MCP client re-initialized; replaced transport");
+          void old.mcp.close().catch(() => {});
+        }
+      }
+      await this.current.transport.handleRequest(req, res, parsed);
+    } catch (error) {
+      this.log?.(`bridge request failed: ${error instanceof Error ? error.message : String(error)}`);
+      if (!res.headersSent) res.writeHead(500).end();
+    }
   }
 
   private markClient(): void {
@@ -261,7 +306,7 @@ export class McpBridge {
   async close(): Promise<void> {
     if (this.closed) return;
     this.closed = true;
-    await this.mcp.close().catch(() => {});
+    await this.current.mcp.close().catch(() => {});
     await new Promise<void>((resolve) => {
       this.http.close(() => resolve());
       this.http.closeAllConnections();
