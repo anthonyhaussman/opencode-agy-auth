@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AgyCLIOAuthPlugin } from '../src/plugin.js';
 import * as trafficModule from '../src/plugin/traffic.js';
 import * as tokenModule from '../src/plugin/token.js';
 import * as cacheModule from '../src/plugin/cache.js';
@@ -21,63 +20,6 @@ describe('Target 95% Coverage Test Suite', () => {
     vi.restoreAllMocks();
   });
 
-  describe('src/plugin.ts edge cases', () => {
-    it('covers variants and options builder branches in getModelsList', async () => {
-      const plugin = await AgyCLIOAuthPlugin({
-        client: {
-          config: {
-            get: vi.fn().mockResolvedValue({
-              data: {
-                provider: {
-                  'google-agy': {
-                    options: {
-                      models: {
-                        'gemini-3.8-flash': {
-                          variants: {
-                            low: { thinkingConfig: { maxTokens: 100 } },
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            }),
-          },
-        } as any,
-      });
-
-      const configResult: any = {
-        provider: {
-          'google-agy': {
-            models: {
-              'gemini-3.8-flash': {
-                modalities: { input: ['text'], output: ['text'] },
-                capabilities: { input: ['text'], output: ['text'] },
-              },
-            },
-          },
-        },
-      };
-
-      await plugin.config!(configResult);
-      expect(configResult.provider['google-agy'].models['gemini-3.8-flash']).toBeDefined();
-    });
-
-    it('covers custom auth loader and methods', async () => {
-      const plugin = await AgyCLIOAuthPlugin({ client: {} as any });
-      const authHandler: any = (plugin.auth as any).methods.find((m: any) => m.type === 'oauth');
-      expect(authHandler).toBeDefined();
-      expect(authHandler.authorize).toBeInstanceOf(Function);
-
-      const loaderObj = await plugin.auth.loader(
-        async () => ({ type: 'oauth', tokens: { access: 'token-abc' } } as any),
-        { models: {} } as any
-      );
-      expect(loaderObj.apiKey).toBe('');
-      expect(loaderObj.fetch).toBeInstanceOf(Function);
-    });
-  });
 
   describe('src/plugin/token.ts edge cases', () => {
     it('handles refresh errors and invalid grant', async () => {

@@ -1,7 +1,7 @@
 import type { OpencodeClient, Auth } from '@opencode-ai/sdk';
 import type { Provider as ProviderV1 } from '@opencode-ai/sdk';
 import type { Model as ModelV2 } from '@opencode-ai/sdk/v2';
-import type { Hooks, Config as PluginConfig } from '@opencode-ai/plugin';
+import type { Config as PluginConfig } from '@opencode-ai/plugin';
 
 export type OAuthAuthDetails = Extract<Auth, { type: 'oauth' }>;
 export type AuthDetails = Auth;
@@ -12,18 +12,7 @@ export type ProviderModel = ModelV2;
 
 export type Config = PluginConfig;
 
-export interface LoaderResult {
-  apiKey: string;
-  fetch(input: RequestInfo, init?: RequestInit): Promise<Response>;
-}
-
 export type PluginClient = OpencodeClient;
-
-export interface PluginContext {
-  client: PluginClient;
-}
-
-export type PluginResult = Hooks;
 
 export interface RefreshParts {
   refreshToken: string;
@@ -74,10 +63,6 @@ export interface OpenCodeV2PluginContext {
 export interface OpenCodeV2PluginDefinition {
   id: string;
   setup: (ctx: OpenCodeV2PluginContext) => Promise<void> | void;
-}
-
-export interface DualOpenCodePlugin extends OpenCodeV2PluginDefinition {
-  server: (options: any) => Promise<any>;
 }
 
 export function defineOpenCodeV2Plugin(

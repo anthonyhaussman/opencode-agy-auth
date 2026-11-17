@@ -3,7 +3,6 @@ import { createAgyQuotaTool } from '../../src/plugin/quota.js';
 import { createAgyQuotaSummaryTool } from '../../src/plugin/quota-summary.js';
 import * as projectContextPlugin from '../../src/plugin/project/context.js';
 import * as projectPlugin from '../../src/plugin/project/index.js';
-import { AgyCLIOAuthPlugin } from '../../src/plugin.js';
 import * as fetchModule from '../../src/fetch.js';
 import { RetrieveUserQuotaBucket } from '../../src/sdk/fetch_quota.js';
 
@@ -118,83 +117,4 @@ describe('Plugin and Quota Edge Cases', () => {
     });
   });
 
-  describe('plugin.ts edge cases', () => {
-    it('handles plugin models hook when resolver throws (lines 635-637)', async () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const client: any = {
-        config: {
-          get: vi.fn().mockReturnValue({})
-        }
-      };
-
-      const plugin = await AgyCLIOAuthPlugin({ client } as any);
-      let throwOnNextCall = false;
-      const authResolver = vi.fn().mockImplementation(async () => {
-        if (throwOnNextCall) {
-          throw new Error('Resolver broken');
-        }
-        return {
-          type: 'oauth',
-          access: 'test-token',
-          refresh: 'test-refresh',
-          expires: Date.now() + 100000
-        };
-      });
-
-      // Initialize loader first
-      await plugin.auth.loader(authResolver);
-
-      // Now enable throwing for models hook
-      throwOnNextCall = true;
-      const resultAfterLoader = await plugin.provider.models(
-        {},
-        {
-          auth: undefined
-        }
-      );
-
-      expect(resultAfterLoader).toEqual({
-        'login-required': {
-          name: 'No models available'
-        }
-      });
-      expect(warnSpy).toHaveBeenCalled();
-    });
-
-    it('handles internal request with Authorization header already present (lines 520-523)', async () => {
-      const agyFetchSpy = vi.spyOn(fetchModule, 'agyFetch').mockResolvedValue(
-        new Response(JSON.stringify({ ok: true }), { status: 200 })
-      );
-
-      const client: any = {
-        config: { get: vi.fn().mockReturnValue({}) }
-      };
-
-      const plugin = await AgyCLIOAuthPlugin({ client } as any);
-      const authResolver = vi.fn().mockResolvedValue({
-        type: 'oauth',
-        access: 'token-abc',
-        refresh: 'refresh-token',
-        expires: Date.now() + 100000
-      });
-
-      const auth = await plugin.auth.loader(authResolver);
-
-      const response = await auth.fetch('https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels', {
-        headers: {
-          'Authorization': 'Bearer [REDACTED:Bearer token]'
-        }
-      });
-
-      expect(response.status).toBe(200);
-      expect(agyFetchSpy).toHaveBeenCalledWith(
-        'https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels',
-        expect.objectContaining({
-          headers: {
-            'Authorization': 'Bearer [REDACTED:Bearer token]'
-          }
-        })
-      );
-    });
-  });
 });

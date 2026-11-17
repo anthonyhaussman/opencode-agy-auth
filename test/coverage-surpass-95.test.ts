@@ -1,5 +1,4 @@
 import { describe, it, expect, vi } from 'vitest';
-import { AgyCLIOAuthPlugin } from '../src/plugin.js';
 import * as trafficModule from '../src/plugin/traffic.js';
 import * as tokenModule from '../src/plugin/token.js';
 import * as chatLoggerModule from '../src/sdk/chat-logger.js';
@@ -14,94 +13,6 @@ import { createAgyQuotaTool } from '../src/plugin/quota.js';
 import { createAgyQuotaSummaryTool } from '../src/plugin/quota-summary.js';
 
 describe('Coverage Surpass 95% Suite', () => {
-  it('covers plugin loader internal endpoint with configured project background traffic', async () => {
-    const simulateSpy = vi.spyOn(trafficModule, 'simulateClientBackgroundTraffic').mockReturnValue();
-    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
-    vi.stubGlobal('fetch', fetchMock);
-
-    const client = {
-      auth: { set: vi.fn() },
-      config: { get: vi.fn().mockResolvedValue({}) },
-      tui: { showToast: vi.fn() }
-    } as any;
-
-    const plugin = await AgyCLIOAuthPlugin(client);
-    const providerObj: any = {
-      options: { projectId: 'test-project-123' },
-      models: {}
-    };
-
-    const loaderResult = await plugin.auth?.loader(
-      async () => ({
-        type: 'oauth',
-        access: 'valid-acc-123',
-        refresh: 'valid-refresh-123',
-        expires: Date.now() + 3600000
-      }),
-      providerObj
-    );
-
-    const res = await loaderResult.fetch('https://cloudcode-pa.googleapis.com/v1internal:test', {
-      headers: { 'Custom-Header': 'val' }
-    });
-
-    expect(res).toBeDefined();
-    expect(simulateSpy).toHaveBeenCalled();
-    simulateSpy.mockRestore();
-    vi.unstubAllGlobals();
-  });
-
-  it('covers plugin loader missing token and auth record empty access', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
-    vi.stubGlobal('fetch', fetchMock);
-
-    const plugin = await AgyCLIOAuthPlugin({
-      auth: { set: vi.fn() },
-      config: { get: vi.fn().mockResolvedValue({}) },
-      tui: { showToast: vi.fn() }
-    } as any);
-
-    const loaderResult = await plugin.auth?.loader(
-      async () => ({
-        type: 'oauth',
-        access: '',
-        refresh: 'valid-refresh-123',
-        expires: Date.now() + 3600000
-      }),
-      { models: {} } as any
-    );
-
-    const res = await loaderResult.fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent', {});
-    expect(res).toBeDefined();
-    vi.unstubAllGlobals();
-  });
-
-  it('covers plugin loader token refresh returning falsy', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
-    vi.stubGlobal('fetch', fetchMock);
-    const refreshSpy = vi.spyOn(tokenModule, 'refreshAccessToken').mockResolvedValue(null);
-
-    const plugin = await AgyCLIOAuthPlugin({
-      auth: { set: vi.fn() },
-      config: { get: vi.fn().mockResolvedValue({}) },
-      tui: { showToast: vi.fn() }
-    } as any);
-
-    const loaderResult = await plugin.auth?.loader(
-      async () => ({
-        type: 'oauth',
-        access: 'expired-acc',
-        refresh: 'refresh-123',
-        expires: Date.now() - 10000
-      }),
-      { models: {} } as any
-    );
-
-    const res = await loaderResult.fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent', {});
-    expect(res).toBeDefined();
-    refreshSpy.mockRestore();
-    vi.unstubAllGlobals();
-  });
 
   it('covers quota tools empty and disabled buckets', async () => {
     vi.spyOn(tokenModule, 'refreshAccessToken').mockResolvedValue({

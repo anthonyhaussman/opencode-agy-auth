@@ -1,5 +1,4 @@
 import { describe, it, expect, vi } from 'vitest';
-import { AgyCLIOAuthPlugin } from '../src/plugin.js';
 import * as retryModule from '../src/sdk/retry/index.js';
 import * as chatLoggerModule from '../src/sdk/chat-logger.js';
 import * as signatureCacheModule from '../src/sdk/cache/signature-cache.js';
@@ -87,39 +86,4 @@ describe('Final 95% Target Booster Suite', () => {
     vi.unstubAllGlobals();
   });
 
-  it('covers plugin config capabilities and modalities for all model families', async () => {
-    const client = {
-      auth: { set: vi.fn() },
-      config: { get: vi.fn().mockResolvedValue({}) },
-      tui: { showToast: vi.fn() }
-    } as any;
-
-    const plugin = await AgyCLIOAuthPlugin(client);
-
-    // Call config hook with empty provider
-    const cfg: any = {
-      provider: {
-        'google-agy': {
-          models: {}
-        }
-      }
-    };
-
-    await plugin.config(cfg);
-    const models = cfg.provider['google-agy'].models;
-
-    // Check claude models have specific modalities
-    const claudeModel = models['claude-sonnet-4.5'];
-    if (claudeModel) {
-      expect(claudeModel.family).toBe('claude');
-      expect(claudeModel.modalities.input).not.toContain('audio');
-    }
-
-    // Check gemini models have audio and video modalities
-    const geminiModel = models['gemini-2.5-pro'];
-    if (geminiModel) {
-      expect(geminiModel.family).toBe('gemini');
-      expect(geminiModel.modalities.input).toContain('audio');
-    }
-  });
 });
