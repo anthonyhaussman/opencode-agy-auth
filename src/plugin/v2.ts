@@ -291,15 +291,14 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
       };
 
       const buildModelRecord = (modelId: string, simple: SimpleStaticModel, existingModel?: any) => {
-        const isClaude = modelId.startsWith('claude-');
-        const isGpt = modelId.startsWith('gpt-');
         const variants = resolveVariants(modelId);
+        const family = modelId.split('-')[0] || 'unknown';
         return {
           id: modelId,
           providerID: AGY_PROVIDER_ID,
           name: simple.name,
           description: simple.description,
-          family: modelId.includes('gemini') ? 'gemini' : (isClaude ? 'claude' : (isGpt ? 'gpt' : 'unknown')),
+          family,
           reasoning: simple.reasoning,
           attachment: simple.attachment,
           tool_call: simple.toolCall,
@@ -324,7 +323,7 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
           context: simple.maxTokens,
           output: simple.maxOutputTokens,
         };
-        m.family = modelId.includes('gemini') ? 'gemini' : (modelId.startsWith('claude-') ? 'claude' : (modelId.startsWith('gpt-') ? 'gpt' : 'unknown'));
+        m.family = modelId.split('-')[0] || 'unknown';
         if (simple.cost) {
           m.cost = simple.cost;
         }

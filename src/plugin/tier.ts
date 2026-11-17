@@ -46,10 +46,10 @@ export function inferModelMetadata(modelId: string): SimpleStaticModel {
     maxOutputTokens = 32768;
     attachment = false;
   } else if (isGemini) {
-    // Gemini 4 Hydrogen has larger output
-    if (modelId.includes('hydrogen')) {
-      maxOutputTokens = 262144;
-    }
+    // Some newer variants have larger output
+  if (maxOutputTokens < 262144 && /-4\b/.test(modelId) && modelId.split('-').length > 3) {
+    maxOutputTokens = 262144;
+  }
     name = modelId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     description = `${name} base model. Select tier at runtime.`;
     attachment = true;
@@ -68,8 +68,6 @@ export function inferModelMetadata(modelId: string): SimpleStaticModel {
 
 /**
  * Extract base model ID from a tiered model ID.
- * e.g., "gemini-3.8-flash-low" -> "gemini-3.8-flash"
- * e.g., "claude-opus-5-5-high" -> "claude-opus-5-5"
  */
 export function extractBaseModelId(tieredModelId: string): string {
   const tierSuffixes = ['-minimal', '-low', '-medium', '-high', '-xhigh'];

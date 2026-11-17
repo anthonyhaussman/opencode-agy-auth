@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 
 import { AGY_CODE_ASSIST_ENDPOINT } from "../../constants";
-import modelsJson from "../../../models.json";
 import { normalizeThinkingConfig } from "../request-helpers";
 import { buildAgyCliUserAgent } from "../user-agent";
 import { normalizeRequestPayloadIdentifiers, normalizeWrappedIdentifiers } from "./identifiers";
@@ -109,23 +108,6 @@ export const LEGACY_MODEL_ENUM_FALLBACKS: Record<string, string> = {
 };
 
 export function getModelEnum(modelName: string): string {
-  const deprecated = (modelsJson as any).deprecatedModelIds;
-  if (deprecated && deprecated[modelName]) {
-    const entry = deprecated[modelName];
-    if (typeof entry === "string" && LEGACY_MODEL_ENUM_FALLBACKS[entry]) {
-      return LEGACY_MODEL_ENUM_FALLBACKS[entry];
-    }
-    if (entry.newModelEnum) {
-      return entry.newModelEnum;
-    }
-  }
-  const models = (modelsJson as any).models;
-  if (models && models[modelName] && models[modelName].model) {
-    return models[modelName].model;
-  }
-  if (deprecated && deprecated[modelName] && deprecated[modelName].oldModelEnum) {
-    return deprecated[modelName].oldModelEnum;
-  }
   if (LEGACY_MODEL_ENUM_FALLBACKS[modelName]) {
     return LEGACY_MODEL_ENUM_FALLBACKS[modelName];
   }

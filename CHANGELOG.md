@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.6.0-kpihx.1] — fork identity + fully dynamic catalog (2026-11-17)
+
+Fork of `anthonyhaussman/opencode-agy-auth`, maintained by KpihX (`kpihx-labs`).
+
+### Changed
+
+* **identity:** package renamed `@anthonyhaussman/opencode-agy-auth` → `@kpihx-labs/opencode-agy-auth`.
+  A stray npm spec (`@latest` in a project-scope `.opencode/opencode.json`) could otherwise be
+  installed alongside the local `file://` fork and silently override the provider's model list
+  with upstream statics. Distinct naming makes that collision impossible to miss.
+* **models:** fully dynamic catalog. Model IDs are read live from the AGY quota API
+  (`retrieveUserQuota`), tier mapping and display metadata are inferred from the returned IDs.
+  `STATIC_MODELS_SIMPLE`, `TIER_MAPPING` and the bundled `models.json` catalog are removed.
+
 ## [1.5.8](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.5.6...1.5.8) (2026-11-13)
 
 
