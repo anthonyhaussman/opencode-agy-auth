@@ -159,3 +159,141 @@ so it must be typed locally. Not exercised with a probe plugin.
 - `DISABLE_BUILTINS_STRATEGY`: **none works**. Closest partial: custom
   `--agent` with restricted `tools`, which loses ACP MCP tools.
 - `SESSION_HOOK_MODEL_REQUEST`: `true` (static evidence).
+
+## Follow-up spike: restricted agent shipped in an agy plugin
+
+Date: 2026-11-17, agy 1.5.10. Scratch in `/tmp/agy-acp-spike/`, cwd
+`/tmp/agy-acp-spike/ws`.
+
+### Verdict: PASS for the Q1 gate, with a different bridge shape
+
+Mutating built-ins are absent and uncallable, and a bridge MCP tool is callable
+with a per-process URL and token. Two things change versus the original plan:
+the bridge must be a **plugin-declared stdio MCP server** (not ACP
+`session/new` `mcpServers`), and bridge tools are invoked through agy's generic
+`call_mcp_tool`, not as `mcp_<server>_<tool>`.
+
+### What was touched
+
+- Workspace-local plugin attempt: `ws/.agents/plugins.json` with
+  `{"entries":[{"path":"plugins"}]}` plus `ws/plugins/bridgeplug/`. agy
+  discovered the agent and connected to the plugin MCP server, but no MCP tools
+  were offered. Removed.
+- Global install (needed for the working result): `agy plugin install
+  /tmp/agy-acp-spike/plug/bridgeplug` created
+  `~/.gemini/config/plugins/bridgeplug/` (agy also records it in its own
+  config). Removed afterwards with `agy plugin uninstall bridgeplug`;
+  `agy plugin list` shows only the pre-existing `lean-ctx`. I did not edit
+  `~/.gemini/config/config.json` or `settings.json` by hand, and read no
+  credentials.
+- agy generated schema files under `~/.gemini/antigravity-cli/mcp/` (agy's own
+  cache).
+
+### Working strategy (exact files)
+
+`plugin.json`:
+
+```json
+{"name":"bridgeplug","version":"1.0.0","description":"..."}
+```
+
+`agents/pbagent.md`:
+
+```markdown
+---
+name: pbagent
+description: Restricted agent using only bridge MCP tools.
+mainAgent: true
+subagent: false
+enable_mcp_tools: true
+tools: [read_file]
+---
+<system prompt>
+```
+
+`mcp_config.json` (static, stdio):
+
+```json
+{"mcpServers":{"pbridge":{"command":"node","args":["/abs/path/to/bridge-proxy.mjs"]}}}
+```
+
+Run: `agy acp --agent pbagent` (the plugin must be installed; `agy plugin
+install <dir>` is a global install, there is no per-invocation plugin dir).
+
+Tool list the model sees: `read_file`, `call_mcp_tool`, `list_resources`,
+`read_resource`, `manage_task`. Asked to call `write_file`, `run_command`,
+`search_web`, `schedule`, `send_message`, `invoke_subagent`, `run_workflow`,
+`swarm`, the model reported each "does not exist" (live).
+
+### MCP tool call shape
+
+- MCP tools are not listed individually; the model reads the schema from
+  `~/.gemini/antigravity-cli/mcp/<plugin>_<server>/<tool>.json` with
+  `read_file`, then calls `call_mcp_tool`.
+- `tool_call`: `name: "call_mcp_tool"`, `title: "MCP Tool <tool>"`,
+  `kind: "execute"`, `args: {ServerName:"<plugin>_<server>", ToolName:"echo",
+  Arguments:{...}}`. Server name is `<plugin name>_<server key>`
+  (`bridgeplug_pbridge`). Final update has `rawOutput` (string) and
+  `content[0].content.text`. Permission request is sent (`allow`/`deny`
+  optionIds) before execution; bridge calls must be allowed, everything else
+  denied.
+
+### Naming variants for `tools` (all fail)
+
+`tools:` only accepts built-in registry names. Each of these fails agent
+construction with `tool "<x>" not found in registry`: `mcp_pbridge_echo`,
+`mcp_pbridge_*`, `pbridge`, `mcp(pbridge/echo)`, `mcp(pbridge/*)`,
+`pbridge_echo`, `echo`, `mcp__pbridge__echo`, `pbridge/echo`, `mcp`. MCP
+tools are exposed to a custom agent only through `enable_mcp_tools: true`
+(which yields `call_mcp_tool`, `list_resources`, `read_resource`).
+
+### ACP `session/new` mcpServers with the restricted agent (fails)
+
+With `--agent pbagent`, the ACP-supplied server is connected but its tools are
+not usable: `call_mcp_tool` on `spikebridge` returns `tool echo is not enabled
+for server spikebridge`. So ACP-supplied `mcpServers` cannot be used with the
+restricted agent. Also, plugin MCP servers appear to the default agent only via
+`call_mcp_tool`; the default agent's built-ins stay exposed.
+
+### Per-session URL and token
+
+- `${VAR}` interpolation in plugin `mcp_config.json` (url, headers) is not
+  usable: undeclared variables are passed literally; declaring them in
+  `variables` makes the plugin disabled until they are filled in interactively
+  (`agy plugin enable` refuses: "open /plugin in the interactive CLI").
+- **Works:** a plugin stdio MCP server inherits the environment of the
+  `agy acp` process (verified: `BRIDGE_PORT`, `BRIDGE_TOKEN`,
+  `BRIDGE_SESSION` set on the spawn were visible in the stdio server, cwd =
+  plugin dir). Design: ship a static stdio proxy that forwards MCP requests
+  to the OpenCode-side HTTP bridge using `BRIDGE_URL`/`BRIDGE_TOKEN` read from
+  its env. Values are per agy process; use one `agy acp` process per session
+  (or `--process-per-session`) to make them per session, or carry the
+  session id in a tool argument.
+- Wait limit for blocked MCP calls was measured earlier (180 s) on the ACP
+  route; not re-measured through the plugin stdio route.
+
+### Concerns
+
+1. `read_file` is not workspace-confined: it read `/tmp/agy-acp-spike/outside.txt`
+   outside the cwd with no permission request (paths must be absolute). Read-only
+   but can read any user-readable file. Possible mitigation not tested:
+   `--settings` `permissions.deny` `read_file(<path>)`.
+2. Requires a global `agy plugin install` into `~/.gemini/config/plugins/`
+   (no per-invocation plugin dir; workspace-local plugin MCP tools did not
+   surface). The plugin must install/update itself and the stdio proxy path must
+   be absolute and stable.
+3. Tool schemas are discovered through agy's cache dir via `read_file`, adding
+   one extra tool call per tool per session.
+4. `manage_task` remains (no way to start tasks without `run_command`).
+
+### Updated values
+
+- `DISABLE_BUILTINS_STRATEGY`: install a plugin with restricted markdown agent
+  (`mainAgent: true`, `enable_mcp_tools: true`, `tools: [read_file]`) and a
+  static stdio MCP server entry; start `agy acp --agent <agent>` with the dynamic
+  values in the process env; do not pass ACP `mcpServers`.
+- `READ_ONLY_BUILTINS`: `read_file`, `list_resources`, `read_resource`
+  (plus harmless `manage_task`); `call_mcp_tool` is the bridge channel.
+- `BRIDGE_TOOL_PREFIX`: not a name prefix any more; match `name ===
+  "call_mcp_tool"` and `args.ServerName === "<plugin>_<server>"`, tool in
+  `args.ToolName`, input in `args.Arguments`.
