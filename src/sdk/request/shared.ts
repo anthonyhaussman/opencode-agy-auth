@@ -36,7 +36,14 @@ export function isGenerativeLanguageRequest(input: RequestInfo): input is string
 export function parseGenerativeLanguageRequest(input: RequestInfo):
   | { requestedModel: string; effectiveModel: string; action: string }
   | undefined {
-  const match = toRequestUrlString(input).match(/\/models\/([^:]+):(\w+)/);
+  const url = toRequestUrlString(input);
+  // Standard Generative Language shape: /v1beta/models/<model>:<action>
+  // Slash-namespaced shape: /v1beta/<account>/<model>:<action> — produced when a
+  // provider model id itself contains a slash (multi-account namespaces), the
+  // SDK then omits the "models/" segment entirely.
+  const match =
+    url.match(/\/models\/([^:]+):(\w+)/) ??
+    (url.includes(GENERATIVE_LANGUAGE_HOST) ? url.match(/\/v1beta\/([^:]+):(\w+)/) : null);
   if (!match) {
     return undefined;
   }
@@ -51,6 +58,39 @@ export function parseGenerativeLanguageRequest(input: RequestInfo):
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object";
+}
+
+/**
+ * Replace the requested model token inside a request URL, supporting both the
+ * `/models/<model>:` and the slash-namespaced `/<model>:` shapes. Returns the
+ * original input untouched when the token is absent.
+ */
+export function rewriteRequestedModelInInput(
+  input: RequestInfo,
+  from: string,
+  to: string,
+): RequestInfo {
+  if (!from) {
+    return input;
+  }
+  const url = toRequestUrlString(input);
+  let next = url;
+  const withModels = `models/${from}`;
+  if (next.includes(withModels)) {
+    next = next.replace(withModels, `models/${to}`);
+  } else if (next.includes(`/${from}:`)) {
+    next = next.replace(`/${from}:`, `/${to}:`);
+  }
+  if (next === url) {
+    return input;
+  }
+  if (typeof input === "string") {
+    return next;
+  }
+  if (typeof Request !== "undefined" && input instanceof Request) {
+    return new Request(next, input);
+  }
+  return next;
 }
 
 export function readString(value: unknown): string | undefined {

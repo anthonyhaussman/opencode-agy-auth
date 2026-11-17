@@ -21,9 +21,10 @@ import {
 } from './types';
 import { authorizeAgy, exchangeAgyWithVerifier } from '../sdk/oauth';
 import { parseOAuthCallbackInput } from './oauth-authorize';
-import { formatRefreshParts } from './auth';
+import { formatRefreshParts, parseRefreshParts } from './auth';
 import { ensureProjectContext, retrieveUserQuota } from './project';
 import {
+  loadAccountStore,
   loadStoredAuthFromJson,
   saveStoredAuthToJson,
   setStoredAuthOverrideForTesting,
@@ -62,29 +63,80 @@ async function buildDynamicModelCatalogForV2(ctx: OpenCodeV2PluginContext): Prom
   tierMapping: Record<string, Record<string, string>>;
   projectId: string | undefined;
 }> {
-  // Get auth via connection API (handles token refresh)
+  const models: Record<string, SimpleStaticModel> = {};
+  const tierMapping: Record<string, Record<string, string>> = {};
+  let firstProjectId: string | undefined;
+
+  const addCatalogForAccount = async (
+    account: string | undefined,
+    authRecord: any,
+    projectId: string | undefined
+  ): Promise<void> => {
+    if (!authRecord?.access || !projectId) {
+      return;
+    }
+    const availableModelIds = await fetchAvailableModelIds(
+      retrieveUserQuota,
+      authRecord.access,
+      projectId,
+      undefined
+    );
+    if (availableModelIds.size === 0) {
+      return;
+    }
+    const accountTiers = buildTierMapping(Array.from(availableModelIds));
+    for (const [baseModelId, variants] of Object.entries(accountTiers)) {
+      const key = account ? `${account}/${baseModelId}` : baseModelId;
+      models[key] = inferModelMetadata(baseModelId);
+      tierMapping[key] = variants;
+    }
+    if (!firstProjectId) {
+      firstProjectId = projectId;
+    }
+  };
+
+  const store = loadAccountStore();
+  const accountNames = Object.keys(store.accounts);
+
+  if (accountNames.length > 0) {
+    // Multi-account: one namespace per account, project id per account.
+    for (const name of accountNames) {
+      const record = store.accounts[name];
+      if (!record || !isOAuthAuth(record) || !record.access) {
+        continue;
+      }
+      const projectId = parseRefreshParts(record.refresh).projectId;
+      try {
+        await addCatalogForAccount(name, record, projectId);
+      } catch {
+        // Skip accounts whose quota cannot be read.
+      }
+    }
+    return { models, tierMapping, projectId: firstProjectId };
+  }
+
+  // Legacy single account: connection API (handles token refresh) then storage.
   const connApi = (ctx.integration as any)?.connection;
   if (!connApi || typeof connApi.active !== 'function' || typeof connApi.resolve !== 'function') {
-    return { models: {}, tierMapping: {}, projectId: undefined };
+    return { models, tierMapping, projectId: firstProjectId };
   }
 
   try {
     const active = await connApi.active(AGY_PROVIDER_ID);
     if (!active) {
-      return { models: {}, tierMapping: {}, projectId: undefined };
+      return { models, tierMapping, projectId: firstProjectId };
     }
 
     const resolved = await connApi.resolve(active);
     if (!resolved || resolved.type !== 'credential' || resolved.credential?.type !== 'oauth') {
-      return { models: {}, tierMapping: {}, projectId: undefined };
+      return { models, tierMapping, projectId: firstProjectId };
     }
 
     const authRecord = resolved.credential;
     if (!authRecord.access || !authRecord.refresh) {
-      return { models: {}, tierMapping: {}, projectId: undefined };
+      return { models, tierMapping, projectId: firstProjectId };
     }
 
-    // Get projectId from config via connection API
     let projectId: string | undefined;
     try {
       const configResult = await connApi.config?.get?.();
@@ -95,33 +147,11 @@ async function buildDynamicModelCatalogForV2(ctx: OpenCodeV2PluginContext): Prom
       // Ignore config read errors
     }
 
-    // Fallback to env vars
     projectId = projectId || process.env.OPENCODE_AGY_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT_ID;
-    if (!projectId) {
-      return { models: {}, tierMapping: {}, projectId: undefined };
-    }
-
-    const availableModelIds = await fetchAvailableModelIds(
-      retrieveUserQuota,
-      authRecord.access,
-      projectId,
-      undefined
-    );
-
-    if (availableModelIds.size === 0) {
-      return { models: {}, tierMapping: {}, projectId };
-    }
-
-    const tierMapping = buildTierMapping(Array.from(availableModelIds));
-    const models: Record<string, SimpleStaticModel> = {};
-
-    for (const baseModelId of Object.keys(tierMapping)) {
-      models[baseModelId] = inferModelMetadata(baseModelId);
-    }
-
-    return { models, tierMapping, projectId };
+    await addCatalogForAccount(undefined, authRecord, projectId);
+    return { models, tierMapping, projectId: firstProjectId };
   } catch {
-    return { models: {}, tierMapping: {}, projectId: undefined };
+    return { models, tierMapping, projectId: firstProjectId };
   }
 }
 
@@ -243,7 +273,7 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
           context: simple.maxTokens,
           output: simple.maxOutputTokens,
         };
-        m.family = modelId.includes('gemini') ? 'gemini' : (modelId.startsWith('claude-') ? 'claude' : (modelId.startsWith('gpt-') ? 'gpt' : 'unknown'));
+        m.family = (modelId.split('/').pop() || modelId).split('-')[0] || 'unknown';
         if (simple.cost) {
           m.cost = simple.cost;
         }
@@ -292,7 +322,7 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
 
       const buildModelRecord = (modelId: string, simple: SimpleStaticModel, existingModel?: any) => {
         const variants = resolveVariants(modelId);
-        const family = modelId.split('-')[0] || 'unknown';
+        const family = (modelId.split('/').pop() || modelId).split('-')[0] || 'unknown';
         return {
           id: modelId,
           providerID: AGY_PROVIDER_ID,
@@ -323,7 +353,7 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
           context: simple.maxTokens,
           output: simple.maxOutputTokens,
         };
-        m.family = modelId.split('-')[0] || 'unknown';
+        m.family = (modelId.split('/').pop() || modelId).split('-')[0] || 'unknown';
         if (simple.cost) {
           m.cost = simple.cost;
         }

@@ -22,13 +22,15 @@ import {
   isGenerativeLanguageRequest,
   parseGenerativeLanguageRequest,
   prepareAgyRequest,
+  rewriteRequestedModelInInput,
   type ThinkingConfigDefaults,
   transformAgyResponse
 } from './sdk/request';
 import { createChatLogger } from './sdk/chat-logger';
 import { fetchWithRetry } from './sdk/retry';
 import { refreshAccessToken } from './plugin/token';
-import { loadStoredAuthFromJson } from './plugin/v2-storage';
+import { loadStoredAuthFromJson, loadAccountStore, loadAccountAuth, splitAccountModel, accountModelKey } from './plugin/v2-storage';
+import { getModelEnums } from './plugin/model-enums';
 import type {
   GetAuth,
   OAuthAuthDetails,
@@ -76,6 +78,45 @@ let latestAgyAuthResolver: GetAuth | undefined;
 let latestAgyConfiguredProjectId: string | undefined;
 let latestAgyUserAgentModel: string | undefined;
 
+// Account health: a 429 means that specific account is out of quota, not that
+// the provider is broken. Track it so the next request can fail over instead of
+// re-spending the same exhausted bucket.
+const exhaustedAccounts = new Map<string, number>();
+const EXHAUSTION_TTL_MS = 30 * 60 * 1000;
+
+const isAccountExhausted = (name: string | undefined): boolean => {
+  if (!name) return false;
+  const until = exhaustedAccounts.get(name);
+  if (!until) return false;
+  if (Date.now() > until) {
+    exhaustedAccounts.delete(name);
+    return false;
+  }
+  return true;
+};
+
+const markAccountExhausted = (name: string | undefined): void => {
+  if (!name) return;
+  exhaustedAccounts.set(name, Date.now() + EXHAUSTION_TTL_MS);
+};
+
+/** Pick the account to authenticate with: requested → first healthy → requested. */
+const pickUsableAccount = (requested: string | undefined): string | undefined => {
+  const store = loadAccountStore();
+  const usable = Object.keys(store.accounts).filter((name) => {
+    const record = store.accounts[name];
+    return Boolean(record?.refresh) && !record?.needsCredentials;
+  });
+  if (usable.length === 0) {
+    return undefined;
+  }
+  if (requested && usable.includes(requested) && !isAccountExhausted(requested)) {
+    return requested;
+  }
+  const fallback = usable.find((name) => !isAccountExhausted(name));
+  return fallback ?? requested ?? usable[0];
+};
+
 /**
  * Build a ProviderModel from a base model ID and its tier variants.
  * All metadata inferred dynamically — zero hardcoding.
@@ -83,11 +124,13 @@ let latestAgyUserAgentModel: string | undefined;
  */
 const buildModelFromBase = (
   baseModelId: string,
-  tierVariants: Record<string, string>
+  tierVariants: Record<string, string>,
+  account?: string
 ): ProviderModel => {
   const metadata = inferModelMetadata(baseModelId);
   const isClaude = baseModelId.startsWith('claude-');
   const isGpt = baseModelId.startsWith('gpt-');
+  const namespacedId = account ? accountModelKey(account, baseModelId) : baseModelId;
 
   const variants: Record<string, any> = {};
   for (const [tier, tieredModelId] of Object.entries(tierVariants)) {
@@ -105,14 +148,14 @@ const buildModelFromBase = (
   }
 
   return {
-    id: baseModelId,
+    id: namespacedId,
     providerID: AGY_PROVIDER_ID,
     api: {
       id: AGY_PROVIDER_ID,
       url: 'https://cloudcode-pa.googleapis.com',
       npm: '@ai-sdk/google'
     },
-    name: metadata.name,
+    name: account ? `${metadata.name} [${account}]` : metadata.name,
     family: baseModelId.includes('gemini') ? 'gemini' : (isClaude ? 'claude' : (isGpt ? 'gpt' : 'unknown')),
     status: 'active' as const,
     release_date: '2026-05-26',
@@ -269,18 +312,21 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
   const resolveListingProjectId = async (
     provider: ProviderV2,
     authRecord: OAuthAuthDetails,
-    useClient: boolean
+    useClient: boolean,
+    preferAccountProject = false
   ): Promise<string | undefined> => {
-    if (useClient) {
+    if (useClient && !preferAccountProject) {
       const viaClient = await resolveLatestConfiguredProjectId(provider);
       if (viaClient) return viaClient;
     }
-    const viaSync = resolveConfiguredProjectId({ provider: provider as unknown as Provider });
-    if (viaSync) return viaSync;
-    const parts = parseRefreshParts(authRecord.refresh);
-    if (parts.projectId) return parts.projectId;
-    // Last resort (no client needed): discover the managed project from the
-    // AGY backend, mirroring what the loader does via ensureProjectContext.
+    if (!preferAccountProject) {
+      const viaSync = resolveConfiguredProjectId({ provider: provider as unknown as Provider });
+      if (viaSync) return viaSync;
+    }
+    // Prefer the managed project the backend reports for THIS account over the
+    // project id embedded in the refresh token: the embedded one can belong to
+    // another/stale project and yields "Resource has been exhausted" (429) even
+    // when the account's real quota is untouched.
     try {
       const discovered = await withTimeout(
         resolveProjectContextFromAccessToken(authRecord, authRecord.access, undefined, undefined, latestAgyUserAgentModel).catch(() => null),
@@ -291,56 +337,107 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
         return effective;
       }
     } catch {
-      // fall through to undefined
+      // fall through to the embedded project id
     }
+    const parts = parseRefreshParts(authRecord.refresh);
+    if (parts.projectId) return parts.projectId;
     return undefined;
   };
 
   // Build dynamic model list for provider hook (used when user opens model picker)
   // Returns null when no usable auth/project is available (caller shows login-required).
   // useClient=false for startup-time (config hook) callers: never touches `client`.
+  // MULTI-ACCOUNT: each account declared in auth.json["google-agy"].accounts is
+  // exposed as its own model namespace `<account>/<model>`. Picking that model in
+  // OpenCode selects the account; legacy single-account installs keep bare ids.
   const getDynamicModels = async (
     provider: ProviderV2,
     ctxAuth?: unknown,
     opts?: { useClient?: boolean }
   ): Promise<Record<string, ProviderModel> | null> => {
     const useClient = opts?.useClient ?? true;
-    const authRecord = await resolveListingAuth(ctxAuth, useClient);
-    if (!authRecord) {
-      return null;
-    }
-
-    const projectId = await resolveListingProjectId(provider, authRecord, useClient);
-    if (!projectId) {
-      return null;
-    }
-
-    const { models, tierMapping } = await buildDynamicModelCatalog(
-      authRecord.access,
-      projectId,
-      latestAgyUserAgentModel
-    );
-    dynamicTierMapping = tierMapping;
-
-    // Merge with user config
-    const userModels = provider.models || {};
+    const store = loadAccountStore();
+    const accountNames = Object.keys(store.accounts);
     const mergedModels: Record<string, ProviderModel> = {};
 
-    for (const [modelId, modelDetails] of Object.entries(models)) {
+    const addAccountCatalog = async (account: string, record: OAuthAuthDetails): Promise<void> => {
+      const projectId = await resolveListingProjectId(provider, record, useClient, true);
+      if (!projectId) {
+        return;
+      }
+      const { tierMapping } = await buildDynamicModelCatalog(
+        record.access,
+        projectId,
+        latestAgyUserAgentModel
+      );
+      for (const [base, variants] of Object.entries(tierMapping)) {
+        dynamicTierMapping[base] = { ...(dynamicTierMapping[base] || {}), ...variants };
+        const model = buildModelFromBase(base, variants, account);
+        mergedModels[model.id] = model;
+      }
+    };
+
+    if (accountNames.length > 0) {
+      const activeName = store.activeAccount ?? accountNames[0];
+      for (const name of accountNames) {
+        const stored = store.accounts[name];
+        // Stub entries (created by seedAccountFromActive) carry no credentials.
+        if (!stored?.refresh || stored?.needsCredentials) {
+          continue;
+        }
+        const seed = ctxAuth && name === activeName ? ctxAuth : stored;
+        const record = await resolveListingAuth(seed, useClient);
+        if (!record) {
+          continue;
+        }
+        await addAccountCatalog(name, record);
+      }
+    } else {
+      // Legacy single-account path: bare model ids, no namespace.
+      const record = await resolveListingAuth(ctxAuth, useClient);
+      if (!record) {
+        return null;
+      }
+      const projectId = await resolveListingProjectId(provider, record, useClient);
+      if (!projectId) {
+        return null;
+      }
+      const { tierMapping } = await buildDynamicModelCatalog(
+        record.access,
+        projectId,
+        latestAgyUserAgentModel
+      );
+      dynamicTierMapping = tierMapping;
+      for (const [base, variants] of Object.entries(tierMapping)) {
+        const model = buildModelFromBase(base, variants);
+        mergedModels[model.id] = model;
+      }
+    }
+
+    if (Object.keys(mergedModels).length === 0) {
+      return null;
+    }
+
+    // Merge with user config overrides
+    const userModels = provider.models || {};
+    for (const [modelId, modelDetails] of Object.entries(mergedModels)) {
       const existing = userModels[modelId] as ProviderModel | undefined;
+      if (!existing) {
+        continue;
+      }
       mergedModels[modelId] = {
         ...modelDetails,
-        ...(existing || {}),
+        ...existing,
         capabilities: {
           ...(modelDetails.capabilities || {}),
-          ...(existing?.capabilities || {}),
+          ...(existing.capabilities || {}),
           input: {
             ...(modelDetails.capabilities?.input || {}),
-            ...(existing?.capabilities?.input || {})
+            ...(existing.capabilities?.input || {})
           },
           output: {
             ...(modelDetails.capabilities?.output || {}),
-            ...(existing?.capabilities?.output || {})
+            ...(existing.capabilities?.output || {})
           }
         }
       } satisfies ProviderModel;
@@ -436,7 +533,11 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
         const thinkingConfigDefaults = resolveThinkingConfigDefaults(provider);
 
         return {
-          apiKey: '',
+          // Placeholder: the @ai-sdk/google client refuses an empty key before
+          // ever reaching our fetch interceptor. Requests are rewritten to the
+          // AGY Code Assist endpoint and carry a Bearer token, so this value is
+          // never used as a credential (the x-goog-api-key header is stripped).
+          apiKey: 'antigravity-bridge',
           async fetch(input: RequestInfo, init?: RequestInit) {
             const isGL = isGenerativeLanguageRequest(input);
             const isInternal = toUrlString(input).includes('cloudcode-pa.googleapis.com');
@@ -450,7 +551,36 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
               return agyFetch(input, init);
             }
 
-            let authRecord = resolveCachedAuth(latestAuth);
+            // Account routing: `<account>/<model>` selects that account's
+            // credentials from auth.json; bare `<model>` falls back to the
+            // authenticated (active) account for backwards compatibility.
+            const requestedModelRaw = parseGenerativeLanguageRequest(input)?.effectiveModel;
+            const decodedRequestedModel = (() => {
+              if (!requestedModelRaw) return '';
+              try {
+                return decodeURIComponent(requestedModelRaw);
+              } catch {
+                return requestedModelRaw;
+              }
+            })();
+            const routed = splitAccountModel(decodedRequestedModel);
+            const routedAccount = routed.account;
+            const bareRequestedModel = routed.model || decodedRequestedModel;
+
+            const accountSource = routedAccount
+              ? loadAccountAuth(routedAccount)
+              : loadStoredAuthFromJson();
+            // Failover: if the requested account is out of quota, authenticate
+            // with the next healthy one instead of burning the same 429 again.
+            const failoverAccount = pickUsableAccount(routedAccount);
+            const routedAuthSource =
+              failoverAccount && failoverAccount !== routedAccount
+                ? loadAccountAuth(failoverAccount)
+                : accountSource;
+
+            let authRecord = resolveCachedAuth(
+              routedAuthSource && isOAuthAuth(routedAuthSource) ? routedAuthSource : latestAuth
+            );
             if (accessTokenExpired(authRecord)) {
               const refreshed = await refreshAccessToken(authRecord, client);
               if (!refreshed) {
@@ -463,7 +593,9 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
               return agyFetch(input, init);
             }
 
-            const configuredProjectId = await resolveLatestConfiguredProjectId(provider);
+            const configuredProjectId = routedAccount
+              ? (parseRefreshParts(authRecord.refresh).projectId ?? undefined)
+              : await resolveLatestConfiguredProjectId(provider);
 
             if (isInternal) {
               const hasAuth = getSafeHeader(init?.headers, 'Authorization') !== undefined;
@@ -487,7 +619,7 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
               });
             }
             const requestTarget = parseGenerativeLanguageRequest(input);
-            const requestUserAgentModel = requestTarget?.effectiveModel;
+            const requestUserAgentModel = bareRequestedModel || requestTarget?.effectiveModel;
             if (requestUserAgentModel) {
               latestAgyUserAgentModel = requestUserAgentModel;
             }
@@ -499,28 +631,44 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
             );
             await maybeShowAgyTestToast(client, projectContext.effectiveProjectId);
 
-            const originalRequestedModel = parseGenerativeLanguageRequest(input)?.effectiveModel;
             let modifiedInput = input;
-            if (isGL && originalRequestedModel) {
-              const originalBase = originalRequestedModel.replace('google-agy/', '');
-              const resolvedBase = resolveModelTier(originalBase, init, dynamicTierMapping);
-              if (originalBase !== resolvedBase) {
-                if (typeof modifiedInput === 'string') {
-                  modifiedInput = modifiedInput.replace(`models/${originalBase}`, `models/${resolvedBase}`);
-                } else if (typeof Request !== 'undefined' && modifiedInput instanceof Request) {
-                  const newUrl = modifiedInput.url.replace(`models/${originalBase}`, `models/${resolvedBase}`);
-                  modifiedInput = new Request(newUrl, modifiedInput);
-                }
+            if (isGL && requestedModelRaw) {
+              const resolvedBase = resolveModelTier(
+                bareRequestedModel ?? requestedModelRaw,
+                init,
+                dynamicTierMapping
+              );
+              // The account prefix must ALWAYS be stripped before hitting the
+              // AGY backend, even when tier resolution is a no-op. Handles both
+              // `/models/<model>:` and the slash-namespaced `/<model>:` shapes.
+              if (resolvedBase !== bareRequestedModel || routedAccount) {
+                modifiedInput = rewriteRequestedModelInInput(
+                  modifiedInput,
+                  requestedModelRaw,
+                  resolvedBase
+                );
               }
             }
 
             const parts = parseRefreshParts(authRecord.refresh);
+            // Model → backend enum map from the account's own catalogue: it is
+            // what routes the call to the Antigravity quota bucket.
+            const modelEnums =
+              (await withTimeout(
+                getModelEnums(
+                  authRecord.access,
+                  projectContext.effectiveProjectId,
+                  requestUserAgentModel
+                ).catch(() => undefined),
+                8000
+              )) ?? undefined;
             const transformed = prepareAgyRequest(
               modifiedInput,
               init,
               authRecord.access,
               projectContext.effectiveProjectId,
-              thinkingConfigDefaults
+              thinkingConfigDefaults,
+              modelEnums
             );
             const chatLogger = createChatLogger();
             if (chatLogger) {
@@ -533,6 +681,9 @@ export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<Plug
             }
 
             const response = await fetchWithRetry(transformed.request, transformed.init);
+            if (response.status === 429) {
+              markAccountExhausted(failoverAccount ?? routedAccount);
+            }
             if (response.ok && authRecord.access && projectContext.effectiveProjectId) {
               simulateClientBackgroundTraffic(
                 authRecord.access,

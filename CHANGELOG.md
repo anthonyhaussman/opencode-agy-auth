@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.6.0-kpihx.2] — multi-account support (2026-11-17)
+
+### Added
+
+* **Multi-account storage.** `auth.json` → `google-agy` accepts
+  `{ activeAccount, accounts: { <name>: { type, access, refresh, expires } } }`.
+  The legacy flat record is still accepted and is transparently wrapped as a
+  single `default` account, so existing installs keep working.
+* **Per-account model namespaces.** Every account exposes its own catalogue as
+  `<account>/<model>`, so OpenCode shows `google-agy/<account>/<model>` and
+  choosing that model selects the account. No extra provider is needed.
+* **Account-aware request routing.** The fetch interceptor reads the account
+  from the requested model id (`<account>/<model>`), loads that account's
+  credentials, resolves its project id, then strips the account prefix before
+  forwarding to the AGY backend. Bare model ids keep using the active account.
+* **Manual account management by editing the JSON.** No command is required:
+  add/rename accounts and flip `activeAccount` directly in the file.
+* Storage helpers exported for scripting/automation: `loadAccountStore`,
+  `loadAccountAuth`, `saveAccountAuth`, `setActiveAccount`, `renameAccount`,
+  `seedAccountFromActive`, `splitAccountModel`, `accountModelKey`.
+
 ## [1.6.0-kpihx.1] — fork identity + fully dynamic catalog (2026-11-17)
 
 Fork of `anthonyhaussman/opencode-agy-auth`, maintained by KpihX (`kpihx-labs`).

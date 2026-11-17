@@ -3,7 +3,8 @@ import {
   prepareAgyRequest,
   transformAgyResponse,
   isGenerativeLanguageRequest,
-  parseGenerativeLanguageRequest
+  parseGenerativeLanguageRequest,
+  rewriteRequestedModelInInput
 } from '../sdk/request';
 import { createChatLogger } from '../sdk/chat-logger';
 import { fetchWithRetry } from '../sdk/retry';
@@ -17,7 +18,7 @@ import { refreshAccessToken } from './token';
 import { ensureProjectContext } from './project';
 import { getSafeHeader, setSafeHeaders, toUrlString } from './headers';
 import { resolveModelTier } from './tier';
-import { loadStoredAuthFromJson } from './v2-storage';
+import { loadStoredAuthFromJson, loadAccountAuth, splitAccountModel } from './v2-storage';
 
 export function createV2FetchInterceptor(getAuthSnapshot?: () => Promise<any> | any) {
   return async function agyV2Fetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
@@ -28,7 +29,23 @@ export function createV2FetchInterceptor(getAuthSnapshot?: () => Promise<any> | 
       return (globalThis.fetch || fetch)(input, init);
     }
 
-    let rawAuth = getAuthSnapshot ? await getAuthSnapshot() : undefined;
+    // Account routing: `<account>/<model>` picks that account's credentials.
+    const requestedModelRaw = parseGenerativeLanguageRequest(input)?.effectiveModel;
+    const decodedRequestedModel = (() => {
+      if (!requestedModelRaw) return '';
+      try {
+        return decodeURIComponent(requestedModelRaw);
+      } catch {
+        return requestedModelRaw;
+      }
+    })();
+    const routed = splitAccountModel(decodedRequestedModel);
+    const bareRequestedModel = routed.model || decodedRequestedModel;
+
+    let rawAuth = routed.account ? loadAccountAuth(routed.account) : undefined;
+    if (!rawAuth && getAuthSnapshot) {
+      rawAuth = await getAuthSnapshot();
+    }
     if (!rawAuth) {
       rawAuth = loadStoredAuthFromJson();
     }
@@ -88,15 +105,14 @@ export function createV2FetchInterceptor(getAuthSnapshot?: () => Promise<any> | 
     const originalRequestedModel = parseGenerativeLanguageRequest(input)?.effectiveModel;
     let modifiedInput = input;
     if (isGL && originalRequestedModel) {
-      const originalBase = originalRequestedModel.replace('google-agy/', '');
-      const resolvedBase = resolveModelTier(originalBase, init);
-      if (originalBase !== resolvedBase) {
-        if (typeof modifiedInput === 'string') {
-          modifiedInput = modifiedInput.replace(`models/${originalBase}`, `models/${resolvedBase}`);
-        } else if (typeof Request !== 'undefined' && modifiedInput instanceof Request) {
-          const newUrl = modifiedInput.url.replace(`models/${originalBase}`, `models/${resolvedBase}`);
-          modifiedInput = new Request(newUrl, modifiedInput);
-        }
+      const resolvedBase = resolveModelTier(bareRequestedModel ?? originalRequestedModel, init);
+      // Always strip the account prefix, even when the tier is unchanged.
+      if (resolvedBase !== bareRequestedModel || routed.account) {
+        modifiedInput = rewriteRequestedModelInInput(
+          modifiedInput,
+          originalRequestedModel,
+          resolvedBase
+        );
       }
     }
 
