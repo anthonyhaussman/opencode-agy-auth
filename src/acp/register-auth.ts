@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { OpenCodeV2PluginContext } from "../plugin/types";
 import type { AgyProbe } from "./binary";
 import { AGY_ACP_PROVIDER_ID } from "./constants";
@@ -63,7 +64,10 @@ export function registerIntegration(ctx: OpenCodeV2PluginContext): void {
 }
 
 export interface ResolvedAuth {
-  /** Identity of the active connection; changes on credential switch. */
+  /**
+   * Non-secret identity of the active credential; changes on connection or key
+   * switch. Holds a truncated SHA-256 of an API key, never the key itself.
+   */
   identity: string;
   connection: unknown;
   method: AgyAuthMethod;
@@ -84,7 +88,8 @@ export async function resolveAuth(ctx: OpenCodeV2PluginContext): Promise<Resolve
   }
   const identity = connection ? `${connection.type}:${connection.id ?? connection.name}` : "none";
   if (credential?.type === "key" && typeof credential.key === "string") {
-    return { identity, connection, method: "gemini-api-key", apiKey: credential.key };
+    const keyId = createHash("sha256").update(credential.key).digest("hex").slice(0, 16);
+    return { identity: `${identity}#key:${keyId}`, connection, method: "gemini-api-key", apiKey: credential.key };
   }
   if (credential?.type === "external" && EXTERNAL_IDS.has(credential.methodID)) {
     return { identity, connection, method: credential.methodID as AgyAuthMethod };

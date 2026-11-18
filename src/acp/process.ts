@@ -363,6 +363,8 @@ export class AgyAcpProcess {
 
 export interface PoolEntry {
   dispose(): Promise<void>;
+  /** Optional: called once the entry can no longer serve requests; the pool then drops it. */
+  onDead?(listener: () => void): void;
 }
 
 interface Slot<T> {
@@ -383,6 +385,9 @@ export class AgyProcessPool<T extends PoolEntry> {
       if (existing) await existing.promise.then((v) => v.dispose(), () => {});
       const value = await create();
       slot.value = value;
+      value.onDead?.(() => {
+        if (this.slots.get(key) === slot) this.slots.delete(key);
+      });
       return value;
     })();
     this.slots.set(key, slot);
