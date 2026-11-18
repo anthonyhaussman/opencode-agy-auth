@@ -8,11 +8,12 @@ import type {
   LanguageModelV3Usage,
   SharedV3Warning,
 } from "@ai-sdk/provider";
-import { AGY_ACP_PROVIDER_ID, SESSION_HEADER, type AgyTier } from "./constants";
+import { AGY_ACP_PROVIDER_ID, CANCEL_SETTLE_TIMEOUT_MS, SESSION_HEADER, type AgyTier } from "./constants";
 import { AgyAcpError, toAgyError } from "./errors";
 import { LiveSession, type AgyAcpDeps, type LiveTurn } from "./live-session";
 import type { BridgeToolDef, ToolOutcome } from "./mcp-bridge";
 import type { AcpContentBlock, PromptResult } from "./process";
+import { lockSession, waitBounded } from "./session-lock";
 import { decideSync, fingerprintOf, hashMessage, renderToolIndex, type SyncDecision } from "./session-sync";
 import { mapStopReason, mapUsage } from "./stream-map";
 
@@ -24,7 +25,8 @@ type StepOutcome =
   | { kind: "tool-calls" }
   | { kind: "settled" }
   | { kind: "violation"; toolName: string }
-  | { kind: "aborted" };
+  | { kind: "aborted" }
+  | { kind: "detached" };
 
 const TIERS: ReadonlySet<string> = new Set(["low", "medium", "high"]);
 const UNSUPPORTED_SETTINGS = [
@@ -47,6 +49,10 @@ const STOP: LanguageModelV3FinishReason = { unified: "stop", raw: undefined };
 /** Guards the stream controller against writes after close or consumer cancel. */
 class Out {
   closed = false;
+  /** Wakes a waiting consumer loop when the reader cancels the stream. */
+  onCancel?: () => void;
+  /** Releases the per-session lock; idempotent. */
+  release: () => void = () => {};
   constructor(private readonly controller: ReadableStreamDefaultController<Part>) {}
   emit(...parts: Part[]): void {
     if (this.closed) return;
@@ -128,6 +134,8 @@ export class AgyAcpLanguageModel implements LanguageModelV3 {
       },
       cancel: () => {
         out.closed = true;
+        out.onCancel?.();
+        out.release();
       },
     });
     return { stream };
@@ -206,36 +214,72 @@ export class AgyAcpLanguageModel implements LanguageModelV3 {
   }
 
   private async runSession(o: LanguageModelV3CallOptions, ctx: CallContext, key: string, out: Out) {
+    const release = await lockSession(this.deps.pool, key, o.abortSignal);
+    if (!release) {
+      out.error(o.abortSignal!.reason);
+      return;
+    }
+    out.release = release;
+    try {
+      await this.runLocked(o, ctx, key, out);
+    } finally {
+      release();
+    }
+  }
+
+  private async runLocked(o: LanguageModelV3CallOptions, ctx: CallContext, key: string, out: Out) {
     const { deps } = this;
     const authMethod = await deps.authMethod();
     const fingerprint = fingerprintOf(ctx.system, ctx.tools, authMethod, this.modelId, ctx.tier);
-    if (deps.pool.get(key)?.dead) await deps.pool.release(key);
-    let created = false;
-    const live = await deps.pool.acquire(key, fingerprint, () => {
-      created = true;
-      return LiveSession.create(deps, {
-        key,
-        fingerprint,
-        tools: ctx.tools,
-        session: this.sessionParams(ctx, ctx.tools),
-        authMethod,
-      });
-    });
-    const record = await deps.store.get(key);
-    // A new process holds no history: replay everything (unless the config changed, which decideSync reports).
-    const decision = decideSync(created && record?.fingerprint === fingerprint ? undefined : record, o.prompt, fingerprint);
+    for (;;) {
+      if (deps.pool.get(key)?.dead) await deps.pool.release(key);
+      let created = false;
+      const acquired = await waitBounded(
+        deps.pool.acquire(key, fingerprint, () => {
+          created = true;
+          return LiveSession.create(deps, {
+            key,
+            fingerprint,
+            tools: ctx.tools,
+            session: this.sessionParams(ctx, ctx.tools),
+            authMethod,
+          });
+        }),
+        o.abortSignal,
+      );
+      if (acquired.kind !== "done") {
+        out.error(o.abortSignal!.reason);
+        return;
+      }
+      const live = acquired.value;
+      const record = await deps.store.get(key);
+      // A new process holds no history: replay everything (unless the config changed, which decideSync reports).
+      const decision = decideSync(created && record?.fingerprint === fingerprint ? undefined : record, o.prompt, fingerprint);
 
-    const previous = live.turn;
-    if (previous && (decision.kind !== "continue" || decision.blocks.length > 0)) {
-      previous.detachAbort?.();
-      live.cancelTurn();
-      await previous.done;
-      await previous.interruptWrite;
-      live.turn = undefined;
+      const previous = live.turn;
+      if (previous && (decision.kind !== "continue" || decision.blocks.length > 0)) {
+        previous.detachAbort?.();
+        live.cancelTurn();
+        const settled = await waitBounded(previous.done, o.abortSignal, deps.cancelSettleTimeoutMs ?? CANCEL_SETTLE_TIMEOUT_MS);
+        if (settled.kind === "aborted") {
+          out.error(o.abortSignal!.reason);
+          return;
+        }
+        if (settled.kind === "timeout") {
+          // agy ignored session/cancel: drop the process; the next acquire respawns and replays history.
+          deps.log("warn", "agy-acp: cancelled agy turn did not settle in time; restarting agy");
+          if (deps.pool.get(key) === live) await deps.pool.release(key);
+          else await live.dispose();
+          continue;
+        }
+        await previous.interruptWrite;
+        live.turn = undefined;
+      }
+      if (!created && (decision.kind === "fresh" || decision.kind === "changed")) await live.openSession();
+      if (decision.kind === "continue") this.resolveToolResults(live, decision);
+      await this.step(o, live, decision.blocks, out);
+      return;
     }
-    if (!created && (decision.kind === "fresh" || decision.kind === "changed")) await live.openSession();
-    if (decision.kind === "continue") this.resolveToolResults(live, decision);
-    await this.step(o, live, decision.blocks, out);
   }
 
   private async runThrowaway(o: LanguageModelV3CallOptions, ctx: CallContext, out: Out) {
@@ -306,7 +350,11 @@ export class AgyAcpLanguageModel implements LanguageModelV3 {
     out: Out,
   ): Promise<PromptResult | undefined> {
     turn.setAbortSignal(o.abortSignal, (reason) => this.onAbort(live, turn, reason));
+    out.onCancel = () => turn.signal.fire();
     const outcome = await this.consume(turn, out);
+    out.onCancel = undefined;
+    // The reader went away: leave the turn (and its queued parts) for the next call.
+    if (outcome.kind === "detached") return undefined;
     if (outcome.kind === "tool-calls") {
       await this.writeRecord(live, o);
       out.emit({ type: "finish", finishReason: { unified: "tool-calls", raw: undefined }, usage: mapUsage() });
@@ -347,6 +395,7 @@ export class AgyAcpLanguageModel implements LanguageModelV3 {
   private async consume(turn: LiveTurn, out: Out): Promise<StepOutcome> {
     const emitted: string[] = [];
     for (;;) {
+      if (out.closed) return { kind: "detached" };
       while (turn.queue.length > 0) {
         const ev = turn.queue.shift()!;
         if (ev.kind === "violation") return { kind: "violation", toolName: ev.toolName };
