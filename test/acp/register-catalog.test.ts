@@ -25,6 +25,23 @@ describe("ModelRegistry", () => {
     expect(reload).toHaveBeenCalledTimes(1);
   });
 
+  it("set with the same models in another order does not call reload", async () => {
+    const reload = vi.fn();
+    const reg = new ModelRegistry(reload, vi.fn());
+    await reg.set(A);
+    await expect(reg.set([...A].reverse())).resolves.toBe(false);
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(reg.list()).toEqual(A);
+  });
+
+  it("set with the same ids in another order and a changed name calls reload", async () => {
+    const reload = vi.fn();
+    const reg = new ModelRegistry(reload, vi.fn());
+    await reg.set(A);
+    await expect(reg.set([{ modelId: "m2" }, { modelId: "m1", name: "Renamed" }])).resolves.toBe(true);
+    expect(reload).toHaveBeenCalledTimes(2);
+  });
+
   it("set with the same ids but a changed name calls reload", async () => {
     const reload = vi.fn();
     const reg = new ModelRegistry(reload, vi.fn());
