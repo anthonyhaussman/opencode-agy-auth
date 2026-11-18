@@ -13,6 +13,7 @@ import {
   THOUGHT_LEVEL_CONFIG_ID,
   type AgyTier,
 } from "./constants";
+import { createAgyDebugLog } from "./debug";
 import { JsonRpcConnection } from "./rpc";
 
 export type AgyAuthMethod = "oauth-personal" | "oauth-business" | "gemini-api-key" | "agent-platform";
@@ -195,24 +196,38 @@ export class AgyAcpProcess {
       stdio: ["pipe", "pipe", "pipe"],
     });
 
+    // Opt-in diagnostics (AGY_ACP_DEBUG=1). Never logs the environment; known secrets are redacted.
+    const debug = createAgyDebugLog(opts.env, [opts.env[BRIDGE_TOKEN_ENV], opts.env[AGY_API_KEY_ENV]]);
+    debug?.(
+      "spawn",
+      `pid=${child.pid ?? "none"} binary=${opts.binaryPath} args=${JSON.stringify(opts.args ?? AGY_SPAWN_ARGS)} cwd=${opts.cwd}`,
+    );
+
     let stderrTail = "";
     child.stderr?.setEncoding("utf8");
     child.stderr?.on("data", (chunk: string) => {
       stderrTail = (stderrTail + chunk).slice(-STDERR_TAIL_BYTES);
+      debug?.("stderr", chunk.trimEnd());
     });
 
     const input = new PassThrough();
     child.stdout?.pipe(input, { end: false });
-    const conn = new JsonRpcConnection(input, child.stdin!);
+    const conn = new JsonRpcConnection(
+      input,
+      child.stdin!,
+      debug ? (direction, line) => debug(direction === "out" ? "rpc>" : "rpc<", line) : undefined,
+    );
 
     let spawnError: Error | undefined;
     const exited = new Promise<AgyExit>((resolve) => {
       child.once("error", (err) => {
+        debug?.("error", err.message);
         spawnError = err;
         conn.close(err);
         resolve({ code: null, signal: null, stderrTail });
       });
       child.once("close", (code, signal) => {
+        debug?.("exit", `code=${code ?? "null"} signal=${signal ?? "none"}`);
         const detail = stderrTail.trim();
         conn.close(
           new Error(
