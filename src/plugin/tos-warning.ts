@@ -10,7 +10,8 @@ export const AGY_TOS_WARNING =
   "Antigravity/Gemini CLI login. Using this plugin can get your Google account disabled " +
   "(\"This service has been disabled in this account for violation of Terms of Service\"). " +
   "Use at your own risk. Supported alternatives: the native `google` provider with " +
-  "GOOGLE_GENERATIVE_AI_API_KEY, or `google-vertex`.";
+  "GOOGLE_GENERATIVE_AI_API_KEY, `google-vertex`, or the `google-agy-acp` provider " +
+  "(drives the local agy CLI; use its Gemini API key or Vertex method).";
 
 export const AGY_ACP_TOS_WARNING =
   "Google's Antigravity policy names OpenCode as a third-party tool. The google-agy-acp provider drives your local " +
