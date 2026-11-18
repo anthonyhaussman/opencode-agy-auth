@@ -26,6 +26,20 @@ function setup() {
 }
 
 describe("JsonRpcConnection", () => {
+  it("traces outgoing and incoming lines when a trace callback is given", async () => {
+    const input = new PassThrough();
+    const output = new PassThrough();
+    const seen: [string, string][] = [];
+    const conn = new JsonRpcConnection(input, output, (dir, line) => seen.push([dir, line]));
+    const p = conn.request("m", { a: 1 });
+    input.write(`${JSON.stringify({ jsonrpc: "2.0", id: 1, result: 2 })}\n`);
+    await expect(p).resolves.toBe(2);
+    expect(seen).toEqual([
+      ["out", JSON.stringify({ jsonrpc: "2.0", id: 1, method: "m", params: { a: 1 } })],
+      ["in", JSON.stringify({ jsonrpc: "2.0", id: 1, result: 2 })],
+    ]);
+  });
+
   it("resolves request with result", async () => {
     const { conn, written, send, tick } = setup();
     const p = conn.request<{ ok: boolean }>("m", { a: 1 });

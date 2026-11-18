@@ -61,6 +61,8 @@ Google's policy names OpenCode as a third-party tool. Using the Google-login met
 ### Environment variables
 
 - `OPENCODE_AGY_PATH`: path to the agy binary (default: `agy` on `PATH`).
+- `AGY_ACP_DEBUG=1`: write a debug log of each agy child process (spawn, ACP JSON-RPC traffic, stderr, exit). The bridge token and the Gemini API key are redacted; prompts and tool output are logged as-is. Off by default.
+- `AGY_ACP_DEBUG_FILE`: debug log path (default: `$XDG_DATA_HOME/opencode/agy-acp/debug.log`, or `~/.local/share/opencode/agy-acp/debug.log`). Created with mode 0600.
 
 ## Legacy `google-agy` provider (deprecated)
 

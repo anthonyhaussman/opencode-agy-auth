@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -118,6 +118,32 @@ describe("AgyAcpProcess", () => {
     expect(init.clientCapabilities.terminal).toBeUndefined();
     expect(p.initializeResult.agentCapabilities?.loadSession).toBe(true);
     expect(t.recv("authenticate")).toHaveLength(0);
+  });
+
+  it("writes a redacted debug log of spawn, rpc traffic and exit when AGY_ACP_DEBUG=1", async () => {
+    const file = path.join(mkdtempSync(path.join(os.tmpdir(), "agy-dbg-")), "debug.log");
+    const t = setup([INIT], {}, {
+      AGY_ACP_DEBUG: "1",
+      AGY_ACP_DEBUG_FILE: file,
+      AGY_ACP_BRIDGE_TOKEN: "sekret-tok-123",
+    });
+    const p = await t.start();
+    await p.dispose();
+    await p.exited;
+    const text = readFileSync(file, "utf8");
+    expect(text).toMatch(/ spawn pid=\d+ /);
+    expect(text).toMatch(/ rpc> .*"method":"initialize"/);
+    expect(text).toMatch(/ rpc< .*"protocolVersion":1/);
+    expect(text).toMatch(/ exit code=/);
+    expect(text).not.toContain("sekret-tok-123");
+  });
+
+  it("writes no debug log without AGY_ACP_DEBUG", async () => {
+    const file = path.join(mkdtempSync(path.join(os.tmpdir(), "agy-dbg-")), "debug.log");
+    const t = setup([INIT], {}, { AGY_ACP_DEBUG: undefined, AGY_ACP_DEBUG_FILE: file });
+    const p = await t.start();
+    await p.dispose();
+    expect(existsSync(file)).toBe(false);
   });
 
   it("start_authenticates", async () => {

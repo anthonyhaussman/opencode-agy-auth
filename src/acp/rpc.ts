@@ -38,6 +38,7 @@ export class JsonRpcConnection {
   constructor(
     input: Readable,
     private readonly output: Writable,
+    private readonly trace?: (direction: "out" | "in", line: string) => void,
   ) {
     this.closed = new Promise((resolve) => {
       this.resolveClosed = resolve;
@@ -113,7 +114,9 @@ export class JsonRpcConnection {
 
   private write(message: unknown): void {
     try {
-      this.output.write(`${JSON.stringify(message)}\n`);
+      const line = JSON.stringify(message);
+      this.trace?.("out", line);
+      this.output.write(`${line}\n`);
     } catch (err) {
       this.close(err instanceof Error ? err : new Error(String(err)));
     }
@@ -131,6 +134,7 @@ export class JsonRpcConnection {
   }
 
   private onLine(line: string): void {
+    this.trace?.("in", line);
     let message: any;
     try {
       message = JSON.parse(line);
