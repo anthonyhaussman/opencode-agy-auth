@@ -1,7 +1,7 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["index.ts"],
+  entry: { index: "index.ts", "sdk-placeholder": "src/acp/sdk-placeholder.ts" },
   format: ["esm"],
   dts: false,
   sourcemap: true,

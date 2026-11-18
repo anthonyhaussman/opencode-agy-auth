@@ -5,6 +5,11 @@ import { AGY_QUOTA_TOOL_NAME } from '../../src/plugin/quota';
 import { AGY_QUOTA_SUMMARY_TOOL_NAME } from '../../src/plugin/quota-summary';
 import type { OpenCodeV2PluginContext } from '../../src/plugin/types';
 
+// These tests cover google-agy alone; google-agy-acp registration is tested in test/acp/register.test.ts.
+vi.mock('../../src/acp/register', () => ({
+  registerAgyAcpProvider: vi.fn(async () => ({ dispose: async () => {} })),
+}));
+
 describe('OpenCode v2 Integration and Edge Cases', () => {
   const createMockContext = () => {
     let catalogTransformFn: ((catalog: any) => Promise<void> | void) | undefined;

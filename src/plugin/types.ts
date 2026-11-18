@@ -34,14 +34,54 @@ export interface OpenCodeV2TransformRegistry<T = any> {
   transform: (fn: (target: T) => Promise<void> | void) => void;
 }
 
+/**
+ * `session.hook("model.request")` event. OpenCode 2.3 triggers it before each
+ * model call; the published typings do not declare it yet, so it is typed here.
+ */
+export interface ModelRequestEvent {
+  sessionID: string;
+  kind: string;
+  baseURL: string;
+  headers: Record<string, string>;
+}
+
+export interface OpenCodeV2SessionHook {
+  (
+    name: 'model.request',
+    handler: (ev: ModelRequestEvent) => void | Promise<void>,
+    options?: { providerID?: string },
+  ): unknown;
+  (name: string, handler: (...args: any[]) => any, options?: { providerID?: string }): unknown;
+}
+
 export interface OpenCodeV2SessionRegistry {
-  hook: (name: string, handler: (...args: any[]) => any, options?: { providerID?: string }) => void;
+  hook: OpenCodeV2SessionHook;
   prompt?: (input: any) => Promise<any> | any;
 }
 
 export interface OpenCodeV2PluginLocation {
   root?: string;
   workspace?: string;
+  directory?: string;
+  /** Set when the session runs in a remote workspace. */
+  workspaceID?: string;
+}
+
+/** OpenCode 2.3 connection status: only `needs_auth` exists; `undefined` clears it. */
+export interface OpenCodeV2ConnectionStatus {
+  status: 'needs_auth';
+  message: string;
+  url?: string;
+}
+
+export interface OpenCodeV2IntegrationConnection {
+  active?: (integrationID: string) => Promise<any>;
+  resolve?: (connection: any) => Promise<any>;
+  status?: (input: {
+    integrationID: string;
+    connection: any;
+    status?: OpenCodeV2ConnectionStatus;
+  }) => Promise<void> | void;
 }
 
 export interface OpenCodeV2PluginContext {
@@ -52,11 +92,14 @@ export interface OpenCodeV2PluginContext {
   command: OpenCodeV2TransformRegistry;
   session: OpenCodeV2SessionRegistry;
   aisdk?: {
-    hook: (name: 'sdk' | 'language', handler: (event: any) => Promise<void> | void) => void;
+    hook: (
+      name: 'sdk' | 'language',
+      handler: (event: any) => Promise<void> | void,
+    ) => Promise<{ dispose(): void } | void> | void;
   };
-  integration?: OpenCodeV2TransformRegistry | {
+  integration?: (OpenCodeV2TransformRegistry | {
     transform?: (transformer: (editor: any) => void) => void;
-  };
+  }) & { connection?: OpenCodeV2IntegrationConnection };
   location: OpenCodeV2PluginLocation;
 }
 
