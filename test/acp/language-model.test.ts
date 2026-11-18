@@ -773,6 +773,137 @@ describe("AgyAcpLanguageModel", () => {
   });
 });
 
+describe("AgyAcpLanguageModel turn lifecycle", () => {
+  const HANGING_TOOL = {
+    expect: "session/prompt",
+    callMcp: { tool: "read", args: { path: "a" }, toolCallId: "t1" },
+  };
+  const textOf = (parts: LanguageModelV3StreamPart[]) =>
+    parts.filter((p) => p.type === "text-delta").map((p: any) => p.delta);
+
+  it("cancel_ignored_by_agy_respawns_after_grace", async () => {
+    const h = harness([INIT, AUTH, NEW, HANGING_TOOL], { deps: { cancelSettleTimeoutMs: 100 } });
+    const history = [user("read a")];
+    await run(h, opts(history, { tools: [READ_TOOL] }));
+    const first = h.deps.pool.get("ses-1")!;
+    await waitFor(() => first.claimed.has("t1"));
+    writeFileSync(
+      path.join(h.dir, "scenario.json"),
+      JSON.stringify([INIT, AUTH, NEW, { expect: "session/prompt", notify: [chunk("fresh")], reply: END }]),
+    );
+
+    const parts = await run(h, opts([...history, assistantCall("t1", { path: "a" }), user("never mind")], { tools: [READ_TOOL] }));
+    expect(errorsOf(parts)).toEqual([]);
+    expect(textOf(parts)).toEqual(["fresh"]);
+    expect(finishOf(parts).finishReason.unified).toBe("stop");
+    expect(h.recv("session/cancel")).toHaveLength(1);
+    expect(first.dead).toBe(true);
+    expect(h.starts()).toHaveLength(2);
+    const replay = promptTexts(h)[1]!;
+    expect(replay[0]).toContain("<conversation-checkpoint>");
+    expect(replay[1]).toBe("never mind");
+    expect(h.deps.log).toHaveBeenCalledWith("warn", expect.stringContaining("did not settle"));
+  });
+
+  it("abort_while_waiting_on_cancelled_turn", async () => {
+    const h = harness([INIT, AUTH, NEW, HANGING_TOOL], { deps: { cancelSettleTimeoutMs: 60_000 } });
+    const history = [user("read a")];
+    await run(h, opts(history, { tools: [READ_TOOL] }));
+    const live = h.deps.pool.get("ses-1")!;
+    await waitFor(() => live.claimed.has("t1"));
+
+    const ac = new AbortController();
+    const pending = run(
+      h,
+      opts([...history, assistantCall("t1", { path: "a" }), user("stop")], { tools: [READ_TOOL], abortSignal: ac.signal }),
+    );
+    await waitFor(() => h.recv("session/cancel").length === 1);
+    ac.abort(new Error("user pressed esc"));
+    const parts = await pending;
+    expect(errorsOf(parts).map((e) => e.error.message)).toEqual(["user pressed esc"]);
+    expect(parts.some((p) => p.type === "finish")).toBe(false);
+    expect(h.deps.pool.get("ses-1")).toBe(live);
+    expect(live.dead).toBe(false);
+    expect(h.starts()).toHaveLength(1);
+    expect(h.recv("session/prompt")).toHaveLength(1);
+  });
+
+  it("overlapping_streams_same_session_serialize", async () => {
+    const h = harness([
+      INIT,
+      AUTH,
+      NEW,
+      { expect: "session/prompt", delayMs: 100, notify: [chunk("one")], reply: END },
+      { expect: "session/prompt", notify: [chunk("two")], reply: END },
+    ]);
+    const firstHistory = [user("a")];
+    const secondHistory = [...firstHistory, { role: "assistant", content: [{ type: "text", text: "one" }] } as const, user("b")];
+    const aborted = new AbortController();
+    const [a, b, c] = await Promise.all([
+      run(h, opts(firstHistory)),
+      run(h, opts(secondHistory)),
+      (async () => {
+        const p = run(h, opts(secondHistory, { abortSignal: aborted.signal }));
+        aborted.abort(new Error("waiter aborted"));
+        return p;
+      })(),
+    ]);
+    expect(textOf(a)).toEqual(["one"]);
+    expect(finishOf(a).finishReason.unified).toBe("stop");
+    expect(textOf(b)).toEqual(["two"]);
+    expect(finishOf(b).finishReason.unified).toBe("stop");
+    expect(errorsOf(c).map((e) => e.error.message)).toEqual(["waiter aborted"]);
+    expect(promptTexts(h)).toEqual([["a"], ["b"]]);
+    expect(h.starts()).toHaveLength(1);
+  });
+
+  it("a cancelled stream releases the session for the next call", async () => {
+    const h = harness([INIT, AUTH, NEW, { expect: "session/prompt", notify: [chunk("partial")] }], {
+      deps: { cancelSettleTimeoutMs: 100 },
+    });
+    const { stream } = await h.model.doStream(opts([user("a")]));
+    const reader = stream.getReader();
+    for (;;) {
+      const { value } = await reader.read();
+      if (value?.type === "text-delta") break;
+    }
+    writeFileSync(
+      path.join(h.dir, "scenario.json"),
+      JSON.stringify([INIT, AUTH, NEW, { expect: "session/prompt", notify: [chunk("again")], reply: END }]),
+    );
+    await reader.cancel();
+    const parts = await run(h, opts([user("a")]));
+    expect(textOf(parts)).toEqual(["again"]);
+    expect(h.starts()).toHaveLength(2);
+  });
+
+  it("different_sessions_stay_concurrent", async () => {
+    const pool = new AgyProcessPool<LiveSession>();
+    const store = new SessionStore(path.join(mkdtempSync(path.join(os.tmpdir(), "agy-lm-store-")), "s.json"));
+    const a = harness([INIT, AUTH, NEW, { expect: "session/prompt", notify: [chunk("A streaming")] }], { pool, store });
+    const b = harness([INIT, AUTH, NEW, { expect: "session/prompt", notify: [chunk("B done")], reply: END }], { pool, store });
+    const ac = new AbortController();
+    const { stream } = await a.model.doStream(opts([user("A")], { abortSignal: ac.signal }, "ses-A"));
+    const reader = stream.getReader();
+    for (;;) {
+      const { value } = await reader.read();
+      if (value?.type === "text-delta") break;
+    }
+    // A's step is still open (agy never replies); B on another session must not wait for it.
+    const parts = await run(b, opts([user("B")], {}, "ses-B"));
+    expect(textOf(parts)).toEqual(["B done"]);
+    expect(finishOf(parts).finishReason.unified).toBe("stop");
+    ac.abort(new Error("done"));
+    const rest: LanguageModelV3StreamPart[] = [];
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      rest.push(value);
+    }
+    expect(errorsOf(rest).map((e) => e.error.message)).toEqual(["done"]);
+  });
+});
+
 async function waitForRecord(h: Harness, pred: (r: any) => boolean) {
   const deadline = Date.now() + 5000;
   for (;;) {

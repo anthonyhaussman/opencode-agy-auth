@@ -33,6 +33,7 @@ export interface AgyAcpDeps {
   log: (level: "info" | "warn" | "error", msg: string) => void;
   bridgeConnectTimeoutMs?: number;
   softTimeoutMs?: number;
+  cancelSettleTimeoutMs?: number;
 }
 
 export type TurnEvent =
