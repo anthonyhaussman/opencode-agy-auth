@@ -16,6 +16,22 @@ export interface AgyPluginStamp {
   nodePath: string;
   dir: string;
   installedAt: number;
+  /** Extra env for the bridge process (BUN_BE_BUN under compiled OpenCode). */
+  launchEnv?: Record<string, string>;
+}
+
+/**
+ * Compiled OpenCode is a bun binary: running it with a script path starts
+ * OpenCode itself unless BUN_BE_BUN=1 makes it behave as plain bun.
+ */
+export function bridgeLaunchEnv(
+  versions: { bun?: string } = process.versions as { bun?: string },
+): Record<string, string> | undefined {
+  return versions.bun ? { BUN_BE_BUN: "1" } : undefined;
+}
+
+function sameEnv(a: Record<string, string> | undefined, b: Record<string, string> | undefined): boolean {
+  return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 }
 
 export type AgyPluginStatus = "installed" | "updated" | "current";
@@ -37,13 +53,18 @@ export async function materializeAgyPlugin(o: {
   dataDir: string;
   nodePath: string;
   version: string;
+  launchEnv?: Record<string, string>;
 }): Promise<string> {
   const dir = path.join(o.dataDir, "agy-plugin", o.version);
   await mkdir(dir, { recursive: true });
   await cp(o.templateDir, dir, { recursive: true, force: true });
   const config = {
     mcpServers: {
-      bridge: { command: o.nodePath, args: [path.join(dir, "bridge-proxy.mjs")] },
+      bridge: {
+        command: o.nodePath,
+        args: [path.join(dir, "bridge-proxy.mjs")],
+        ...(o.launchEnv ? { env: o.launchEnv } : {}),
+      },
     },
   };
   await writeFile(path.join(dir, "mcp_config.json"), `${JSON.stringify(config, null, 2)}\n`);
@@ -72,10 +93,12 @@ export async function ensureAgyPlugin(o: {
   templateDir?: string;
   dataDir?: string;
   nodePath?: string;
+  launchEnv?: Record<string, string>;
   exec?: ExecFn;
 }): Promise<{ status: AgyPluginStatus; dir: string; version: string }> {
   const dataDir = o.dataDir ?? agyAcpDataDir();
   const nodePath = o.nodePath ?? process.execPath;
+  const launchEnv = o.launchEnv ?? bridgeLaunchEnv();
   const exec = o.exec ?? defaultExec;
   const version = AGY_PLUGIN_VERSION;
   const stampFile = path.join(dataDir, "agy-plugin", "installed.json");
@@ -90,7 +113,7 @@ export async function ensureAgyPlugin(o: {
   }
 
   const materialized = typeof stamp?.dir === "string" && existsSync(path.join(stamp.dir, "bridge-proxy.mjs"));
-  if (stamp && stamp.version === version && stamp.nodePath === nodePath && listed && materialized) {
+  if (stamp && stamp.version === version && stamp.nodePath === nodePath && sameEnv(stamp.launchEnv, launchEnv) && listed && materialized) {
     return { status: "current", dir: stamp.dir, version };
   }
 
@@ -99,6 +122,7 @@ export async function ensureAgyPlugin(o: {
     dataDir,
     nodePath,
     version,
+    ...(launchEnv ? { launchEnv } : {}),
   });
 
   if (stamp || listed) {
@@ -117,11 +141,17 @@ export async function ensureAgyPlugin(o: {
     );
   }
 
-  const next: AgyPluginStamp = { version, nodePath, dir, installedAt: Date.now() };
+  const next: AgyPluginStamp = {
+    version,
+    nodePath,
+    dir,
+    installedAt: Date.now(),
+    ...(launchEnv ? { launchEnv } : {}),
+  };
   await mkdir(path.dirname(stampFile), { recursive: true });
   await writeFile(stampFile, JSON.stringify(next), { mode: 0o600 });
   await chmod(stampFile, 0o600);
-  const stale = stamp !== null && (stamp.version !== version || stamp.nodePath !== nodePath);
+  const stale = stamp !== null && (stamp.version !== version || stamp.nodePath !== nodePath || !sameEnv(stamp.launchEnv, launchEnv));
   return { status: stale || listed ? "updated" : "installed", dir, version };
 }
 
