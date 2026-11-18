@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   AgyAcpProcess,
   AgyProcessPool,
+  applyAgyAuthEnv,
   buildAgyEnv,
   type AgyProcessOptions,
   type PoolEntry,
@@ -76,6 +77,24 @@ describe("buildAgyEnv", () => {
   });
   it("agent-platform sets ADC", () => {
     expect(buildAgyEnv({}, { ...o, authMethod: "agent-platform" }).AGY_ADC_AUTH).toBe("true");
+  });
+});
+
+describe("applyAgyAuthEnv", () => {
+  it("leaves oauth-personal env untouched and does not mutate base", () => {
+    const base = { A: "1", GOOGLE_API_KEY: "g" };
+    const env = applyAgyAuthEnv(base, { authMethod: "oauth-personal" });
+    expect(env).toEqual({ A: "1", GOOGLE_API_KEY: "g" });
+    expect(env).not.toBe(base);
+    expect("AGY_ACP_BRIDGE_URL" in env).toBe(false);
+  });
+  it("api key replaces GOOGLE_API_KEY", () => {
+    const env = applyAgyAuthEnv({ GOOGLE_API_KEY: "g" }, { authMethod: "gemini-api-key", apiKey: "k" });
+    expect(env.GEMINI_API_KEY).toBe("k");
+    expect("GOOGLE_API_KEY" in env).toBe(false);
+  });
+  it("agent-platform sets ADC", () => {
+    expect(applyAgyAuthEnv({}, { authMethod: "agent-platform" }).AGY_ADC_AUTH).toBe("true");
   });
 });
 
