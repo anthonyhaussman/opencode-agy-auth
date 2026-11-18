@@ -140,6 +140,46 @@ describe("McpBridge", () => {
     expect(text(unknown)).toContain("nope");
   });
 
+  it("validation_failure_routes_opencode_result_as_late", async () => {
+    const { pending, client } = await setup();
+    pending.expect({ callId: "t1", toolName: "read", input: { path: 5 } });
+    const bad = await client.callTool({ name: "read", arguments: { path: 5 } });
+    expect(bad.isError).toBe(true);
+    expect(text(bad)).toContain("Invalid input");
+    // OpenCode still ran the tool call it was shown: its result is delivered late.
+    expect(pending.resolve("t1", { text: "opencode result", isError: false })).toBe(true);
+    expect(pending.takeLateResults()).toEqual([{ callId: "t1", outcome: { text: "opencode result", isError: false } }]);
+    expect(pending.size).toBe(0);
+
+    pending.expect({ callId: "t2", toolName: "read", input: { path: "b" } });
+    pending.resolve("t2", { text: "fresh", isError: false });
+    const ok = await client.callTool({ name: "read", arguments: { path: "b" } });
+    expect(text(ok)).toBe("fresh");
+  });
+
+  it("validation_failure_does_not_leave_stale_entry_for_fallback", async () => {
+    const { pending, client } = await setup();
+    pending.expect({ callId: "t1", toolName: "read", input: { path: 5 } });
+    await client.callTool({ name: "read", arguments: { path: 5 } });
+    // No entry for the next call: it must not get t1 through the claim fallback.
+    const next = await client.callTool({ name: "read", arguments: { path: "c" } });
+    expect(next.isError).toBe(true);
+    expect(text(next)).toContain("No pending OpenCode tool call");
+  });
+
+  it("validation_failure_after_early_result_queues_it_late", async () => {
+    const onClaim = vi.fn();
+    const pending = new PendingTools({ softTimeoutMs: null, onClaim });
+    pending.expect({ callId: "t1", toolName: "read", input: { path: 5 } });
+    pending.resolve("t1", { text: "early", isError: false });
+    pending.abandon("read", { path: 5 });
+    expect(onClaim).toHaveBeenCalledWith("t1");
+    expect(pending.takeLateResults()).toEqual([{ callId: "t1", outcome: { text: "early", isError: false } }]);
+    expect(pending.size).toBe(0);
+    pending.abandon("read", { path: 5 });
+    expect(onClaim).toHaveBeenCalledTimes(1);
+  });
+
   it("tool_summary_passes_validation_with_strict_schema", async () => {
     const { pending, client } = await setup();
     pending.expect({ callId: "t1", toolName: "read", input: { path: "a" } });
