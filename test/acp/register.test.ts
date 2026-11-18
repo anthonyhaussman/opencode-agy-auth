@@ -349,23 +349,23 @@ describe("registerAgyAcpProvider: integration and auth", () => {
   it("maps stored credentials to the agy auth method and api key", async () => {
     const { ctx } = fakeCtx();
     const reg = await register(ctx);
-    expect(await reg.deps.authMethod()).toBe("oauth-personal");
-    expect(await reg.deps.apiKey()).toBeUndefined();
+    expect((await reg.deps.auth()).method).toBe("oauth-personal");
+    expect((await reg.deps.auth()).apiKey).toBeUndefined();
 
     active = { type: "credential", id: "c1", label: "k", method: "key" };
     credential = { type: "key", key: "AIza-test" };
-    expect(await reg.deps.authMethod()).toBe("gemini-api-key");
-    expect(await reg.deps.apiKey()).toBe("AIza-test");
+    expect((await reg.deps.auth()).method).toBe("gemini-api-key");
+    expect((await reg.deps.auth()).apiKey).toBe("AIza-test");
 
     active = { type: "credential", id: "c2", label: "v", method: "external" };
     credential = { type: "external", methodID: "agent-platform" };
-    expect(await reg.deps.authMethod()).toBe("agent-platform");
-    expect(await reg.deps.apiKey()).toBeUndefined();
+    expect((await reg.deps.auth()).method).toBe("agent-platform");
+    expect((await reg.deps.auth()).apiKey).toBeUndefined();
 
     credential = { type: "external", methodID: "bogus" };
-    expect(await reg.deps.authMethod()).toBe("oauth-personal");
+    expect((await reg.deps.auth()).method).toBe("oauth-personal");
     credential = { type: "oauth", access: "a" };
-    expect(await reg.deps.authMethod()).toBe("oauth-personal");
+    expect((await reg.deps.auth()).method).toBe("oauth-personal");
   });
 
   it("treats a failing connection lookup as no credential", async () => {
@@ -374,13 +374,13 @@ describe("registerAgyAcpProvider: integration and auth", () => {
       throw new Error("boom");
     };
     const reg = await register(ctx);
-    expect(await reg.deps.authMethod()).toBe("oauth-personal");
+    expect((await reg.deps.auth()).method).toBe("oauth-personal");
   });
 
   it("works without a connection API", async () => {
     const { ctx } = fakeCtx({ noConnection: true });
     const reg = await register(ctx, { probe: async () => ({ status: "missing" }) });
-    expect(await reg.deps.authMethod()).toBe("oauth-personal");
+    expect((await reg.deps.auth()).method).toBe("oauth-personal");
     expect(reg.status().status).toBe("missing");
   });
 
@@ -394,6 +394,24 @@ describe("registerAgyAcpProvider: integration and auth", () => {
     expect(parts.some((p) => p.type === "error")).toBe(false);
     const start = agy.entries().find((e) => e.kind === "start");
     expect(start.env.GEMINI_API_KEY).toBe("set");
+  });
+
+  it("api_key_switch_respawns_process", async () => {
+    const agy = launcher([INIT, { expect: "authenticate", reply: {} }, NEW, { expect: "session/prompt", reply: END }]);
+    active = { type: "credential", id: "c1", label: "k", method: "key" };
+    credential = { type: "key", key: "AIza-first-key" };
+    const { ctx, rec } = fakeCtx();
+    await register(ctx, { probe: async () => ready(agy.path), env: agy.env });
+    const model = await languageModel(rec);
+    const first = await collect((await model.doStream(turn())).stream);
+    expect(first.some((p) => p.type === "error")).toBe(false);
+    // Same connection, different key: agy must restart with the new key.
+    credential = { type: "key", key: "AIza-second-key" };
+    const second = await collect((await model.doStream(turn())).stream);
+    expect(second.some((p) => p.type === "error")).toBe(false);
+    expect(agy.entries().filter((e) => e.kind === "start")).toHaveLength(2);
+    const stored = readFileSync(path.join(dir, "sessions.json"), "utf8");
+    expect(stored).not.toContain("AIza");
   });
 
   it("does not set GEMINI_API_KEY when no key is stored", async () => {
@@ -478,13 +496,13 @@ describe("registerAgyAcpProvider: status", () => {
     const probe = vi.fn(async () => ready());
     const reg = await register(ctx, { probe });
     expect(probe).toHaveBeenCalledTimes(1);
-    await reg.deps.authMethod();
+    await reg.deps.auth();
     expect(probe).toHaveBeenCalledTimes(1);
     active = { type: "credential", id: "c1", label: "k", method: "key" };
     credential = { type: "key", key: "k" };
-    await reg.deps.authMethod();
+    await reg.deps.auth();
     expect(probe).toHaveBeenCalledTimes(2);
-    await reg.deps.authMethod();
+    await reg.deps.auth();
     expect(probe).toHaveBeenCalledTimes(2);
   });
 

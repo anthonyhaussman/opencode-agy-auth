@@ -126,7 +126,7 @@ export async function registerAgyAcpProvider(
     cwd: depOverrides.cwd ?? ctx.location?.directory ?? ctx.location?.root ?? process.cwd(),
     env,
     log,
-    authMethod: async () => {
+    auth: async () => {
       const auth = await resolveAuth(ctx);
       if (lastIdentity !== undefined && auth.identity !== lastIdentity) {
         lastIdentity = auth.identity;
@@ -134,9 +134,8 @@ export async function registerAgyAcpProvider(
       }
       lastIdentity = auth.identity;
       await probing;
-      return auth.method;
+      return { method: auth.method, identity: auth.identity, ...(auth.apiKey === undefined ? {} : { apiKey: auth.apiKey }) };
     },
-    apiKey: async () => (await resolveAuth(ctx)).apiKey,
     ensurePlugin: async () => {
       await probing;
       if (probe?.status !== "ready") throw probeError(probe, status);

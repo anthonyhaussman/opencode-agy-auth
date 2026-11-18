@@ -20,14 +20,21 @@ import {
 import type { SessionRecord, SessionStore } from "./session-sync";
 import { StreamMapper } from "./stream-map";
 
+/** One resolved credential for a call. `identity` is non-secret (never the raw key). */
+export interface AgyAuth {
+  method: AgyAuthMethod;
+  apiKey?: string;
+  identity: string;
+}
+
 export interface AgyAcpDeps {
   pool: AgyProcessPool<LiveSession>;
   store: SessionStore;
   agyPath: string;
   cwd: string;
   env: NodeJS.ProcessEnv;
-  authMethod: () => Promise<AgyAuthMethod>;
-  apiKey: () => Promise<string | undefined>;
+  /** Resolves the active credential once per call. */
+  auth: () => Promise<AgyAuth>;
   ensurePlugin: () => Promise<void>;
   onModels?: (models: AcpModelInfo[]) => void;
   /**
@@ -39,6 +46,8 @@ export interface AgyAcpDeps {
   bridgeConnectTimeoutMs?: number;
   softTimeoutMs?: number;
   cancelSettleTimeoutMs?: number;
+  /** agy idle-kill delay (tests); defaults to IDLE_TIMEOUT_MS. */
+  idleTimeoutMs?: number;
 }
 
 export type TurnEvent =
@@ -85,7 +94,7 @@ export interface LiveSessionConfig {
   fingerprint: string;
   tools: BridgeToolDef[];
   session: NewSessionParams;
-  authMethod: AgyAuthMethod;
+  auth: AgyAuth;
 }
 
 function definedOnly<T extends object>(o: T | undefined): Partial<T> {
@@ -103,6 +112,7 @@ export class LiveSession implements PoolEntry {
   readonly claimed = new Set<string>();
   readonly callOrder: string[] = [];
   private readonly toolCalls = new Map<string, AcpToolCall>();
+  private readonly deadListeners: Array<() => void> = [];
 
   private constructor(
     readonly proc: AgyAcpProcess,
@@ -111,8 +121,12 @@ export class LiveSession implements PoolEntry {
     readonly config: LiveSessionConfig,
     private readonly log: AgyAcpDeps["log"],
   ) {
+    // Any exit (idle kill, crash, dispose) frees the bridge and fails pending calls.
     void proc.exited.then(() => {
       this.dead = true;
+      this.pending.rejectAll(CANCELLED_TEXT);
+      void this.bridge.close();
+      for (const listener of this.deadListeners.splice(0)) listener();
     });
     proc.onPermissionRequest((req) => this.onPermission(req));
   }
@@ -133,17 +147,17 @@ export class LiveSession implements PoolEntry {
     const bridge = await McpBridge.start({ tools: config.tools, pending, log: (m) => deps.log("warn", m) });
     let proc: AgyAcpProcess | undefined;
     try {
-      const apiKey = await deps.apiKey();
       proc = await AgyAcpProcess.start({
         binaryPath: deps.agyPath,
         cwd: deps.cwd,
         env: buildAgyEnv(deps.env, {
           bridgeUrl: bridge.url,
           bridgeToken: bridge.token,
-          authMethod: config.authMethod,
-          apiKey,
+          authMethod: config.auth.method,
+          apiKey: config.auth.apiKey,
         }),
-        authMethod: config.authMethod,
+        authMethod: config.auth.method,
+        ...(deps.idleTimeoutMs === undefined ? {} : { idleTimeoutMs: deps.idleTimeoutMs }),
       });
       live = new LiveSession(proc, bridge, pending, config, deps.log);
       const models = await live.openSession();
@@ -161,6 +175,12 @@ export class LiveSession implements PoolEntry {
       await bridge.close();
       throw error;
     }
+  }
+
+  /** Runs `listener` once the agy process has exited (immediately if it already has). */
+  onDead(listener: () => void): void {
+    if (this.dead) listener();
+    else this.deadListeners.push(listener);
   }
 
   /** Opens a new agy session (closing the current one, if any). */

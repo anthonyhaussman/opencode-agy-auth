@@ -12,6 +12,7 @@ import { CANCELLED_TEXT, STILL_RUNNING_TEXT } from "../../src/acp/constants";
 import { BRIDGE_NOT_CONNECTED_TEXT, TOS_DISABLED_TEXT } from "../../src/acp/errors";
 import { AgyAcpLanguageModel, type AgyAcpDeps, type LiveSession } from "../../src/acp/language-model";
 import { AgyProcessPool } from "../../src/acp/process";
+import { lockSession } from "../../src/acp/session-lock";
 import { SessionStore } from "../../src/acp/session-sync";
 
 const fixture = path.resolve(__dirname, "../fixtures/fake-acp-agent.mjs");
@@ -91,8 +92,7 @@ function harness(
     agyPath: launcher,
     cwd: dir,
     env: { PATH: process.env.PATH, FAKE_ACP_SCENARIO: scenario, FAKE_ACP_LOG: log, ...o.env },
-    authMethod: async () => "oauth-personal",
-    apiKey: async () => undefined,
+    auth: async () => ({ method: "oauth-personal", identity: "none" }),
     ensurePlugin: vi.fn(async () => {}),
     log: vi.fn(),
     ...o.deps,
@@ -539,7 +539,7 @@ describe("AgyAcpLanguageModel", () => {
   it("api_key_env", async () => {
     const h = harness([INIT, { expect: "authenticate", reply: {} }, NEW, { expect: "session/prompt", reply: END }], {
       env: { GOOGLE_API_KEY: "g" },
-      deps: { authMethod: async () => "gemini-api-key", apiKey: async () => "k" },
+      deps: { auth: async () => ({ method: "gemini-api-key", apiKey: "k", identity: "key:c1" }) },
     });
     await run(h, opts([user("hi")]));
     const env = h.starts()[0].env;
@@ -754,6 +754,27 @@ describe("AgyAcpLanguageModel", () => {
     expect(promptTexts(h)[1]![0]).toContain("<conversation-checkpoint>");
   });
 
+  it("idle_kill_closes_bridge_and_frees_slot", async () => {
+    const h = harness([INIT, AUTH, NEW, { expect: "session/prompt", reply: END }], {
+      deps: { idleTimeoutMs: 150, bridgeConnectTimeoutMs: 2000 },
+    });
+    await run(h, opts([user("hi")], { tools: [READ_TOOL] }));
+    const live = h.deps.pool.get("ses-1")!;
+    const close = vi.spyOn(live.bridge, "close");
+    live.pending.expect({ callId: "x", toolName: "read", input: { path: "a" } });
+    const claimed = live.pending.claim("read", { path: "a" });
+    await live.proc.exited;
+    expect(await claimed).toEqual({ text: CANCELLED_TEXT, isError: true });
+    await waitFor(() => close.mock.calls.length > 0);
+    await close.mock.results[0]!.value;
+    await expect(fetch(live.bridge.url, { method: "POST" })).rejects.toThrow();
+    expect(live.dead).toBe(true);
+    await waitFor(() => h.deps.pool.get("ses-1") === undefined);
+    const late = vi.fn();
+    live.onDead(late);
+    expect(late).toHaveBeenCalledTimes(1);
+  });
+
   it("starts a new prompt when a user message arrives while a tool is pending", async () => {
     const h = harness([
       INIT,
@@ -875,6 +896,29 @@ describe("AgyAcpLanguageModel turn lifecycle", () => {
     const parts = await run(h, opts([user("a")]));
     expect(textOf(parts)).toEqual(["again"]);
     expect(h.starts()).toHaveLength(2);
+  });
+
+  it("cancel_without_abort_keeps_lock_until_settled", async () => {
+    let open!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    const ensurePlugin = vi.fn(() => gate);
+    const h = harness([INIT, AUTH, NEW, { expect: "session/prompt", reply: END }], { deps: { ensurePlugin } });
+    const { stream } = await h.model.doStream(opts([user("a")]));
+    await waitFor(() => ensurePlugin.mock.calls.length > 0);
+    await stream.cancel();
+    // The cancelled step is still inside runLocked: the session must stay locked.
+    const probe = lockSession(h.deps.pool, "ses-1", undefined);
+    const state = await Promise.race([
+      probe.then(() => "acquired"),
+      new Promise((resolve) => setTimeout(() => resolve("waiting"), 80)),
+    ]);
+    expect(state).toBe("waiting");
+    open();
+    const release = await probe;
+    expect(release).toBeTypeOf("function");
+    release!();
   });
 
   it("different_sessions_stay_concurrent", async () => {
