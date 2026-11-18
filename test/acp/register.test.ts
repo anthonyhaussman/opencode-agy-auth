@@ -278,6 +278,61 @@ describe("registerAgyAcpProvider: catalog", () => {
     await vi.waitFor(() => expect(listModels).toHaveBeenCalledTimes(2));
   });
 
+  it("passes the OpenCode api key credential to agy models", async () => {
+    active = { type: "credential", id: "c1", label: "k", method: "key" };
+    credential = { type: "key", key: "AIza-test" };
+    const { ctx } = fakeCtx();
+    const listModels = vi.fn(async (_path: string, _env: NodeJS.ProcessEnv) => ({ models: MODELS, recognized: true }));
+    const reg = await register(ctx, { listModels, env: { GOOGLE_API_KEY: "g" } });
+    await reg.modelsReady;
+    const env = listModels.mock.calls[0]![1];
+    expect(env.GEMINI_API_KEY).toBe("AIza-test");
+    expect("GOOGLE_API_KEY" in env).toBe(false);
+  });
+
+  it("passes agent-platform ADC to agy models", async () => {
+    active = { type: "credential", id: "c2", label: "v", method: "external" };
+    credential = { type: "external", methodID: "agent-platform" };
+    const { ctx } = fakeCtx();
+    const listModels = vi.fn(async (_path: string, _env: NodeJS.ProcessEnv) => ({ models: MODELS, recognized: true }));
+    const reg = await register(ctx, { listModels, env: {} });
+    await reg.modelsReady;
+    expect(listModels.mock.calls[0]![1].AGY_ADC_AUTH).toBe("true");
+  });
+
+  it("a discovery that started before onModels does not overwrite it", async () => {
+    const { ctx, rec } = fakeCtx();
+    let resolveList!: (v: { models: typeof MODELS; recognized: boolean }) => void;
+    const listModels = vi.fn(() => new Promise<{ models: typeof MODELS; recognized: boolean }>((r) => (resolveList = r)));
+    const reg = await register(ctx, { listModels });
+    await vi.waitFor(() => expect(listModels).toHaveBeenCalledTimes(1));
+    const fresh = [{ modelId: "fresh", name: "Fresh" }];
+    reg.deps.onModels?.(fresh);
+    resolveList({ models: MODELS, recognized: true });
+    await reg.modelsReady;
+    await rec.apply();
+    expect([...rec.models.keys()]).toEqual([`${AGY_ACP_PROVIDER_ID}/fresh`]);
+  });
+
+  it("an older discovery does not overwrite a newer one", async () => {
+    const { ctx, rec } = fakeCtx();
+    const resolvers: Array<(v: { models: typeof MODELS; recognized: boolean }) => void> = [];
+    const listModels = vi.fn(() => new Promise<{ models: typeof MODELS; recognized: boolean }>((r) => resolvers.push(r)));
+    const reg = await register(ctx, { listModels });
+    await vi.waitFor(() => expect(listModels).toHaveBeenCalledTimes(1));
+    await reg.deps.auth();
+    active = { type: "credential", id: "c1", label: "k", method: "key" };
+    credential = { type: "key", key: "k" };
+    await reg.deps.auth();
+    await vi.waitFor(() => expect(listModels).toHaveBeenCalledTimes(2));
+    resolvers[1]!({ models: [{ modelId: "new" }], recognized: true });
+    await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(1));
+    resolvers[0]!({ models: MODELS, recognized: true });
+    await reg.modelsReady;
+    await rec.apply();
+    expect([...rec.models.keys()]).toEqual([`${AGY_ACP_PROVIDER_ID}/new`]);
+  });
+
   it("adds the provider with no models until agy reports some", async () => {
     const { ctx, rec } = fakeCtx();
     await register(ctx);

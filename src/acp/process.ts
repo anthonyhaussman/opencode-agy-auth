@@ -117,19 +117,28 @@ export interface AgyExit {
 const STDERR_TAIL_BYTES = 4096;
 const KILL_GRACE_MS = 2000;
 
-export function buildAgyEnv(
+/** Returns a copy of `base` carrying the credential agy should use for `authMethod`. */
+export function applyAgyAuthEnv(
   base: NodeJS.ProcessEnv,
-  o: { bridgeUrl: string; bridgeToken: string; authMethod: AgyAuthMethod; apiKey?: string },
+  o: { authMethod: AgyAuthMethod; apiKey?: string },
 ): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...base };
-  env[BRIDGE_URL_ENV] = o.bridgeUrl;
-  env[BRIDGE_TOKEN_ENV] = o.bridgeToken;
   if (o.authMethod === "gemini-api-key") {
     env[AGY_API_KEY_ENV] = o.apiKey;
     delete env[AGY_API_KEY_OVERRIDE_ENV];
   } else if (o.authMethod === "agent-platform") {
     env[AGY_ADC_ENV] = "true";
   }
+  return env;
+}
+
+export function buildAgyEnv(
+  base: NodeJS.ProcessEnv,
+  o: { bridgeUrl: string; bridgeToken: string; authMethod: AgyAuthMethod; apiKey?: string },
+): NodeJS.ProcessEnv {
+  const env = applyAgyAuthEnv(base, o);
+  env[BRIDGE_URL_ENV] = o.bridgeUrl;
+  env[BRIDGE_TOKEN_ENV] = o.bridgeToken;
   return env;
 }
 

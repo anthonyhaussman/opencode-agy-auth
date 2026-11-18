@@ -5,7 +5,7 @@ import { listAgyModels, probeAgy, type AgyProbe } from "./binary";
 import { AGY_ACP_PROVIDER_ID, KIND_HEADER, SESSION_HEADER } from "./constants";
 import { AgyAcpError, type AgyErrorCode } from "./errors";
 import { AgyAcpLanguageModel, type AgyAcpDeps, type LiveSession } from "./language-model";
-import { AgyProcessPool } from "./process";
+import { AgyProcessPool, applyAgyAuthEnv, type AcpModelInfo } from "./process";
 import { publishStatus, registerIntegration, resolveAuth, statusFromProbe, type AgyAcpStatus } from "./register-auth";
 import { ModelRegistry, placeholderPackage, registerCatalog } from "./register-catalog";
 import { SessionStore } from "./session-sync";
@@ -122,20 +122,31 @@ export async function registerAgyAcpProvider(
   let probing: Promise<void> = Promise.resolve();
   const registry = new ModelRegistry(() => ctx.catalog?.reload?.(), log);
 
+  // Every model list (discovery or session/new) takes a generation; a list from
+  // an older generation never overwrites a newer one.
+  let generation = 0;
+  const setModels = async (gen: number, models: AcpModelInfo[]): Promise<void> => {
+    if (gen !== generation) return;
+    await registry.set(models);
+  };
+
   // The catalog lists exactly what agy reports; no file cache, no fallback list.
   const discover = async (): Promise<void> => {
+    const gen = ++generation;
     await probing;
     if (probe?.status !== "ready") {
-      await registry.set([]);
+      await setModels(gen, []);
       return;
     }
     try {
-      const result = await listModels(probe.path, env);
+      const auth = await resolveAuth(ctx);
+      const authEnv = applyAgyAuthEnv(env, { authMethod: auth.method, ...(auth.apiKey === undefined ? {} : { apiKey: auth.apiKey }) });
+      const result = await listModels(probe.path, authEnv);
       if (!result.recognized) log("warn", "agy-acp: unrecognized agy models output");
-      await registry.set(result.models);
+      await setModels(gen, result.models);
     } catch (error) {
       log("warn", `agy-acp: agy models failed: ${error instanceof Error ? error.message : String(error)}`);
-      await registry.set([]);
+      await setModels(gen, []);
     }
   };
 
@@ -169,7 +180,7 @@ export async function registerAgyAcpProvider(
       return installing;
     },
     onModels: (models) => {
-      void registry.set(models);
+      void setModels(++generation, models);
     },
     onAuthStatus: (failure) => {
       if (failure !== undefined) setStatus({ status: "needs_auth", message: failure });
