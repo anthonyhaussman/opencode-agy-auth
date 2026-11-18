@@ -2,7 +2,14 @@ import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { compareVersions, defaultExec, probeAgy, resolveAgyPath } from "../../src/acp/binary";
+import {
+  compareVersions,
+  defaultExec,
+  listAgyModels,
+  parseAgyModelsOutput,
+  probeAgy,
+  resolveAgyPath,
+} from "../../src/acp/binary";
 
 let dir: string;
 beforeEach(async () => {
@@ -124,5 +131,92 @@ describe("defaultExec", () => {
     const p = await makeExe("echoer2");
     const r = await defaultExec(p, []);
     expect(r.stdout).toContain("hi");
+  });
+});
+
+const MODELS_STDOUT = [
+  "Fetching available models...",
+  JSON.stringify({
+    event: "command_result",
+    command: {
+      name: "models",
+      data: {
+        models: [
+          { id: "gemini-3.8-flash-high", label: "Gemini 3.8 Flash (High)" },
+          { id: "gemini-3.8-flash-medium", label: "Gemini 3.8 Flash (Medium)" },
+          { id: "gemini-3.8-flash-low", label: "Gemini 3.8 Flash (Low)" },
+          { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6 (Thinking)" },
+          { id: "claude-opus-4-6-thinking", label: "Claude Opus 4.6 (Thinking)" },
+          { id: "gpt-oss-120b-medium", label: "GPT-OSS 120B (Medium)" },
+        ],
+      },
+    },
+  }),
+  JSON.stringify({ event: "result", result: { status: "SUCCESS" } }),
+  "",
+].join("\n");
+
+function modelsLine(models: unknown[]): string {
+  return `${JSON.stringify({ event: "command_result", command: { name: "models", data: { models } } })}\n`;
+}
+
+describe("parseAgyModelsOutput", () => {
+  it("parses the command_result line", () => {
+    const models = parseAgyModelsOutput(MODELS_STDOUT);
+    expect(models).toHaveLength(6);
+    expect(models?.[0]).toEqual({ modelId: "gemini-3.8-flash-high", name: "Gemini 3.8 Flash (High)" });
+  });
+
+  it("returns undefined without a command_result line", () => {
+    expect(parseAgyModelsOutput('{"event":"result"}\n')).toBeUndefined();
+  });
+
+  it("returns undefined for non-JSON output", () => {
+    expect(parseAgyModelsOutput("not json\n{broken")).toBeUndefined();
+  });
+
+  it("skips entries without a string id", () => {
+    expect(parseAgyModelsOutput(modelsLine([{ id: 1 }, { label: "x" }, null, { id: "a", label: "A" }]))).toEqual([
+      { modelId: "a", name: "A" },
+    ]);
+  });
+
+  it("omits name when label is not a string", () => {
+    expect(parseAgyModelsOutput(modelsLine([{ id: "a" }]))).toEqual([{ modelId: "a" }]);
+  });
+
+  it("dedupes ids", () => {
+    expect(parseAgyModelsOutput(modelsLine([{ id: "a" }, { id: "a" }]))).toEqual([{ modelId: "a" }]);
+  });
+
+  it("empty models array returns []", () => {
+    expect(parseAgyModelsOutput(modelsLine([]))).toEqual([]);
+  });
+});
+
+describe("listAgyModels", () => {
+  it("runs exec(agyPath, [--output-format, stream-json, models])", async () => {
+    const calls: Array<{ file: string; args: string[]; env?: NodeJS.ProcessEnv }> = [];
+    const env = { HOME: "/h" };
+    const result = await listAgyModels("/bin/agy", env, async (file, args, opts) => {
+      calls.push({ file, args, env: opts?.env });
+      return { stdout: MODELS_STDOUT, stderr: "" };
+    });
+    expect(calls).toEqual([{ file: "/bin/agy", args: ["--output-format", "stream-json", "models"], env }]);
+    expect(result.recognized).toBe(true);
+    expect(result.models).toHaveLength(6);
+  });
+
+  it("returns recognized false with unrecognized stdout", async () => {
+    const result = await listAgyModels("/bin/agy", {}, async () => ({ stdout: "garbage", stderr: "" }));
+    expect(result).toEqual({ recognized: false, models: [] });
+  });
+
+  it("rejects when exec rejects", async () => {
+    await expect(
+      listAgyModels("/bin/agy", {}, async () => {
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
   });
 });

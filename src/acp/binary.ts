@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { access, constants as fsConstants } from "node:fs/promises";
 import path from "node:path";
 import { MIN_AGY_VERSION } from "./constants";
+import type { AcpModelInfo } from "./process";
 
 export type ExecFn = (
   file: string,
@@ -86,4 +87,51 @@ export async function probeAgy(
       error: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+function toModelInfo(raw: unknown): AcpModelInfo | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const { id, label } = raw as { id?: unknown; label?: unknown };
+  if (typeof id !== "string" || !id) return undefined;
+  return typeof label === "string" ? { modelId: id, name: label } : { modelId: id };
+}
+
+/**
+ * Parses `agy --output-format stream-json models` NDJSON output. Returns the
+ * models from the first `command_result` line, or undefined when no such
+ * line exists (unrecognized output).
+ */
+export function parseAgyModelsOutput(stdout: string): AcpModelInfo[] | undefined {
+  for (const line of stdout.split("\n")) {
+    let event: unknown;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (!event || typeof event !== "object") continue;
+    const { event: kind, command } = event as { event?: unknown; command?: { data?: { models?: unknown } } };
+    const raw = command?.data?.models;
+    if (kind !== "command_result" || !Array.isArray(raw)) continue;
+    const seen = new Set<string>();
+    const models: AcpModelInfo[] = [];
+    for (const entry of raw) {
+      const info = toModelInfo(entry);
+      if (!info || seen.has(info.modelId)) continue;
+      seen.add(info.modelId);
+      models.push(info);
+    }
+    return models;
+  }
+  return undefined;
+}
+
+export async function listAgyModels(
+  agyPath: string,
+  env: NodeJS.ProcessEnv,
+  exec: ExecFn = defaultExec,
+): Promise<{ models: AcpModelInfo[]; recognized: boolean }> {
+  const { stdout } = await exec(agyPath, ["--output-format", "stream-json", "models"], { env });
+  const models = parseAgyModelsOutput(stdout);
+  return models ? { models, recognized: true } : { models: [], recognized: false };
 }
