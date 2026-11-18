@@ -61,7 +61,13 @@ export class PendingTools {
   private readonly entries = new Map<string, Entry>();
   private late: Array<{ callId: string; outcome: ToolOutcome }> = [];
 
-  constructor(private readonly opts: { softTimeoutMs: number | null }) {}
+  constructor(
+    private readonly opts: {
+      softTimeoutMs: number | null;
+      /** Called when the MCP client claims an expected call (agy's tools/call arrived). */
+      onClaim?: (callId: string) => void;
+    },
+  ) {}
 
   get size(): number {
     return this.entries.size;
@@ -95,6 +101,7 @@ export class PendingTools {
     }
     const entry = match;
     entry.claimed = true;
+    this.opts.onClaim?.(entry.callId);
     if (entry.early) {
       this.entries.delete(entry.callId);
       return Promise.resolve(entry.early);

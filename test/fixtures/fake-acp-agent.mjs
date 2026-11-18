@@ -106,30 +106,45 @@ async function permission(sessionId, toolCallId) {
 }
 
 // Returns true when the turn was ended early (permission cancelled).
-async function runCallMcp(sessionId, callMcp) {
-  const toolCallId = callMcp.toolCallId ?? `call-${Date.now()}`;
-  const args = callMcp.args ?? {};
-  sessionUpdate(sessionId, {
-    sessionUpdate: "tool_call",
-    toolCallId,
-    name: "call_mcp_tool",
-    title: `MCP Tool ${callMcp.tool}`,
-    kind: "execute",
-    rawInput: {
-      ServerName: callMcp.serverName ?? BRIDGE_SERVER_NAME,
-      ToolName: callMcp.tool,
-      Arguments: { ...args, toolSummary: "x" },
-      toolSummary: "x",
-    },
-  });
-  const choice = await permission(sessionId, toolCallId);
-  if (choice === "cancelled") return true;
-  if (choice === "allow") {
-    const rawOutput = await bridgeCall("tools/call", { name: callMcp.tool, arguments: args });
-    sessionUpdate(sessionId, { sessionUpdate: "tool_call_update", toolCallId, status: "completed", rawOutput });
-  } else {
-    sessionUpdate(sessionId, { sessionUpdate: "tool_call_update", toolCallId, status: "failed" });
+// All tool_call updates are sent first, then permissions one by one, then the
+// allowed MCP calls run concurrently (a single call is the degenerate case).
+async function runCallMcps(sessionId, calls) {
+  const prepared = calls.map((callMcp, i) => ({
+    callMcp,
+    toolCallId: callMcp.toolCallId ?? `call-${Date.now()}-${i}`,
+    args: callMcp.args ?? {},
+  }));
+  for (const { callMcp, toolCallId, args } of prepared) {
+    sessionUpdate(sessionId, {
+      sessionUpdate: "tool_call",
+      toolCallId,
+      name: "call_mcp_tool",
+      title: `MCP Tool ${callMcp.tool}`,
+      kind: "execute",
+      rawInput: {
+        ServerName: callMcp.serverName ?? BRIDGE_SERVER_NAME,
+        ToolName: callMcp.tool,
+        Arguments: { ...args, toolSummary: "x" },
+        toolSummary: "x",
+      },
+    });
   }
+  const choices = [];
+  for (const { toolCallId } of prepared) {
+    const choice = await permission(sessionId, toolCallId);
+    if (choice === "cancelled") return true;
+    choices.push(choice);
+  }
+  await Promise.all(
+    prepared.map(async ({ callMcp, toolCallId, args }, i) => {
+      if (choices[i] === "allow") {
+        const rawOutput = await bridgeCall("tools/call", { name: callMcp.tool, arguments: args });
+        sessionUpdate(sessionId, { sessionUpdate: "tool_call_update", toolCallId, status: "completed", rawOutput });
+      } else {
+        sessionUpdate(sessionId, { sessionUpdate: "tool_call_update", toolCallId, status: "failed" });
+      }
+    }),
+  );
   return false;
 }
 
@@ -162,8 +177,10 @@ async function runStep(step, message) {
   if (step.stderr) process.stderr.write(step.stderr);
   for (const n of step.notify ?? []) send({ jsonrpc: "2.0", method: n.method, params: n.params });
   let cancelled = false;
-  if (step.callMcp) cancelled = await runCallMcp(sessionId, step.callMcp);
+  if (step.callMcp) cancelled = await runCallMcps(sessionId, [step.callMcp]);
+  if (!cancelled && step.callMcps) cancelled = await runCallMcps(sessionId, step.callMcps);
   if (!cancelled && step.toolCall) cancelled = await runToolCall(sessionId, step.toolCall);
+  if (!cancelled) for (const n of step.notifyAfter ?? []) send({ jsonrpc: "2.0", method: n.method, params: n.params });
   if (message.id !== undefined) {
     if (cancelled) send({ jsonrpc: "2.0", id: message.id, result: { stopReason: "end_turn" } });
     else if (step.error) send({ jsonrpc: "2.0", id: message.id, error: step.error });
