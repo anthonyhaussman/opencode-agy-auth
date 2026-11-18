@@ -486,6 +486,45 @@ describe("registerAgyAcpProvider: catalog", () => {
     await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(2));
   });
 
+  it("ignores a discovery that finishes after dispose", async () => {
+    const { ctx, rec } = fakeCtx();
+    let resolve!: (v: { models: typeof MODELS; recognized: boolean }) => void;
+    const listModels = vi.fn(() => new Promise<{ models: typeof MODELS; recognized: boolean }>((r) => (resolve = r)));
+    const reg = await register(ctx, { listModels });
+    await vi.waitFor(() => expect(listModels).toHaveBeenCalledTimes(1));
+    await reg.dispose();
+    resolve({ models: MODELS, recognized: true });
+    await reg.modelsReady;
+    expect(rec.reload).not.toHaveBeenCalled();
+  });
+
+  it("ignores onModels after dispose", async () => {
+    const { ctx, rec } = fakeCtx();
+    const reg = await register(ctx);
+    await reg.modelsReady;
+    await reg.dispose();
+    reg.deps.onModels!(MODELS);
+    await rec.apply();
+    expect(rec.reload).not.toHaveBeenCalled();
+    expect(rec.models.size).toBe(0);
+  });
+
+  it("warns once when the host cannot reload the catalog", async () => {
+    const { ctx } = fakeCtx();
+    delete ctx.catalog.reload;
+    const log = vi.fn();
+    await register(ctx, { log });
+    const warns = log.mock.calls.filter((c) => c[0] === "warn" && /cannot reload the catalog/.test(c[1]));
+    expect(warns).toHaveLength(1);
+  });
+
+  it("does not warn about catalog reload when the host supports it", async () => {
+    const { ctx } = fakeCtx();
+    const log = vi.fn();
+    await register(ctx, { log });
+    expect(log.mock.calls.some((c) => /cannot reload the catalog/.test(String(c[1])))).toBe(false);
+  });
+
   it("does not write a models file", async () => {
     const { ctx } = fakeCtx();
     const reg = await register(ctx);
