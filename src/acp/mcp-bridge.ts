@@ -83,23 +83,23 @@ export class PendingTools {
     });
   }
 
-  claim(toolName: string, input: unknown): Promise<ToolOutcome> {
+  /** First unclaimed entry for `toolName` with equal input, else the first unclaimed one for `toolName`. */
+  private find(toolName: string, input: unknown): Entry | undefined {
     const canon = canonical(stripToolSummary(input));
-    let match: Entry | undefined;
     let fallback: Entry | undefined;
     for (const entry of this.entries.values()) {
       if (entry.claimed || entry.toolName !== toolName) continue;
+      if (entry.canon === canon) return entry;
       fallback ??= entry;
-      if (entry.canon === canon) {
-        match = entry;
-        break;
-      }
     }
-    match ??= fallback;
-    if (!match) {
+    return fallback;
+  }
+
+  claim(toolName: string, input: unknown): Promise<ToolOutcome> {
+    const entry = this.find(toolName, input);
+    if (!entry) {
       return Promise.resolve({ text: `No pending OpenCode tool call for ${toolName}`, isError: true });
     }
-    const entry = match;
     entry.claimed = true;
     this.opts.onClaim?.(entry.callId);
     if (entry.early) {
@@ -118,6 +118,25 @@ export class PendingTools {
         }, ms);
       }
     });
+  }
+
+  /**
+   * agy's call was refused before reaching OpenCode (invalid input), but OpenCode
+   * already saw the tool call and may still run it. Claims the matching entry as
+   * soft-timed-out, so OpenCode's result is delivered later as a late result and
+   * the entry can never be handed to another call.
+   */
+  abandon(toolName: string, input: unknown): void {
+    const entry = this.find(toolName, input);
+    if (!entry) return;
+    entry.claimed = true;
+    this.opts.onClaim?.(entry.callId);
+    if (entry.early) {
+      this.entries.delete(entry.callId);
+      this.late.push({ callId: entry.callId, outcome: entry.early });
+      return;
+    }
+    entry.timedOut = true;
   }
 
   resolve(callId: string, outcome: ToolOutcome): boolean {
@@ -227,6 +246,7 @@ export class McpBridge {
         if (validate && !validate(input)) {
           const detail = ajv.errorsText(validate.errors);
           log?.(`invalid input for ${name}: ${detail}`);
+          pending.abandon(name, input);
           return errorResult(`Invalid input for OpenCode tool ${name}: ${detail}`);
         }
         const outcome = await pending.claim(name, input);
