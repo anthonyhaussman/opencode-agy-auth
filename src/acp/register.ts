@@ -128,8 +128,10 @@ export async function registerAgyAcpProvider(
   // Last list that worked, per account, kept in memory only. A transient
   // `agy models` failure restores it instead of emptying the picker.
   const lastGood = new Map<string, AcpModelInfo[]>();
+  // After dispose, late results (discovery or session/new) never touch the catalog.
+  let disposed = false;
   const setModels = async (gen: number, models: AcpModelInfo[], identity?: string): Promise<void> => {
-    if (gen !== generation) return;
+    if (disposed || gen !== generation) return;
     if (identity !== undefined) lastGood.set(identity, models);
     await registry.set(models);
   };
@@ -208,6 +210,7 @@ export async function registerAgyAcpProvider(
     modelsReady: Promise.resolve(),
     status: () => status,
     dispose: async () => {
+      disposed = true;
       await deps.pool.disposeAll();
     },
   };
@@ -216,6 +219,9 @@ export async function registerAgyAcpProvider(
   if (ctx.location?.workspaceID) return handle;
 
   emitAgyAcpTosWarning(client);
+  if (typeof ctx.catalog?.reload !== "function") {
+    log("warn", "agy-acp: host cannot reload the catalog; model list changes appear after restart");
+  }
   probing = runProbe();
   handle.ready = probing;
   handle.modelsReady = discover();
@@ -250,6 +256,7 @@ export async function registerAgyAcpProvider(
   );
 
   handle.dispose = async () => {
+    disposed = true;
     if (sdkRegistration && typeof sdkRegistration.dispose === "function") sdkRegistration.dispose();
     await deps.pool.disposeAll();
   };
