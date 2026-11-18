@@ -79,6 +79,25 @@ describe("bridge-proxy", () => {
     expect(child.exitCode).toBeNull();
   });
 
+  it("proxy answers a pre-initialize server/discover with the request id", async () => {
+    const pending = new PendingTools({ softTimeoutMs: null });
+    const bridge = await McpBridge.start({ tools: [{ name: "ping", inputSchema: { type: "object" } }], pending });
+    cleanup.push(() => bridge.close());
+    const child = spawn(process.execPath, [proxy], {
+      env: env({ AGY_ACP_BRIDGE_URL: bridge.url, AGY_ACP_BRIDGE_TOKEN: bridge.token }),
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    cleanup.push(async () => void child.kill());
+    let out = "";
+    child.stdout.on("data", (d) => (out += d));
+    child.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "server/discover", params: {} }) + "\n");
+    await new Promise((r) => setTimeout(r, 300));
+    const reply = JSON.parse(out.split("\n").filter(Boolean)[0]);
+    expect(reply.id).toBe(1);
+    expect(reply.error).toBeDefined();
+    expect(child.exitCode).toBeNull();
+  });
+
   it("proxy_fails_without_bridge", async () => {
     const pending = new PendingTools({ softTimeoutMs: null });
     const bridge = await McpBridge.start({ tools: [], pending });

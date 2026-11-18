@@ -297,3 +297,31 @@ restricted agent. Also, plugin MCP servers appear to the default agent only via
 - `BRIDGE_TOOL_PREFIX`: not a name prefix any more; match `name ===
   "call_mcp_tool"` and `args.ServerName === "<plugin>_<server>"`, tool in
   `args.ToolName`, input in `args.Arguments`.
+
+## Auth and plugin MCP loading (fix round, 2026-11-18)
+
+Question: does `authenticate {methodId:"oauth-personal"}` (sent by the provider
+when no OpenCode connection exists) stop agy from loading the opencode-bridge
+plugin MCP server? Raw JSON-RPC check against `agy acp --agent opencode` 1.5.10
+with `AGY_ACP_BRIDGE_URL` pointing at a throwaway listener (live):
+
+| Variant | session/new | Plugin MCP proxy launched and hit the listener |
+|---|---|---|
+| `initialize`, no `authenticate` | ok | yes (`server/discover` then `initialize`) |
+| `initialize`, `authenticate oauth-personal`, then `session/new` | ok | yes (same) |
+
+Both variants load the plugin MCP server, so `authenticate` is not the cause and
+the provider keeps sending it. The agy log line "Not reloading plugin MCP
+servers: cannot get the signed-in user" appears in both variants and is
+unrelated.
+
+Real cause of `bridge_unreachable`: for plugin (stdio) MCP servers agy first
+sends a `server/discover` request. The real bridge (MCP SDK streamable HTTP
+transport, not yet initialized) answers HTTP 400 with a JSON-RPC error whose
+`id` is `null`. The proxy relayed that reply unchanged; agy cannot correlate an
+id-null reply and never sends `initialize` or `tools/list`, so the bridge never
+sees a client and the model only found `read_file` for schemas. The earlier
+listener check only worked because its empty 500 made the proxy synthesize an
+error carrying the request id. Fix: `bridge-proxy.mjs` now copies the request id
+into id-null error replies (agy plugin version 1.0.1). After the fix the live
+echo round trip passes.

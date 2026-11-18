@@ -66,7 +66,14 @@ async function forward(line) {
     const sid = res.headers.get("mcp-session-id");
     if (sid) sessionId = sid;
     const text = await res.text();
-    for (const reply of parseBody(res.headers.get("content-type") ?? "", text)) await write(reply);
+    for (const reply of parseBody(res.headers.get("content-type") ?? "", text)) {
+      // Transport-level errors (e.g. a pre-initialize server/discover) carry id null; agy
+      // drops replies it cannot correlate, so echo the request id.
+      if (reply && reply.error && reply.id == null && message.id !== undefined && message.id !== null) {
+        reply.id = message.id;
+      }
+      await write(reply);
+    }
     if (!res.ok && !text.trim() && message.id !== undefined) {
       await write({
         jsonrpc: "2.0",
