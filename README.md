@@ -30,7 +30,7 @@ An [OpenCode](https://opencode.ai/) plugin for the Antigravity CLI (`agy`). It s
 
 ## Requirements
 
-- OpenCode >= 2.2.3 (this package supports the v2 plugin API only).
+- OpenCode >= 2.2.3, required by `google-agy-acp` (this package supports the v2 plugin API only; older OpenCode versions cannot load the provider).
 - agy >= 1.5.10 for `google-agy-acp`. The binary is `agy` on your `PATH`, or the path in `OPENCODE_AGY_PATH`.
 
 ## google-agy-acp provider
