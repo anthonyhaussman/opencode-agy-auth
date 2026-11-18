@@ -90,7 +90,7 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
   };
 
   const updateProviderRecord = (p: any) => {
-    p.name = 'Antigravity CLI';
+    p.name = 'Antigravity CLI (deprecated)';
     p.activation = 'enabled';
     p.package = 'aisdk:@ai-sdk/google';
     p.description = 'Google Gemini Antigravity Code Assist OAuth provider';
@@ -201,7 +201,7 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
       catalog.providers = catalog.providers || {};
       catalog.providers[AGY_PROVIDER_ID] = {
         id: AGY_PROVIDER_ID,
-        name: 'Antigravity CLI',
+        name: 'Antigravity CLI (deprecated)',
         npm: 'aisdk:@ai-sdk/google',
         settings: { apiKey: 'dummy' },
         integrationID: AGY_PROVIDER_ID,

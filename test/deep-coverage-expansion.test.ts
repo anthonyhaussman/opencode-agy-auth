@@ -193,7 +193,7 @@ describe('Deep Coverage Expansion', () => {
     });
   });
 
-  describe('plugin.ts custom models and quota sorting', () => {
+  describe('v2 plugin custom models and quota sorting', () => {
 
     it('sorts versions and variants correctly in quota tool', async () => {
       vi.spyOn(globalThis, 'fetch').mockImplementation((url) => {
