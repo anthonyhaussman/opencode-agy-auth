@@ -120,7 +120,10 @@ export async function registerAgyAcpProvider(
   };
 
   let probing: Promise<void> = Promise.resolve();
-  const registry = new ModelRegistry(() => ctx.catalog?.reload?.(), log);
+  // Hosts expose reload either on `catalog` or on `provider` and `model`
+  // (OpenCode 2.3.x); undefined means the host cannot reload at all.
+  const reloadCatalog = catalogReloader(ctx);
+  const registry = new ModelRegistry(() => reloadCatalog?.(), log);
 
   // Every model list (discovery or session/new) takes a generation; a list from
   // an older generation never overwrites a newer one.
@@ -219,7 +222,7 @@ export async function registerAgyAcpProvider(
   if (ctx.location?.workspaceID) return handle;
 
   emitAgyAcpTosWarning(client);
-  if (typeof ctx.catalog?.reload !== "function") {
+  if (!reloadCatalog) {
     log("warn", "agy-acp: host cannot reload the catalog; model list changes appear after restart");
   }
   probing = runProbe();
@@ -261,4 +264,13 @@ export async function registerAgyAcpProvider(
     await deps.pool.disposeAll();
   };
   return handle;
+}
+
+function catalogReloader(ctx: OpenCodeV2PluginContext): (() => Promise<void>) | undefined {
+  const { catalog, provider, model } = ctx;
+  if (typeof catalog?.reload === "function") return async () => void (await catalog.reload!());
+  if (typeof provider?.reload !== "function" && typeof model?.reload !== "function") return undefined;
+  return async () => {
+    await Promise.all([provider?.reload?.(), model?.reload?.()]);
+  };
 }
