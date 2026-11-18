@@ -18,8 +18,12 @@ export function placeholderPackage(base: string = import.meta.url): string {
   return `aisdk:${url.href}`;
 }
 
+// Order-insensitive: `agy models` and session/new may list the same models in a
+// different order, which must not churn the catalog.
 function sameModels(a: readonly AcpModelInfo[], b: readonly AcpModelInfo[]): boolean {
-  return a.length === b.length && a.every((m, i) => m.modelId === b[i]?.modelId && m.name === b[i]?.name);
+  if (a.length !== b.length) return false;
+  const names = new Map(a.map((m) => [m.modelId, m.name]));
+  return names.size === b.length && b.every((m) => names.has(m.modelId) && names.get(m.modelId) === m.name);
 }
 
 /**
