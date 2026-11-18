@@ -60,8 +60,9 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-// Default shape matches the OpenCode v2 host: catalog.transform + catalog.reload.
-// `hooks: true` offers the older provider/model transform hooks instead.
+// Default shape: catalog.transform + catalog.reload.
+// `hooks: true` matches the released OpenCode 2.3.x host: provider/model
+// transform + reload, and no catalog key.
 function fakeCtx(o: { workspaceID?: string; noConnection?: boolean; hooks?: boolean } = {}) {
   const transforms: { provider: any[]; model: any[]; catalog: any[]; integration: any[] } = {
     provider: [],
@@ -118,11 +119,10 @@ function fakeCtx(o: { workspaceID?: string; noConnection?: boolean; hooks?: bool
   const ctx: any = {
     ...(o.hooks
       ? {
-          provider: { transform: (fn: any) => transforms.provider.push(fn) },
-          model: { transform: (fn: any) => transforms.model.push(fn) },
+          provider: { transform: (fn: any) => transforms.provider.push(fn), reload: () => rec.reload("provider") },
+          model: { transform: (fn: any) => transforms.model.push(fn), reload: () => rec.reload("model") },
         }
-      : {}),
-    catalog: { transform: (fn: any) => transforms.catalog.push(fn), reload: () => rec.reload() },
+      : { catalog: { transform: (fn: any) => transforms.catalog.push(fn), reload: () => rec.reload() } }),
     tool: { transform: vi.fn() },
     command: { transform: vi.fn() },
     session: { hook: (name: string, handler: any, opts?: any) => rec.sessionHooks.push({ name, handler, opts }) },
@@ -537,6 +537,22 @@ describe("registerAgyAcpProvider: catalog", () => {
     expect(log.mock.calls.some((c) => /cannot reload the catalog/.test(String(c[1])))).toBe(false);
   });
 
+  it("does not warn about catalog reload when the host offers provider and model reload", async () => {
+    const { ctx } = fakeCtx({ hooks: true });
+    const log = vi.fn();
+    await register(ctx, { log });
+    expect(log.mock.calls.some((c) => /cannot reload the catalog/.test(String(c[1])))).toBe(false);
+  });
+
+  it("warns when the host offers provider and model transforms without reload", async () => {
+    const { ctx } = fakeCtx({ hooks: true });
+    delete ctx.provider.reload;
+    delete ctx.model.reload;
+    const log = vi.fn();
+    await register(ctx, { log });
+    expect(log.mock.calls.filter((c) => /cannot reload the catalog/.test(String(c[1])))).toHaveLength(1);
+  });
+
   it("does not write a models file", async () => {
     const { ctx, rec } = fakeCtx();
     const reg = await register(ctx);
@@ -551,7 +567,8 @@ describe("registerAgyAcpProvider: catalog", () => {
     const { ctx, rec } = fakeCtx({ hooks: true });
     const reg = await register(ctx);
     reg.deps.onModels!(MODELS);
-    await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(2));
+    expect(rec.reload.mock.calls.map((c) => c[0]).sort()).toEqual(["model", "provider"]);
     await rec.apply();
     expect(rec.providers.get(AGY_ACP_PROVIDER_ID).activation).toBe("auto");
     expect([...rec.models.keys()]).toEqual([`${AGY_ACP_PROVIDER_ID}/m-high`, `${AGY_ACP_PROVIDER_ID}/m-low`]);
