@@ -33,14 +33,6 @@ export const AGY_API_KEY_ENV = "GEMINI_API_KEY";
 export const AGY_API_KEY_OVERRIDE_ENV = "GOOGLE_API_KEY";
 export const AGY_ADC_ENV = "AGY_ADC_AUTH";
 
-export const AGY_ACP_FALLBACK_MODELS: readonly string[] = [
-  "gemini-3.8-flash-high",
-  "gemini-3.8-flash-medium",
-  "gemini-3.8-flash-low",
-  "claude-sonnet-4-6",
-  "claude-opus-4-6-thinking",
-  "gpt-oss-120b-medium",
-];
 export const THOUGHT_LEVEL_CONFIG_ID = "thought_level";
 export const MODE_CONFIG_ID = "mode";
 export type AgyTier = "low" | "medium" | "high";

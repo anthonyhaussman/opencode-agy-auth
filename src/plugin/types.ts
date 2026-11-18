@@ -85,7 +85,8 @@ export interface OpenCodeV2IntegrationConnection {
 }
 
 export interface OpenCodeV2PluginContext {
-  catalog?: OpenCodeV2TransformRegistry;
+  /** `reload()` re-runs every catalog transform (OpenCode v2 promise plugins). */
+  catalog?: OpenCodeV2TransformRegistry & { reload?: () => Promise<void> | void };
   provider?: OpenCodeV2TransformRegistry;
   model?: OpenCodeV2TransformRegistry;
   tool: OpenCodeV2TransformRegistry;

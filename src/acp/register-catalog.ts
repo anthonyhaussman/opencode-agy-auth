@@ -1,7 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import path from "node:path";
-import { AGY_ACP_FALLBACK_MODELS, AGY_ACP_PROVIDER_ID, type AgyTier } from "./constants";
+import { AGY_ACP_PROVIDER_ID, type AgyTier } from "./constants";
 import type { AcpModelInfo } from "./process";
 
 const TIERS: readonly AgyTier[] = ["low", "medium", "high"];
@@ -19,23 +18,38 @@ export function placeholderPackage(base: string = import.meta.url): string {
   return `aisdk:${url.href}`;
 }
 
-/** Model ids cached from a previous `session/new`, else the static fallback list. */
-export function readCachedModels(file: string): AcpModelInfo[] {
-  try {
-    const parsed = JSON.parse(readFileSync(file, "utf8")) as { models?: unknown };
-    const models = Array.isArray(parsed.models)
-      ? parsed.models.filter((m): m is AcpModelInfo => typeof (m as AcpModelInfo)?.modelId === "string")
-      : [];
-    if (models.length > 0) return models;
-  } catch {
-    // No cache yet, or unreadable: use the fallback list.
-  }
-  return AGY_ACP_FALLBACK_MODELS.map((modelId) => ({ modelId }));
+function sameModels(a: readonly AcpModelInfo[], b: readonly AcpModelInfo[]): boolean {
+  return a.length === b.length && a.every((m, i) => m.modelId === b[i]?.modelId && m.name === b[i]?.name);
 }
 
-export function writeCachedModels(file: string, models: AcpModelInfo[]): void {
-  mkdirSync(path.dirname(file), { recursive: true });
-  writeFileSync(file, `${JSON.stringify({ models, updatedAt: Date.now() }, null, 2)}\n`, { mode: 0o600 });
+/**
+ * In-memory list of the models agy reports. The catalog transform reads it on
+ * every run; `set` asks the host to re-run the transform when the list changes.
+ * Nothing is persisted: when agy cannot be asked, the provider has no models.
+ */
+export class ModelRegistry {
+  private models: AcpModelInfo[] = [];
+
+  constructor(
+    private readonly reload: () => Promise<void> | void,
+    private readonly log: (level: "warn", msg: string) => void,
+  ) {}
+
+  list(): AcpModelInfo[] {
+    return this.models;
+  }
+
+  /** Replaces the list; reloads the catalog only when ids or names changed. Returns whether it changed. */
+  async set(models: AcpModelInfo[]): Promise<boolean> {
+    if (sameModels(this.models, models)) return false;
+    this.models = models.map((m) => ({ ...m }));
+    try {
+      await this.reload();
+    } catch (err) {
+      this.log("warn", `agy-acp: catalog reload failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return true;
+  }
 }
 
 function family(id: string): string {

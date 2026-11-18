@@ -1,14 +1,13 @@
-import path from "node:path";
 import type { OpenCodeV2PluginContext, PluginClient } from "../plugin/types";
 import { emitAgyAcpTosWarning } from "../plugin/tos-warning";
 import { createAgyPluginInstaller } from "./agy-plugin";
 import { probeAgy, type AgyProbe } from "./binary";
-import { AGY_ACP_PROVIDER_ID, KIND_HEADER, SESSION_HEADER, agyAcpDataDir } from "./constants";
+import { AGY_ACP_PROVIDER_ID, KIND_HEADER, SESSION_HEADER } from "./constants";
 import { AgyAcpError, type AgyErrorCode } from "./errors";
 import { AgyAcpLanguageModel, type AgyAcpDeps, type LiveSession } from "./language-model";
 import { AgyProcessPool } from "./process";
 import { publishStatus, registerIntegration, resolveAuth, statusFromProbe, type AgyAcpStatus } from "./register-auth";
-import { placeholderPackage, readCachedModels, registerCatalog, writeCachedModels } from "./register-catalog";
+import { ModelRegistry, placeholderPackage, registerCatalog } from "./register-catalog";
 import { SessionStore } from "./session-sync";
 
 export type { AgyAcpStatus } from "./register-auth";
@@ -16,7 +15,6 @@ export type { AgyAcpStatus } from "./register-auth";
 export type AgyAcpRegisterOverrides = Partial<AgyAcpDeps> & {
   probe?: typeof probeAgy;
   installer?: () => Promise<void>;
-  modelsCachePath?: string;
   /** Extra options for the default agy plugin installer (tests). */
   installerOptions?: Omit<Parameters<typeof createAgyPluginInstaller>[0], "agyPath" | "notify">;
   /** Toast channel; defaults to `ctx.client` when the host provides one. */
@@ -72,7 +70,6 @@ export async function registerAgyAcpProvider(
   const {
     probe: probeFn = probeAgy,
     installer: installerOverride,
-    modelsCachePath = path.join(agyAcpDataDir(), "models.json"),
     installerOptions,
     client = (ctx as { client?: PluginClient }).client,
     ...depOverrides
@@ -118,6 +115,7 @@ export async function registerAgyAcpProvider(
   };
 
   let probing: Promise<void> = Promise.resolve();
+  const registry = new ModelRegistry(() => ctx.catalog?.reload?.(), log);
 
   const deps: AgyAcpDeps = {
     pool: depOverrides.pool ?? new AgyProcessPool<LiveSession>(),
@@ -148,11 +146,7 @@ export async function registerAgyAcpProvider(
       return installing;
     },
     onModels: (models) => {
-      try {
-        writeCachedModels(modelsCachePath, models);
-      } catch (error) {
-        log("warn", `agy-acp: could not write the models cache: ${error instanceof Error ? error.message : String(error)}`);
-      }
+      void registry.set(models);
     },
     onAuthStatus: (failure) => {
       if (failure !== undefined) setStatus({ status: "needs_auth", message: failure });
@@ -181,7 +175,7 @@ export async function registerAgyAcpProvider(
   probing = runProbe();
   handle.ready = probing;
 
-  registerCatalog(ctx, placeholderPackage(), () => readCachedModels(modelsCachePath));
+  registerCatalog(ctx, placeholderPackage(), () => registry.list());
   registerIntegration(ctx);
 
   const sdkRegistration = await ctx.aisdk?.hook("sdk", (event: any) => {

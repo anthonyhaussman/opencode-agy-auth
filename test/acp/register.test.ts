@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { LanguageModelV3CallOptions, LanguageModelV3StreamPart } from "@ai-sdk/provider";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgyProbe, ExecFn } from "../../src/acp/binary";
-import { AGY_ACP_FALLBACK_MODELS, AGY_ACP_PROVIDER_ID, MIN_AGY_VERSION } from "../../src/acp/constants";
+import { AGY_ACP_PROVIDER_ID, MIN_AGY_VERSION } from "../../src/acp/constants";
 import { AgyAcpLanguageModel } from "../../src/acp/language-model";
 import { registerAgyAcpProvider, type AgyAcpRegistration } from "../../src/acp/register";
 import { placeholderPackage } from "../../src/acp/register-catalog";
@@ -35,6 +35,7 @@ interface Recorder {
   sessionHooks: Array<{ name: string; handler: (ev: any) => any; opts?: { providerID?: string } }>;
   statusCalls: any[];
   toasts: any[];
+  reload: ReturnType<typeof vi.fn>;
   apply(): Promise<void>;
   sdk(ev: any): Promise<any>;
   hook(name: string): (ev: any) => any;
@@ -70,6 +71,7 @@ function fakeCtx(o: { workspaceID?: string; noConnection?: boolean } = {}) {
     sessionHooks: [],
     statusCalls: [],
     toasts: [],
+    reload: vi.fn(async () => {}),
     async apply() {
       for (const fn of transforms.provider) {
         await fn({
@@ -112,6 +114,7 @@ function fakeCtx(o: { workspaceID?: string; noConnection?: boolean } = {}) {
   const ctx: any = {
     provider: { transform: (fn: any) => transforms.provider.push(fn) },
     model: { transform: (fn: any) => transforms.model.push(fn) },
+    catalog: { reload: () => rec.reload() },
     tool: { transform: vi.fn() },
     command: { transform: vi.fn() },
     session: { hook: (name: string, handler: any, opts?: any) => rec.sessionHooks.push({ name, handler, opts }) },
@@ -162,7 +165,6 @@ async function register(ctx: any, overrides: Record<string, unknown> = {}) {
   const reg = await registerAgyAcpProvider(ctx, {
     probe: async () => ready(),
     installer: async () => {},
-    modelsCachePath: path.join(dir, "models.json"),
     store: new SessionStore(path.join(dir, "sessions.json")),
     pool: new AgyProcessPool(),
     log: vi.fn(),
@@ -195,7 +197,12 @@ async function languageModel(rec: Recorder, id = "gemini-3.8-flash-high"): Promi
 }
 
 describe("registerAgyAcpProvider: catalog", () => {
-  it("adds the provider with fallback models when no cache exists", async () => {
+  const MODELS = [
+    { modelId: "m-high", name: "Model High" },
+    { modelId: "m-low", name: "Model Low" },
+  ];
+
+  it("adds the provider with no models until agy reports some", async () => {
     const { ctx, rec } = fakeCtx();
     await register(ctx);
     await rec.apply();
@@ -203,8 +210,19 @@ describe("registerAgyAcpProvider: catalog", () => {
     expect(p).toMatchObject({ id: AGY_ACP_PROVIDER_ID, activation: "auto", integrationID: AGY_ACP_PROVIDER_ID });
     expect(p.package).toMatch(/^aisdk:file:\/\/.*\/sdk-placeholder\.(js|ts)$/);
     expect(existsSync(fileURLToPath(p.package.slice("aisdk:".length)))).toBe(true);
-    const ids = [...rec.models.values()].map((m) => m.id);
-    expect(ids).toEqual([...AGY_ACP_FALLBACK_MODELS]);
+    expect(rec.models.size).toBe(0);
+  });
+
+  it("registers the models agy reports through onModels", async () => {
+    const { ctx, rec } = fakeCtx();
+    const reg = await register(ctx);
+    reg.deps.onModels!(MODELS);
+    await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(1));
+    await rec.apply();
+    expect([...rec.models.values()].map((m) => [m.id, m.name])).toEqual([
+      ["m-high", "Model High"],
+      ["m-low", "Model Low"],
+    ]);
     for (const m of rec.models.values()) {
       expect(m.providerID).toBe(AGY_ACP_PROVIDER_ID);
       expect(m.variants.map((v: any) => v.id)).toEqual(["low", "medium", "high"]);
@@ -214,23 +232,24 @@ describe("registerAgyAcpProvider: catalog", () => {
     }
   });
 
-  it("uses cached model ids when models.json exists", async () => {
-    writeFileSync(path.join(dir, "models.json"), JSON.stringify({ models: [{ modelId: "c1", name: "Cached One" }, { modelId: "c2" }] }));
+  it("reloads the catalog only when onModels reports a different list", async () => {
     const { ctx, rec } = fakeCtx();
-    await register(ctx);
-    await rec.apply();
-    expect([...rec.models.values()].map((m) => [m.id, m.name])).toEqual([
-      ["c1", "Cached One"],
-      ["c2", "c2"],
-    ]);
+    const reg = await register(ctx);
+    reg.deps.onModels!(MODELS);
+    await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(1));
+    reg.deps.onModels!([...MODELS]);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(rec.reload).toHaveBeenCalledTimes(1);
+    reg.deps.onModels!([MODELS[0]!]);
+    await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(2));
   });
 
-  it("falls back when the models cache is corrupt or empty", async () => {
-    writeFileSync(path.join(dir, "models.json"), "{not json");
-    const { ctx, rec } = fakeCtx();
-    await register(ctx);
-    await rec.apply();
-    expect(rec.models.size).toBe(AGY_ACP_FALLBACK_MODELS.length);
+  it("does not write a models file", async () => {
+    const { ctx } = fakeCtx();
+    const reg = await register(ctx);
+    reg.deps.onModels!(MODELS);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(existsSync(path.join(dir, "models.json"))).toBe(false);
   });
 
   it("supports the legacy catalog draft", async () => {
@@ -238,8 +257,11 @@ describe("registerAgyAcpProvider: catalog", () => {
     delete ctx.provider;
     delete ctx.model;
     let fn: any;
-    ctx.catalog = { transform: (f: any) => (fn = f) };
-    await register(ctx);
+    const reload = vi.fn();
+    ctx.catalog = { transform: (f: any) => (fn = f), reload };
+    const reg = await register(ctx);
+    reg.deps.onModels!(MODELS);
+    await vi.waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
     const providers = new Map<string, any>();
     const models = new Map<string, any>();
     await fn({
@@ -247,24 +269,7 @@ describe("registerAgyAcpProvider: catalog", () => {
       model: { update: (pid: string, mid: string, f: any) => f(models.get(mid) ?? models.set(mid, { id: mid, providerID: pid }).get(mid)) },
     });
     expect(providers.get(AGY_ACP_PROVIDER_ID).activation).toBe("auto");
-    expect(models.size).toBe(AGY_ACP_FALLBACK_MODELS.length);
-  });
-
-  it("onModels writes the models cache", async () => {
-    const { ctx } = fakeCtx();
-    const reg = await register(ctx);
-    reg.deps.onModels!([{ modelId: "m1" }]);
-    const cached = JSON.parse(readFileSync(path.join(dir, "models.json"), "utf8"));
-    expect(cached.models.map((m: any) => m.modelId)).toContain("m1");
-  });
-
-  it("logs when the models cache cannot be written", async () => {
-    const { ctx } = fakeCtx();
-    const log = vi.fn();
-    const reg = await register(ctx, { modelsCachePath: path.join(dir, "models.json", "nested", "x.json"), log });
-    writeFileSync(path.join(dir, "models.json"), "file blocks dir");
-    reg.deps.onModels!([{ modelId: "m1" }]);
-    expect(log).toHaveBeenCalledWith("warn", expect.stringContaining("models cache"));
+    expect([...models.keys()]).toEqual(["m-high", "m-low"]);
   });
 });
 
@@ -602,7 +607,7 @@ describe("registerAgyAcpProvider: lifecycle", () => {
 
   it("uses default deps when no overrides are given", async () => {
     const { ctx } = fakeCtx();
-    const reg = await registerAgyAcpProvider(ctx, { probe: async () => ({ status: "missing" }), modelsCachePath: path.join(dir, "m.json") });
+    const reg = await registerAgyAcpProvider(ctx, { probe: async () => ({ status: "missing" }) });
     regs.push(reg);
     await reg.ready;
     expect(reg.deps.cwd).toBe(dir);
