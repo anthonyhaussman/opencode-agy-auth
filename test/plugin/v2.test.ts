@@ -108,7 +108,7 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     expect(updateProviderMock).toHaveBeenCalledWith(AGY_PROVIDER_ID, expect.any(Function));
     const pObj: any = {};
     updateProviderMock.mock.calls[0][1](pObj);
-    expect(pObj.name).toBe('Antigravity CLI');
+    expect(pObj.name).toBe('Antigravity CLI (deprecated)');
     expect(pObj.activation).toBe('enabled');
     expect(pObj.package).toBe('aisdk:@ai-sdk/google');
     expect(pObj.settings).toEqual({ apiKey: 'dummy' });
@@ -118,14 +118,14 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     await providerTransformFn!({ set: setProviderMock });
     expect(setProviderMock).toHaveBeenCalledWith(
       AGY_PROVIDER_ID,
-      expect.objectContaining({ name: 'Antigravity CLI', integrationID: AGY_PROVIDER_ID })
+      expect.objectContaining({ name: 'Antigravity CLI (deprecated)', integrationID: AGY_PROVIDER_ID })
     );
 
     // 3. Test provider editor as plain object
     const plainProviderEditor: any = {};
     await providerTransformFn!(plainProviderEditor);
     expect(plainProviderEditor[AGY_PROVIDER_ID]).toBeDefined();
-    expect(plainProviderEditor[AGY_PROVIDER_ID].name).toBe('Antigravity CLI');
+    expect(plainProviderEditor[AGY_PROVIDER_ID].name).toBe('Antigravity CLI (deprecated)');
 
     // 4. Test provider editor null guard
     await providerTransformFn!(null);
@@ -265,7 +265,7 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     expect(providerUpdateMock).toHaveBeenCalledWith(AGY_PROVIDER_ID, expect.any(Function));
     const providerObj: any = {};
     providerUpdateMock.mock.calls[0][1](providerObj);
-    expect(providerObj.name).toBe('Antigravity CLI');
+    expect(providerObj.name).toBe('Antigravity CLI (deprecated)');
     expect(providerObj.activation).toBe('enabled');
     expect(providerObj.package).toBe('aisdk:@ai-sdk/google');
     expect(providerObj.description).toBe('Google Gemini Antigravity Code Assist OAuth provider');

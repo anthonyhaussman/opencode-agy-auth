@@ -1,4 +1,4 @@
-# OpenCode Antigravity CLI Auth Plugin
+# OpenCode Antigravity CLI Plugin
 
 [![npm version](https://img.shields.io/npm/v/@anthonyhaussman/opencode-agy-auth)](https://www.npmjs.com/package/@anthonyhaussman/opencode-agy-auth)
 [![npm downloads](https://img.shields.io/npm/dw/@anthonyhaussman/opencode-agy-auth)](https://www.npmjs.com/package/@anthonyhaussman/opencode-agy-auth)
@@ -17,22 +17,61 @@
 >
 > Supported alternatives that do not rely on an Antigravity login:
 >
+> - The `google-agy-acp` provider of this plugin with the **Gemini API key** or **Vertex** method (see below).
 > - OpenCode's native `google` provider with a Gemini API key (`GOOGLE_GENERATIVE_AI_API_KEY`, from Google AI Studio).
 > - OpenCode's native `google-vertex` provider with your own Google Cloud project.
 >
 > Use this plugin at your own risk. The maintainer takes no responsibility for any action Google takes against your account.
 
-An [OpenCode](https://opencode.ai/) authentication plugin that enables seamless interaction with the Antigravity CLI (`agy`) by hooking into its authentication, quota retrieval, and dynamic model fetching layers.
+An [OpenCode](https://opencode.ai/) plugin for the Antigravity CLI (`agy`). It ships two providers:
 
-## Features
+- **`google-agy-acp`** (recommended): drives your local `agy` binary over the Agent Client Protocol (`agy acp`).
+- **`google-agy`** (deprecated): the original direct Code Assist API provider with OAuth. It is kept for existing users and will not receive new features.
+
+## Requirements
+
+- OpenCode >= 2.2.3 (this package supports the v2 plugin API only).
+- agy >= 1.5.10 for `google-agy-acp`. The binary is `agy` on your `PATH`, or the path in `OPENCODE_AGY_PATH`.
+
+## google-agy-acp provider
+
+The provider starts `agy acp --agent opencode` (one process per OpenCode session, no shell) and exposes agy's models in OpenCode. OpenCode keeps ownership of tools: they are presented to agy through a local MCP bridge (127.0.0.1, random port, per-process bearer token) served by an agy plugin named `opencode-bridge`, so file edits and commands still run inside OpenCode with OpenCode's permission prompts. Low, medium and high variants map to agy's `thought_level`.
+
+### Authentication
+
+Pick a method when connecting the `google-agy-acp` provider:
+
+- **Gemini API key** (recommended): stored by OpenCode, passed to agy as `GEMINI_API_KEY` in the child environment.
+- **Vertex AI / Agent Platform** (recommended): uses your Application Default Credentials. Nothing is stored by OpenCode.
+- **Google login (personal or Gemini Enterprise / Workspace)**: you sign in with `agy` itself; the plugin never reads, refreshes or forwards agy's OAuth tokens and never reads the OS keyring.
+
+### Disclaimer
+
+Google's policy names OpenCode as a third-party tool. Using the Google-login method through this plugin may still get your account disabled. This project makes no claim of Terms of Service compliance for any method. The API key and Vertex methods are the recommended ones.
+
+### What this provider changes on your machine
+
+- **Global agy plugin.** On first use the provider runs `agy plugin install` and adds the `opencode-bridge` plugin to agy's global plugins in `~/.gemini/config/plugins/`. A one-time notice is shown. Remove it at any time with `agy plugin uninstall opencode-bridge`. The plugin never edits `~/.gemini/config/*` by hand.
+- **`read_file` is not sandboxed.** agy's own `read_file` can read any file your user can read, including files outside the workspace, without a permission prompt. It is read-only and appears in OpenCode as a provider-executed call. Other agy built-ins (`write_file`, `run_command` and so on) are rejected.
+- **Shared schema cache.** agy caches tool schemas in `~/.gemini/antigravity-cli/mcp/opencode-bridge_bridge/`, shared by all sessions. Concurrent sessions with different tool sets can see each other's schemas; calls to a tool the session does not have are rejected by the bridge.
+- **Other MCP servers are blocked.** MCP servers from other agy plugins are blocked by permission rejection.
+- **Long tool runs.** agy times MCP calls out at 180 s. OpenCode tools that run longer than 170 s return "still running" to agy, and the result is delivered with the next message.
+- **Process lifetime.** agy child processes are not killed when the plugin unloads (the v2 setup hook has no disposer), but they exit after 5 minutes idle or when OpenCode exits.
+
+### Environment variables
+
+- `OPENCODE_AGY_PATH`: path to the agy binary (default: `agy` on `PATH`).
+
+## Legacy `google-agy` provider (deprecated)
+
+### Features
 
 - **OAuth 2.0 Integration**: Uses Antigravity's OAuth flows for authentication.
 - **Dynamic Model Retrieval**: Fetches available models based on user tier and current allocations.
 - **Quota Tracking**: Injects the `agy_quota` tool into OpenCode to check usage limits directly.
 - **Background Session Requests**: Sends the session-level requests the Antigravity backend expects alongside model calls.
-- **Dual OpenCode Compatibility**: Natively supports both OpenCode v1 (>= 1.18.29) and OpenCode v2 out of the box without breaking changes.
 
-## Installation
+### Installation
 
 Install the plugin from npm (or directly using local file configurations if developing):
 
@@ -40,7 +79,7 @@ Install the plugin from npm (or directly using local file configurations if deve
 npm install @anthonyhaussman/opencode-agy-auth
 ```
 
-## Configuration
+### Configuration
 
 Update your OpenCode configuration file (typically `opencode.json` at the root of your project or globally at `~/.config/opencode/opencode.json`) to register the plugin and specify your Google Cloud Project ID.
 
@@ -61,7 +100,7 @@ Update your OpenCode configuration file (typically `opencode.json` at the root o
 By default, the plugin registers a specialized provider ID to interface with `agy`.
 You can switch your active OpenCode provider to `agy` or let the plugin inject authentication into your existing sessions.
 
-### Environment Variables
+#### Environment Variables
 
 If you are running OpenCode in environments with specific requirements for Antigravity, you can use the following environment variables:
 
@@ -70,7 +109,7 @@ If you are running OpenCode in environments with specific requirements for Antig
 - `OPENCODE_AGY_ENDPOINT`: Override the default internal `daily-cloudcode-pa.googleapis.com` API endpoint.
 - `OPENCODE_AGY_VERBOSE_LOGS`: Set to `"1"` to enable verbose diagnostic logs for API calls and responses.
 
-## Usage
+### Usage
 
 Once installed and configured, OpenCode will automatically authenticate against Antigravity CLI when interacting with eligible models. If no active session exists, you will be prompted to complete an OAuth login.
 
@@ -160,15 +199,6 @@ To test and develop the plugin locally with OpenCode before publishing:
 
 3. **Verify the plugin**:
    Launch OpenCode in your target project. OpenCode will automatically resolve and load your local plugin directory. You can test your changes by running `npm run build` in the plugin directory and restarting your OpenCode session.
-
-## OpenCode Runtime Compatibility
-
-The plugin natively supports both OpenCode v1 (>= 1.18.29) and [OpenCode v2](https://opencode.ai/v2/docs) out of the box through a dual-compatibility architecture:
-
-- **OpenCode v1**: Loaded via the `server(options)` hook with custom OAuth flow and provider setup.
-- **OpenCode v2**: Loaded via `Plugin.define` / `setup(ctx)` with native catalog transformations, AI SDK hooks, session interception, and PKCE OAuth integration.
-
-No special flags or configurations are required - the plugin detects runtime automatically.
 
 ## Pre-release Channel
 
