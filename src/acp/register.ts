@@ -125,12 +125,16 @@ export async function registerAgyAcpProvider(
   // Every model list (discovery or session/new) takes a generation; a list from
   // an older generation never overwrites a newer one.
   let generation = 0;
-  const setModels = async (gen: number, models: AcpModelInfo[]): Promise<void> => {
+  // Last list that worked, per account, kept in memory only. A transient
+  // `agy models` failure restores it instead of emptying the picker.
+  const lastGood = new Map<string, AcpModelInfo[]>();
+  const setModels = async (gen: number, models: AcpModelInfo[], identity?: string): Promise<void> => {
     if (gen !== generation) return;
+    if (identity !== undefined) lastGood.set(identity, models);
     await registry.set(models);
   };
 
-  // The catalog lists exactly what agy reports; no file cache, no fallback list.
+  // The catalog lists what agy reports; no file cache, no static fallback list.
   const discover = async (): Promise<void> => {
     const gen = ++generation;
     await probing;
@@ -138,15 +142,20 @@ export async function registerAgyAcpProvider(
       await setModels(gen, []);
       return;
     }
+    const auth = await resolveAuth(ctx);
+    const fallback = (): AcpModelInfo[] => lastGood.get(auth.identity) ?? [];
     try {
-      const auth = await resolveAuth(ctx);
       const authEnv = applyAgyAuthEnv(env, { authMethod: auth.method, ...(auth.apiKey === undefined ? {} : { apiKey: auth.apiKey }) });
       const result = await listModels(probe.path, authEnv);
-      if (!result.recognized) log("warn", "agy-acp: unrecognized agy models output");
-      await setModels(gen, result.models);
+      if (!result.recognized) {
+        log("warn", "agy-acp: unrecognized agy models output");
+        await setModels(gen, fallback());
+        return;
+      }
+      await setModels(gen, result.models, auth.identity);
     } catch (error) {
       log("warn", `agy-acp: agy models failed: ${error instanceof Error ? error.message : String(error)}`);
-      await setModels(gen, []);
+      await setModels(gen, fallback());
     }
   };
 
@@ -180,7 +189,7 @@ export async function registerAgyAcpProvider(
       return installing;
     },
     onModels: (models) => {
-      void setModels(++generation, models);
+      void setModels(++generation, models, lastIdentity);
     },
     onAuthStatus: (failure) => {
       if (failure !== undefined) setStatus({ status: "needs_auth", message: failure });
