@@ -6,7 +6,7 @@ import { defaultExec, type ExecFn } from "./binary";
 import { AGY_PLUGIN_NAME, agyAcpDataDir } from "./constants";
 
 /** Bump whenever any file under agy-plugin/ changes (must equal plugin.json version). */
-export const AGY_PLUGIN_VERSION = "1.0.0";
+export const AGY_PLUGIN_VERSION = "1.0.1";
 
 export const AGY_PLUGIN_NOTICE =
   'google-agy-acp installed the agy plugin "opencode-bridge" into agy\'s global plugins (~/.gemini/config/plugins/) so agy can call OpenCode tools. Remove it with: agy plugin uninstall opencode-bridge';

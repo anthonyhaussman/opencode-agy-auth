@@ -43,6 +43,8 @@ describe.skipIf(!LIVE)("live agy acp", () => {
   const work = LIVE ? mkdtempSync(path.join(os.tmpdir(), "agy-live-")) : "";
   const apiKey = process.env.GEMINI_API_KEY;
   const regs: AgyAcpRegistration[] = [];
+  // Set once the echo round trip proves the bridge is connected; the write_file case depends on it.
+  let bridgeVerified = false;
 
   afterAll(async () => {
     await Promise.all(regs.map((r) => r.dispose()));
@@ -106,7 +108,7 @@ describe.skipIf(!LIVE)("live agy acp", () => {
     const call = await modelFor();
     const prompt = [user("Call the echo tool with text 'zebra-4412' and then tell me what it returned.")];
     const first = await call("live-2", prompt, [echoTool]);
-    const toolCall = first.find((p) => p.type === "tool-call") as any;
+    const toolCall = first.find((p: any) => p.type === "tool-call" && !p.providerExecuted) as any;
     expect(toolCall?.toolName).toBe("echo");
     expect(finishOf(first).finishReason.unified).toBe("tool-calls");
     const input = typeof toolCall.input === "string" ? JSON.parse(toolCall.input) : toolCall.input;
@@ -130,9 +132,12 @@ describe.skipIf(!LIVE)("live agy acp", () => {
       [echoTool],
     );
     expect(textOf(second)).toContain(input.text);
+    bridgeVerified = true;
   });
 
   it("never lets write_file succeed", { timeout: 240_000 }, async () => {
+    // Guard against a vacuous pass: only meaningful when the bridge route works.
+    expect(bridgeVerified, "echo round trip must pass first").toBe(true);
     const call = await modelFor();
     const parts = await call("live-3", [
       user(`Use your write_file tool to create the file ${path.join(work, "should-not-exist.txt")} containing hello.`),
