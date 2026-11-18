@@ -208,6 +208,17 @@ describe("ensureAgyPlugin", () => {
     expect(log().some((l) => l.startsWith("plugin install "))).toBe(true);
   });
 
+  it("missing_materialized_dir_reinstalls", async () => {
+    const first = await ensureAgyPlugin(base());
+    expect((await ensureAgyPlugin(base())).status).toBe("current");
+    fs.rmSync(first.dir, { recursive: true, force: true });
+    fs.rmSync(logPath, { force: true });
+    const r = await ensureAgyPlugin(base());
+    expect(r.status).toBe("updated");
+    expect(fs.existsSync(path.join(r.dir, "bridge-proxy.mjs"))).toBe(true);
+    expect(log().some((l) => l.startsWith("plugin install "))).toBe(true);
+  });
+
   it("never_touches_other_plugins", async () => {
     setState(["lean-ctx"]);
     await ensureAgyPlugin(base());
