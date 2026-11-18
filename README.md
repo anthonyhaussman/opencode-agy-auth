@@ -35,7 +35,7 @@ An [OpenCode](https://opencode.ai/) plugin for the Antigravity CLI (`agy`). It s
 
 ## google-agy-acp provider
 
-The provider starts `agy acp --agent opencode` (one process per OpenCode session, no shell) and exposes agy's models in OpenCode. OpenCode keeps ownership of tools: they are presented to agy through a local MCP bridge (127.0.0.1, random port, per-process bearer token) served by an agy plugin named `opencode-bridge`, so file edits and commands still run inside OpenCode with OpenCode's permission prompts. Low, medium and high variants map to agy's `thought_level`. The model list comes from `agy models` shortly after startup and refreshes when agy reports a different list at session start; without a working agy, the provider lists no models.
+The provider starts `agy acp --agent opencode` (one process per OpenCode session, no shell) and exposes agy's models in OpenCode. OpenCode keeps ownership of tools: they are presented to agy through a local MCP bridge (127.0.0.1, random port, per-process bearer token) served by an agy plugin named `opencode-bridge`, so file edits and commands still run inside OpenCode with OpenCode's permission prompts. Low, medium and high variants map to agy's `thought_level`. The model list comes from `agy models` shortly after startup and refreshes when agy reports a different list at session start. If `agy models` fails later, the provider keeps the last list that worked for the current account; if agy is missing, too old, or has never answered for that account, the provider lists no models.
 
 ### Authentication
 

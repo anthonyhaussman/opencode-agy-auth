@@ -333,6 +333,117 @@ describe("registerAgyAcpProvider: catalog", () => {
     expect([...rec.models.keys()]).toEqual([`${AGY_ACP_PROVIDER_ID}/new`]);
   });
 
+  describe("keeps the last working list per account", () => {
+    const useKey = () => {
+      active = { type: "credential", id: "c1", label: "k", method: "key" };
+      credential = { type: "key", key: "k" };
+    };
+    const useDefault = () => {
+      active = undefined;
+      credential = undefined;
+    };
+    const ids = async (rec: Recorder) => {
+      await rec.apply();
+      return [...rec.models.keys()].map((k) => k.split("/")[1]);
+    };
+
+    it("a failed discovery after an account switch shows no models", async () => {
+      const { ctx, rec } = fakeCtx();
+      const listModels = vi
+        .fn()
+        .mockResolvedValueOnce({ models: MODELS, recognized: true })
+        .mockRejectedValueOnce(new Error("exit 1"));
+      const reg = await register(ctx, { listModels });
+      await reg.modelsReady;
+      await reg.deps.auth();
+      useKey();
+      await reg.deps.auth();
+      await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(2));
+      expect(await ids(rec)).toEqual([]);
+    });
+
+    it("a failed discovery restores that account's last working list", async () => {
+      const { ctx, rec } = fakeCtx();
+      const log = vi.fn();
+      const listModels = vi
+        .fn()
+        .mockResolvedValueOnce({ models: MODELS, recognized: true })
+        .mockRejectedValueOnce(new Error("exit 1"))
+        .mockRejectedValueOnce(new Error("exit 1"));
+      const reg = await register(ctx, { listModels, log });
+      await reg.modelsReady;
+      await reg.deps.auth();
+      useKey();
+      await reg.deps.auth();
+      await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(2));
+      useDefault();
+      await reg.deps.auth();
+      await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(3));
+      expect(await ids(rec)).toEqual(["m-high", "m-low"]);
+      expect(log.mock.calls.filter((c) => c[0] === "warn" && /agy models failed/.test(c[1]))).toHaveLength(2);
+    });
+
+    it("unrecognized output restores that account's last working list", async () => {
+      const { ctx, rec } = fakeCtx();
+      const listModels = vi
+        .fn()
+        .mockResolvedValueOnce({ models: MODELS, recognized: true })
+        .mockResolvedValueOnce({ models: [], recognized: false })
+        .mockResolvedValueOnce({ models: [], recognized: false });
+      const reg = await register(ctx, { listModels });
+      await reg.modelsReady;
+      await reg.deps.auth();
+      useKey();
+      await reg.deps.auth();
+      await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(2));
+      useDefault();
+      await reg.deps.auth();
+      await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(3));
+      expect(await ids(rec)).toEqual(["m-high", "m-low"]);
+    });
+
+    it("a list from session/new counts as working", async () => {
+      const { ctx, rec } = fakeCtx();
+      const listModels = vi.fn().mockRejectedValue(new Error("exit 1"));
+      const reg = await register(ctx, { listModels });
+      await reg.modelsReady;
+      await reg.deps.auth();
+      reg.deps.onModels?.([{ modelId: "fresh", name: "Fresh" }]);
+      await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(1));
+      useKey();
+      await reg.deps.auth();
+      await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(2));
+      useDefault();
+      await reg.deps.auth();
+      await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(3));
+      expect(await ids(rec)).toEqual(["fresh"]);
+    });
+
+    it("missing agy clears the list even when it worked before", async () => {
+      const { ctx, rec } = fakeCtx();
+      const probe = vi
+        .fn()
+        .mockResolvedValueOnce(ready())
+        .mockResolvedValueOnce(ready())
+        .mockResolvedValueOnce({ status: "missing" });
+      const listModels = vi
+        .fn()
+        .mockResolvedValueOnce({ models: MODELS, recognized: true })
+        .mockResolvedValueOnce({ models: [{ modelId: "b" }], recognized: true });
+      const reg = await register(ctx, { probe, listModels });
+      await reg.modelsReady;
+      await reg.deps.auth();
+      useKey();
+      await reg.deps.auth();
+      await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(2));
+      useDefault();
+      await reg.deps.auth();
+      await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(3));
+      expect(await ids(rec)).toEqual([]);
+      expect(listModels).toHaveBeenCalledTimes(2);
+    });
+  });
+
   it("adds the provider with no models until agy reports some", async () => {
     const { ctx, rec } = fakeCtx();
     await register(ctx);
