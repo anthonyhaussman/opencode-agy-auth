@@ -1,7 +1,7 @@
 import type { OpenCodeV2PluginContext, PluginClient } from "../plugin/types";
 import { emitAgyAcpTosWarning } from "../plugin/tos-warning";
 import { createAgyPluginInstaller } from "./agy-plugin";
-import { probeAgy, type AgyProbe } from "./binary";
+import { listAgyModels, probeAgy, type AgyProbe } from "./binary";
 import { AGY_ACP_PROVIDER_ID, KIND_HEADER, SESSION_HEADER } from "./constants";
 import { AgyAcpError, type AgyErrorCode } from "./errors";
 import { AgyAcpLanguageModel, type AgyAcpDeps, type LiveSession } from "./language-model";
@@ -15,6 +15,8 @@ export type { AgyAcpStatus } from "./register-auth";
 export type AgyAcpRegisterOverrides = Partial<AgyAcpDeps> & {
   probe?: typeof probeAgy;
   installer?: () => Promise<void>;
+  /** Model discovery via `agy models` (tests). */
+  listModels?: typeof listAgyModels;
   /** Extra options for the default agy plugin installer (tests). */
   installerOptions?: Omit<Parameters<typeof createAgyPluginInstaller>[0], "agyPath" | "notify">;
   /** Toast channel; defaults to `ctx.client` when the host provides one. */
@@ -25,6 +27,8 @@ export interface AgyAcpRegistration {
   dispose(): Promise<void>;
   /** Settles once the registration-time binary probe has finished. */
   ready: Promise<void>;
+  /** Settles after the first `agy models` discovery attempt. */
+  modelsReady: Promise<void>;
   status(): AgyAcpStatus;
   deps: AgyAcpDeps;
 }
@@ -70,6 +74,7 @@ export async function registerAgyAcpProvider(
   const {
     probe: probeFn = probeAgy,
     installer: installerOverride,
+    listModels = listAgyModels,
     installerOptions,
     client = (ctx as { client?: PluginClient }).client,
     ...depOverrides
@@ -117,6 +122,23 @@ export async function registerAgyAcpProvider(
   let probing: Promise<void> = Promise.resolve();
   const registry = new ModelRegistry(() => ctx.catalog?.reload?.(), log);
 
+  // The catalog lists exactly what agy reports; no file cache, no fallback list.
+  const discover = async (): Promise<void> => {
+    await probing;
+    if (probe?.status !== "ready") {
+      await registry.set([]);
+      return;
+    }
+    try {
+      const result = await listModels(probe.path, env);
+      if (!result.recognized) log("warn", "agy-acp: unrecognized agy models output");
+      await registry.set(result.models);
+    } catch (error) {
+      log("warn", `agy-acp: agy models failed: ${error instanceof Error ? error.message : String(error)}`);
+      await registry.set([]);
+    }
+  };
+
   const deps: AgyAcpDeps = {
     pool: depOverrides.pool ?? new AgyProcessPool<LiveSession>(),
     store: depOverrides.store ?? new SessionStore(),
@@ -129,6 +151,7 @@ export async function registerAgyAcpProvider(
       if (lastIdentity !== undefined && auth.identity !== lastIdentity) {
         lastIdentity = auth.identity;
         probing = runProbe();
+        void discover();
       }
       lastIdentity = auth.identity;
       await probing;
@@ -162,6 +185,7 @@ export async function registerAgyAcpProvider(
   const handle: AgyAcpRegistration = {
     deps,
     ready: Promise.resolve(),
+    modelsReady: Promise.resolve(),
     status: () => status,
     dispose: async () => {
       await deps.pool.disposeAll();
@@ -174,6 +198,7 @@ export async function registerAgyAcpProvider(
   emitAgyAcpTosWarning(client);
   probing = runProbe();
   handle.ready = probing;
+  handle.modelsReady = discover();
 
   registerCatalog(ctx, placeholderPackage(), () => registry.list());
   registerIntegration(ctx);

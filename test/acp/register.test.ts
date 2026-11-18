@@ -168,6 +168,7 @@ async function register(ctx: any, overrides: Record<string, unknown> = {}) {
     store: new SessionStore(path.join(dir, "sessions.json")),
     pool: new AgyProcessPool(),
     log: vi.fn(),
+    listModels: async () => ({ models: [], recognized: true }),
     ...overrides,
   } as any);
   regs.push(reg);
@@ -201,6 +202,81 @@ describe("registerAgyAcpProvider: catalog", () => {
     { modelId: "m-high", name: "Model High" },
     { modelId: "m-low", name: "Model Low" },
   ];
+
+  const modelIds = (rec: Recorder) => [...rec.models.values()].map((m) => [m.id, m.name]);
+
+  it("registers models returned by agy", async () => {
+    const { ctx, rec } = fakeCtx();
+    const listModels = vi.fn(async () => ({ models: MODELS, recognized: true }));
+    const reg = await register(ctx, { listModels });
+    await reg.modelsReady;
+    expect(listModels).toHaveBeenCalledWith("/usr/bin/agy", expect.anything());
+    expect(rec.reload).toHaveBeenCalledTimes(1);
+    await rec.apply();
+    expect(modelIds(rec)).toEqual([
+      ["m-high", "Model High"],
+      ["m-low", "Model Low"],
+    ]);
+  });
+
+  it("setup does not wait for agy models", async () => {
+    const { ctx, rec } = fakeCtx();
+    const reg = await register(ctx, { listModels: () => new Promise(() => {}) });
+    expect(reg.status().status).toBe("ready");
+    await rec.apply();
+    expect(rec.models.size).toBe(0);
+  });
+
+  it.each([
+    ["missing", { status: "missing" }],
+    ["too_old", { status: "too_old", path: "/x/agy", version: "1.5.8" }],
+  ])("%s probe -> listModels not called, no models", async (_name, result) => {
+    const { ctx, rec } = fakeCtx();
+    const listModels = vi.fn(async () => ({ models: MODELS, recognized: true }));
+    const reg = await register(ctx, { probe: async () => result, listModels });
+    await reg.modelsReady;
+    expect(listModels).not.toHaveBeenCalled();
+    await rec.apply();
+    expect(rec.models.size).toBe(0);
+  });
+
+  it("listModels rejects -> no models, one warn", async () => {
+    const { ctx, rec } = fakeCtx();
+    const log = vi.fn();
+    const reg = await register(ctx, { log, listModels: async () => Promise.reject(new Error("exit 1")) });
+    await reg.modelsReady;
+    const warns = log.mock.calls.filter((c) => c[0] === "warn");
+    expect(warns).toHaveLength(1);
+    expect(warns[0]![1]).toMatch(/agy models failed: exit 1/);
+    await rec.apply();
+    expect(rec.models.size).toBe(0);
+  });
+
+  it("unrecognized output -> no models, one warn", async () => {
+    const { ctx, rec } = fakeCtx();
+    const log = vi.fn();
+    const reg = await register(ctx, { log, listModels: async () => ({ models: [], recognized: false }) });
+    await reg.modelsReady;
+    const warns = log.mock.calls.filter((c) => c[0] === "warn");
+    expect(warns).toHaveLength(1);
+    expect(warns[0]![1]).toMatch(/unrecognized agy models output/);
+    await rec.apply();
+    expect(rec.models.size).toBe(0);
+  });
+
+  it("identity switch re-runs listModels", async () => {
+    const { ctx } = fakeCtx();
+    const listModels = vi.fn(async () => ({ models: MODELS, recognized: true }));
+    const reg = await register(ctx, { listModels });
+    await reg.modelsReady;
+    expect(listModels).toHaveBeenCalledTimes(1);
+    await reg.deps.auth();
+    expect(listModels).toHaveBeenCalledTimes(1);
+    active = { type: "credential", id: "c1", label: "k", method: "key" };
+    credential = { type: "key", key: "k" };
+    await reg.deps.auth();
+    await vi.waitFor(() => expect(listModels).toHaveBeenCalledTimes(2));
+  });
 
   it("adds the provider with no models until agy reports some", async () => {
     const { ctx, rec } = fakeCtx();
