@@ -89,7 +89,8 @@ export async function ensureAgyPlugin(o: {
     listed = false;
   }
 
-  if (stamp && stamp.version === version && stamp.nodePath === nodePath && listed) {
+  const materialized = typeof stamp?.dir === "string" && existsSync(path.join(stamp.dir, "bridge-proxy.mjs"));
+  if (stamp && stamp.version === version && stamp.nodePath === nodePath && listed && materialized) {
     return { status: "current", dir: stamp.dir, version };
   }
 
