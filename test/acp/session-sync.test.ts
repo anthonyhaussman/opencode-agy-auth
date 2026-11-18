@@ -65,13 +65,15 @@ describe("hashMessage / fingerprintOf", () => {
   it("fingerprint depends on each input and sorts tools", () => {
     const t1 = { name: "a", inputSchema: {} };
     const t2 = { name: "b", inputSchema: {} };
-    const base = fingerprintOf("s", [t1, t2], "api", "m", undefined);
-    expect(fingerprintOf("s", [t2, t1], "api", "m", undefined)).toBe(base);
-    expect(fingerprintOf("s2", [t1, t2], "api", "m", undefined)).not.toBe(base);
-    expect(fingerprintOf("s", [t1], "api", "m", undefined)).not.toBe(base);
-    expect(fingerprintOf("s", [t1, t2], "oauth", "m", undefined)).not.toBe(base);
-    expect(fingerprintOf("s", [t1, t2], "api", "m2", undefined)).not.toBe(base);
-    expect(fingerprintOf("s", [t1, t2], "api", "m", "high")).not.toBe(base);
+    const A = { method: "api", identity: "x" };
+    const base = fingerprintOf("s", [t1, t2], A, "m", undefined);
+    expect(fingerprintOf("s", [t2, t1], A, "m", undefined)).toBe(base);
+    expect(fingerprintOf("s2", [t1, t2], A, "m", undefined)).not.toBe(base);
+    expect(fingerprintOf("s", [t1], A, "m", undefined)).not.toBe(base);
+    expect(fingerprintOf("s", [t1, t2], { method: "oauth", identity: "x" }, "m", undefined)).not.toBe(base);
+    expect(fingerprintOf("s", [t1, t2], A, "m2", undefined)).not.toBe(base);
+    expect(fingerprintOf("s", [t1, t2], A, "m", "high")).not.toBe(base);
+    expect(fingerprintOf("s", [t1, t2], { method: "api", identity: "y" }, "m", undefined)).not.toBe(base);
   });
 });
 

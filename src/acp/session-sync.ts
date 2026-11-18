@@ -116,12 +116,21 @@ export function hashMessage(m: LanguageModelV3Message): string {
 export function fingerprintOf(
   system: string,
   tools: BridgeToolDef[],
-  authMethod: string,
+  auth: { method: string; identity: string },
   modelId: string,
   tier: string | undefined,
 ): string {
   const sorted = [...tools].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-  return sha256(canonicalJson({ system, tools: sorted, authMethod, modelId, tier: tier ?? null }));
+  return sha256(
+    canonicalJson({
+      system,
+      tools: sorted,
+      authMethod: auth.method,
+      authIdentity: auth.identity,
+      modelId,
+      tier: tier ?? null,
+    }),
+  );
 }
 
 export function renderToolIndex(tools: BridgeToolDef[]): string {

@@ -51,8 +51,6 @@ class Out {
   closed = false;
   /** Wakes a waiting consumer loop when the reader cancels the stream. */
   onCancel?: () => void;
-  /** Releases the per-session lock; idempotent. */
-  release: () => void = () => {};
   constructor(private readonly controller: ReadableStreamDefaultController<Part>) {}
   emit(...parts: Part[]): void {
     if (this.closed) return;
@@ -134,8 +132,8 @@ export class AgyAcpLanguageModel implements LanguageModelV3 {
       },
       cancel: () => {
         out.closed = true;
+        // The lock stays held until runSession settles (its finally releases it).
         out.onCancel?.();
-        out.release();
       },
     });
     return { stream };
@@ -219,7 +217,6 @@ export class AgyAcpLanguageModel implements LanguageModelV3 {
       out.error(o.abortSignal!.reason);
       return;
     }
-    out.release = release;
     try {
       await this.runLocked(o, ctx, key, out);
     } finally {
@@ -229,8 +226,8 @@ export class AgyAcpLanguageModel implements LanguageModelV3 {
 
   private async runLocked(o: LanguageModelV3CallOptions, ctx: CallContext, key: string, out: Out) {
     const { deps } = this;
-    const authMethod = await deps.authMethod();
-    const fingerprint = fingerprintOf(ctx.system, ctx.tools, authMethod, this.modelId, ctx.tier);
+    const auth = await deps.auth();
+    const fingerprint = fingerprintOf(ctx.system, ctx.tools, auth, this.modelId, ctx.tier);
     for (;;) {
       if (deps.pool.get(key)?.dead) await deps.pool.release(key);
       let created = false;
@@ -242,7 +239,7 @@ export class AgyAcpLanguageModel implements LanguageModelV3 {
             fingerprint,
             tools: ctx.tools,
             session: this.sessionParams(ctx, ctx.tools),
-            authMethod,
+            auth,
           });
         }),
         o.abortSignal,
@@ -283,13 +280,13 @@ export class AgyAcpLanguageModel implements LanguageModelV3 {
   }
 
   private async runThrowaway(o: LanguageModelV3CallOptions, ctx: CallContext, out: Out) {
-    const authMethod = await this.deps.authMethod();
+    const auth = await this.deps.auth();
     const live = await LiveSession.create(this.deps, {
       key: undefined,
       fingerprint: "",
       tools: [],
       session: this.sessionParams(ctx, []),
-      authMethod,
+      auth,
     });
     try {
       await this.step(o, live, decideSync(undefined, o.prompt, "").blocks, out);
