@@ -60,8 +60,26 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-function fakeCtx(o: { workspaceID?: string; noConnection?: boolean } = {}) {
-  const transforms: { provider: any[]; model: any[]; integration: any[] } = { provider: [], model: [], integration: [] };
+// Default shape matches the OpenCode v2 host: catalog.transform + catalog.reload.
+// `hooks: true` offers the older provider/model transform hooks instead.
+function fakeCtx(o: { workspaceID?: string; noConnection?: boolean; hooks?: boolean } = {}) {
+  const transforms: { provider: any[]; model: any[]; catalog: any[]; integration: any[] } = {
+    provider: [],
+    model: [],
+    catalog: [],
+    integration: [],
+  };
+  const updateProvider = (id: string, f: (p: any) => void) => {
+    const p = rec.providers.get(id) ?? { id };
+    f(p);
+    rec.providers.set(id, p);
+  };
+  const updateModel = (pid: string, mid: string, f: (m: any) => void) => {
+    const key = `${pid}/${mid}`;
+    const m = rec.models.get(key) ?? { id: mid, providerID: pid };
+    f(m);
+    rec.models.set(key, m);
+  };
   const rec: Recorder = {
     providers: new Map(),
     models: new Map(),
@@ -73,25 +91,11 @@ function fakeCtx(o: { workspaceID?: string; noConnection?: boolean } = {}) {
     toasts: [],
     reload: vi.fn(async () => {}),
     async apply() {
-      for (const fn of transforms.provider) {
-        await fn({
-          update: (id: string, f: (p: any) => void) => {
-            const p = rec.providers.get(id) ?? { id };
-            f(p);
-            rec.providers.set(id, p);
-          },
-        });
+      for (const fn of transforms.catalog) {
+        await fn({ provider: { update: updateProvider }, model: { update: updateModel } });
       }
-      for (const fn of transforms.model) {
-        await fn({
-          update: (pid: string, mid: string, f: (m: any) => void) => {
-            const key = `${pid}/${mid}`;
-            const m = rec.models.get(key) ?? { id: mid, providerID: pid };
-            f(m);
-            rec.models.set(key, m);
-          },
-        });
-      }
+      for (const fn of transforms.provider) await fn({ update: updateProvider });
+      for (const fn of transforms.model) await fn({ update: updateModel });
       for (const fn of transforms.integration) {
         await fn({
           update: (id: string, f: (i: any) => void) => {
@@ -112,9 +116,13 @@ function fakeCtx(o: { workspaceID?: string; noConnection?: boolean } = {}) {
     },
   };
   const ctx: any = {
-    provider: { transform: (fn: any) => transforms.provider.push(fn) },
-    model: { transform: (fn: any) => transforms.model.push(fn) },
-    catalog: { reload: () => rec.reload() },
+    ...(o.hooks
+      ? {
+          provider: { transform: (fn: any) => transforms.provider.push(fn) },
+          model: { transform: (fn: any) => transforms.model.push(fn) },
+        }
+      : {}),
+    catalog: { transform: (fn: any) => transforms.catalog.push(fn), reload: () => rec.reload() },
     tool: { transform: vi.fn() },
     command: { transform: vi.fn() },
     session: { hook: (name: string, handler: any, opts?: any) => rec.sessionHooks.push({ name, handler, opts }) },
@@ -479,11 +487,15 @@ describe("registerAgyAcpProvider: catalog", () => {
     const reg = await register(ctx);
     reg.deps.onModels!(MODELS);
     await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(1));
+    // A same-list report followed by a different one: the different list's
+    // reload lands after any reload the same list would have started, so an
+    // exact count of 2 proves the same list did not reload.
     reg.deps.onModels!([...MODELS]);
-    await new Promise((r) => setTimeout(r, 10));
-    expect(rec.reload).toHaveBeenCalledTimes(1);
     reg.deps.onModels!([MODELS[0]!]);
     await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(2));
+    await rec.apply();
+    expect([...rec.models.keys()]).toEqual([`${AGY_ACP_PROVIDER_ID}/m-high`]);
+    expect(rec.reload).toHaveBeenCalledTimes(2);
   });
 
   it("ignores a discovery that finishes after dispose", async () => {
@@ -526,31 +538,23 @@ describe("registerAgyAcpProvider: catalog", () => {
   });
 
   it("does not write a models file", async () => {
-    const { ctx } = fakeCtx();
+    const { ctx, rec } = fakeCtx();
     const reg = await register(ctx);
     reg.deps.onModels!(MODELS);
-    await new Promise((r) => setTimeout(r, 10));
+    // The old cache was written before the catalog reload, so waiting for the
+    // reload is enough to observe any file write.
+    await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(1));
     expect(existsSync(path.join(dir, "models.json"))).toBe(false);
   });
 
-  it("supports the legacy catalog draft", async () => {
-    const { ctx } = fakeCtx();
-    delete ctx.provider;
-    delete ctx.model;
-    let fn: any;
-    const reload = vi.fn();
-    ctx.catalog = { transform: (f: any) => (fn = f), reload };
+  it("registers models through provider/model transform hooks when the host offers them", async () => {
+    const { ctx, rec } = fakeCtx({ hooks: true });
     const reg = await register(ctx);
     reg.deps.onModels!(MODELS);
-    await vi.waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
-    const providers = new Map<string, any>();
-    const models = new Map<string, any>();
-    await fn({
-      provider: { update: (id: string, f: any) => f(providers.get(id) ?? providers.set(id, { id }).get(id)) },
-      model: { update: (pid: string, mid: string, f: any) => f(models.get(mid) ?? models.set(mid, { id: mid, providerID: pid }).get(mid)) },
-    });
-    expect(providers.get(AGY_ACP_PROVIDER_ID).activation).toBe("auto");
-    expect([...models.keys()]).toEqual(["m-high", "m-low"]);
+    await vi.waitFor(() => expect(rec.reload).toHaveBeenCalledTimes(1));
+    await rec.apply();
+    expect(rec.providers.get(AGY_ACP_PROVIDER_ID).activation).toBe("auto");
+    expect([...rec.models.keys()]).toEqual([`${AGY_ACP_PROVIDER_ID}/m-high`, `${AGY_ACP_PROVIDER_ID}/m-low`]);
   });
 });
 
