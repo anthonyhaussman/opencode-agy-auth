@@ -9,6 +9,7 @@ import {
   AGY_PLUGIN_NOTICE,
   AGY_PLUGIN_VERSION,
   agyPluginTemplateDir,
+  bridgeLaunchEnv,
   createAgyPluginInstaller,
   ensureAgyPlugin,
   materializeAgyPlugin,
@@ -154,6 +155,33 @@ describe("materializeAgyPlugin", () => {
       }),
     ).resolves.toBe(dir);
   });
+
+  it("materialize_writes_launch_env_only_when_given", async () => {
+    const withEnv = await materializeAgyPlugin({
+      templateDir: agyPluginTemplateDir(),
+      dataDir,
+      nodePath: "/opt/opencode",
+      launchEnv: { BUN_BE_BUN: "1" },
+      version: "9.9.9",
+    });
+    let cfg = JSON.parse(fs.readFileSync(path.join(withEnv, "mcp_config.json"), "utf8"));
+    expect(cfg.mcpServers.bridge.command).toBe("/opt/opencode");
+    expect(cfg.mcpServers.bridge.env).toEqual({ BUN_BE_BUN: "1" });
+
+    await materializeAgyPlugin({ templateDir: agyPluginTemplateDir(), dataDir, nodePath: "/usr/bin/node", version: "9.9.9" });
+    cfg = JSON.parse(fs.readFileSync(path.join(withEnv, "mcp_config.json"), "utf8"));
+    expect(cfg.mcpServers.bridge).not.toHaveProperty("env");
+  });
+});
+
+describe("bridgeLaunchEnv", () => {
+  it("runs a bun-compiled host as bun", () => {
+    expect(bridgeLaunchEnv({ node: "24.0.0", bun: "1.3.0" })).toEqual({ BUN_BE_BUN: "1" });
+  });
+
+  it("needs no env under node", () => {
+    expect(bridgeLaunchEnv({ node: "24.0.0" })).toBeUndefined();
+  });
 });
 
 describe("ensureAgyPlugin", () => {
@@ -197,6 +225,17 @@ describe("ensureAgyPlugin", () => {
     setState(["opencode-bridge"]);
     writeStamp({ version: "0.0.1" });
     expect((await ensureAgyPlugin(base())).status).toBe("updated");
+  });
+
+  it("reinstalls_when_launch_env_changes", async () => {
+    setState(["opencode-bridge"]);
+    writeStamp({});
+    const bun = { ...base(), launchEnv: { BUN_BE_BUN: "1" } };
+    expect((await ensureAgyPlugin(bun)).status).toBe("updated");
+    expect(log()).toContain("plugin uninstall opencode-bridge");
+    expect((await ensureAgyPlugin(bun)).status).toBe("current");
+    expect((await ensureAgyPlugin(base())).status).toBe("updated");
+    expect((await ensureAgyPlugin(base())).status).toBe("current");
   });
 
   it("reinstalls_when_missing_from_list", async () => {
