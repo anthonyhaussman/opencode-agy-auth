@@ -1,6 +1,6 @@
 import type { LanguageModelV3StreamPart } from "@ai-sdk/provider";
 import { BRIDGE_CONNECT_TIMEOUT_MS, CANCELLED_TEXT, MCP_SOFT_TIMEOUT_MS } from "./constants";
-import { AgyAcpError, BRIDGE_NOT_CONNECTED_TEXT } from "./errors";
+import { AgyAcpError, BRIDGE_NOT_CONNECTED_TEXT, classifyAgyError } from "./errors";
 import { McpBridge, PendingTools, type BridgeToolDef } from "./mcp-bridge";
 import { decidePermission } from "./permission";
 import {
@@ -30,6 +30,11 @@ export interface AgyAcpDeps {
   apiKey: () => Promise<string | undefined>;
   ensurePlugin: () => Promise<void>;
   onModels?: (models: AcpModelInfo[]) => void;
+  /**
+   * Reports the auth outcome of starting agy: `undefined` after a successful
+   * `authenticate` + `session/new`, else the auth-required message.
+   */
+  onAuthStatus?: (failure: string | undefined) => void;
   log: (level: "info" | "warn" | "error", msg: string) => void;
   bridgeConnectTimeoutMs?: number;
   softTimeoutMs?: number;
@@ -116,6 +121,7 @@ export class LiveSession implements PoolEntry {
     try {
       await deps.ensurePlugin();
     } catch (error) {
+      if (error instanceof AgyAcpError) throw error;
       const detail = error instanceof Error ? error.message : String(error);
       throw new AgyAcpError("plugin_install", `agy plugin install failed: ${detail}`);
     }
@@ -141,6 +147,7 @@ export class LiveSession implements PoolEntry {
       });
       live = new LiveSession(proc, bridge, pending, config, deps.log);
       const models = await live.openSession();
+      deps.onAuthStatus?.(undefined);
       deps.onModels?.(models);
       if (config.tools.length > 0) {
         const connected = await bridge.waitForClient(deps.bridgeConnectTimeoutMs ?? BRIDGE_CONNECT_TIMEOUT_MS);
@@ -148,6 +155,8 @@ export class LiveSession implements PoolEntry {
       }
       return live;
     } catch (error) {
+      const classified = classifyAgyError(error);
+      if (classified.code === "auth_required") deps.onAuthStatus?.(classified.message);
       await proc?.dispose();
       await bridge.close();
       throw error;

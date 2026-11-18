@@ -3,6 +3,11 @@ import pluginDefault, { setupOpenCodeV2, v2PluginDefinition } from '../../index'
 import { AGY_PROVIDER_ID } from '../../src/constants';
 import type { OpenCodeV2PluginContext } from '../../src/plugin/types';
 
+// These tests cover google-agy alone; google-agy-acp registration is tested in test/acp/register.test.ts.
+vi.mock('../../src/acp/register', () => ({
+  registerAgyAcpProvider: vi.fn(async () => ({ dispose: async () => {} })),
+}));
+
 describe('index entrypoint v2 export', () => {
   it('exports a v2-only plugin definition', async () => {
     const mod = await import('../../index');
