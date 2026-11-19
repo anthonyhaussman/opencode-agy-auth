@@ -1,83 +1,79 @@
 import { describe, it, expect, vi } from 'vitest';
-import pluginDefault, {
-  AgyCLIOAuthPlugin,
-  GoogleOAuthPlugin,
-  setupOpenCodeV2,
-  v2PluginDefinition,
-} from '../../index';
-import { AGY_PROVIDER_ID } from '../../src/constants';
-import { AGY_QUOTA_TOOL_NAME } from '../../src/plugin/quota';
-import { AGY_QUOTA_SUMMARY_TOOL_NAME } from '../../src/plugin/quota-summary';
-import type { OpenCodeV2PluginContext } from '../../src/plugin/types';
+import pluginDefault, { setup } from '../../index';
 
-describe('index entrypoint dual v1/v2 export', () => {
-  it('exports dual plugin object as default export', () => {
+describe('index entrypoint — V2-only, one account per provider', () => {
+  it('exports a V2 plugin object with a stable id and setup function', () => {
     expect(pluginDefault).toBeDefined();
-    expect(pluginDefault.id).toBe(AGY_PROVIDER_ID);
+    expect(pluginDefault.id).toBe('kpihx.agy');
     expect(typeof pluginDefault.setup).toBe('function');
-    expect(typeof pluginDefault.server).toBe('function');
+    expect(pluginDefault.setup).toBe(setup);
   });
 
-  it('exposes identical setup and v2PluginDefinition references', () => {
-    expect(pluginDefault.setup).toBe(setupOpenCodeV2);
-    expect(pluginDefault.id).toBe(v2PluginDefinition.id);
+  it('has no V1 dual surface (no .server, no multi-account exports)', () => {
+    expect((pluginDefault as any).server).toBeUndefined();
   });
 
-  it('invokes v1 plugin function via .server and returns v1 plugin shape', async () => {
-    const mockClient = {
-      app: {
-        log: vi.fn(),
-      },
+  it('registers provider + integration + model + aisdk for each configured id', async () => {
+    const transforms: Record<string, any> = {};
+    const providerTransform = vi.fn((fn: any) => { transforms.provider = fn; });
+    const integrationTransform = vi.fn((fn: any) => { transforms.integration = fn; });
+    const modelTransform = vi.fn((fn: any) => { transforms.model = fn; });
+    const hook = vi.fn();
+    const mockCtx: any = {
+      options: { ids: ['agy', 'agy-labs'] },
+      provider: { transform: providerTransform },
+      integration: { transform: integrationTransform },
+      model: { transform: modelTransform },
+      aisdk: { hook },
+      event: { subscribe: async function* () {} },
+      location: { root: '/test' },
     };
 
-    const v1Result = await pluginDefault.server({ client: mockClient });
-    expect(v1Result).toBeDefined();
-    expect(typeof v1Result.config).toBe('function');
-    expect(typeof v1Result.tool).toBe('object');
-    expect(v1Result.tool[AGY_QUOTA_TOOL_NAME]).toBeDefined();
-    expect(v1Result.tool[AGY_QUOTA_SUMMARY_TOOL_NAME]).toBeDefined();
-    expect(typeof v1Result.auth).toBe('object');
-    expect(v1Result.auth.provider).toBe(AGY_PROVIDER_ID);
-    expect(typeof v1Result.auth.loader).toBe('function');
-    expect(typeof v1Result.provider).toBe('object');
-    expect(typeof v1Result.provider.models).toBe('function');
+    const cleanup = await pluginDefault.setup(mockCtx);
+    expect(typeof cleanup).toBe('function');
+    cleanup();
+
+    expect(providerTransform).toHaveBeenCalledTimes(2);
+    expect(integrationTransform).toHaveBeenCalledTimes(2);
+    // The catalog is loaded before the transforms and injected through
+    // provider.models.set() — there is deliberately no model.transform.
+    expect(modelTransform).not.toHaveBeenCalled();
+    expect(hook).toHaveBeenCalledTimes(2);
+    expect(hook.mock.calls[0][0]).toBe('sdk');
   });
 
-  it('invokes v2 setup function via .setup', async () => {
-    const mockCtx: OpenCodeV2PluginContext = {
-      catalog: {
-        transform: vi.fn(),
-      },
-      tool: {
-        transform: vi.fn(),
-      },
-      command: {
-        transform: vi.fn(),
-      },
-      session: {
-        hook: vi.fn(),
-      },
-      integration: {
-        transform: vi.fn(),
-      },
-      location: {
-        root: '/test',
-        workspace: '/test/workspace',
-      },
-    };
-
-    await pluginDefault.setup(mockCtx);
-
-    expect(mockCtx.catalog.transform).toHaveBeenCalledTimes(1);
-    expect(mockCtx.tool.transform).toHaveBeenCalledTimes(1);
-    expect(mockCtx.command.transform).toHaveBeenCalledTimes(1);
-    expect(mockCtx.session.hook).toHaveBeenCalled();
+  it('defaults to ["agy", "agy-labs"] when options.ids is absent', async () => {
+    const providerTransform = vi.fn();
+    await pluginDefault.setup({
+      options: {},
+      provider: { transform: providerTransform },
+      integration: { transform: vi.fn() },
+      model: { transform: vi.fn() },
+      aisdk: { hook: vi.fn() },
+      event: { subscribe: async function* () {} },
+    } as any);
+    expect(providerTransform).toHaveBeenCalledTimes(2);
   });
 
-  it('preserves named exports AgyCLIOAuthPlugin and GoogleOAuthPlugin', () => {
-    expect(AgyCLIOAuthPlugin).toBeDefined();
-    expect(GoogleOAuthPlugin).toBeDefined();
-    expect(GoogleOAuthPlugin).toBe(AgyCLIOAuthPlugin);
-    expect(pluginDefault.server).toBe(AgyCLIOAuthPlugin);
+  it('exposes an OAuth method registration for each integration id', async () => {
+    let integrationFn: any;
+    await pluginDefault.setup({
+      options: { ids: ['agy'] },
+      provider: { transform: vi.fn() },
+      integration: { transform: (fn: any) => { integrationFn = fn; } },
+      model: { transform: vi.fn() },
+      aisdk: { hook: vi.fn() },
+      event: { subscribe: async function* () {} },
+    } as any);
+
+    const update = vi.fn();
+    const editor: any = { update, method: { update: vi.fn() } };
+    integrationFn(editor);
+    expect(editor.method.update).toHaveBeenCalledTimes(1);
+    const reg = editor.method.update.mock.calls[0][0];
+    expect(reg.integrationID).toBe('agy');
+    expect(reg.method.type).toBe('oauth');
+    expect(typeof reg.authorize).toBe('function');
+    expect(typeof reg.refresh).toBe('function');
   });
 });

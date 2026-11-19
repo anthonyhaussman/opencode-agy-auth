@@ -47,7 +47,7 @@ export function inferModelMetadata(modelId: string): SimpleStaticModel {
     attachment = false;
   } else if (isGemini) {
     // Some newer variants have larger output
-  if (maxOutputTokens < 262144 && /-4\b/.test(modelId) && modelId.split('-').length > 3) {
+  if (maxOutputTokens < 262144 && /-4\b/.test(modelId) && modelId.split('-').length >= 3) {
     maxOutputTokens = 262144;
   }
     name = modelId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());

@@ -7,6 +7,10 @@ export default defineConfig({
       OPENCODE_HEADLESS: "1",
     },
     include: ["test/**/*.test.ts"],
+    // Legacy V1/V2 dual-architecture tests are archived under test/legacy/.
+    // They assert removed behavior (static catalog, plugin-owned multi-account
+    // store). Kept for audit, excluded from the active suite.
+    exclude: ["test/legacy/**"],
     passWithNoTests: false,
     coverage: {
       provider: "v8",
