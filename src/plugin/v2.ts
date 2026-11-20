@@ -34,6 +34,7 @@ import { registerV2SessionHooks } from './v2-session';
 import { initDiskSignatureCache, getDiskSignatureCache, resetDiskSignatureCacheForTesting } from './cache';
 import { initTurnStateTracker } from '../sdk/request';
 import { initCooldownPersistence } from '../sdk/retry';
+import { emitAgyTosWarning } from './tos-warning';
 import { accessTokenExpired, isOAuthAuth } from './auth';
 import { resolveCachedAuth } from './cache';
 
@@ -160,6 +161,7 @@ async function buildDynamicModelCatalogForV2(ctx: OpenCodeV2PluginContext): Prom
  * Fully dynamic — no hardcoded model lists.
  */
 export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<void> {
+  emitAgyTosWarning();
   // 0. Initialize persistent caches and tracking
   try {
     initDiskSignatureCache({

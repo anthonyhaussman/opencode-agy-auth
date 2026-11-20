@@ -1,12 +1,12 @@
 {
-  "name": "@kpihx-labs/opencode-agy-auth",
-  "version": "1.6.0-kpihx.2",
+  "name": "@anthonyhaussman/opencode-agy-auth",
+  "version": "1.5.9",
   "author": "antigravity",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kpihx-labs/opencode-agy-auth.git"
+    "url": "git+https://github.com/anthonyhaussman/opencode-agy-auth.git"
   },
-  "homepage": "https://github.com/kpihx-labs/opencode-agy-auth#readme",
+  "homepage": "https://github.com/anthonyhaussman/opencode-agy-auth#readme",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -53,7 +53,7 @@
     "vitest": "^5.1.0"
   },
   "dependencies": {
-    "@ai-sdk/google": "^4.0.120",
+    "@ai-sdk/google": "^4.0.121",
     "@openauthjs/openauth": "^0.4.3",
     "@opencode-ai/plugin": "^1.19.5"
   }

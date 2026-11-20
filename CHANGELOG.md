@@ -1,39 +1,12 @@
 # Changelog
 
-## [1.6.0-kpihx.2] — multi-account support (2026-11-17)
+## [1.5.9](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.5.8...1.5.9) (2026-11-15)
 
-### Added
 
-* **Multi-account storage.** `auth.json` → `google-agy` accepts
-  `{ activeAccount, accounts: { <name>: { type, access, refresh, expires } } }`.
-  The legacy flat record is still accepted and is transparently wrapped as a
-  single `default` account, so existing installs keep working.
-* **Per-account model namespaces.** Every account exposes its own catalogue as
-  `<account>/<model>`, so OpenCode shows `google-agy/<account>/<model>` and
-  choosing that model selects the account. No extra provider is needed.
-* **Account-aware request routing.** The fetch interceptor reads the account
-  from the requested model id (`<account>/<model>`), loads that account's
-  credentials, resolves its project id, then strips the account prefix before
-  forwarding to the AGY backend. Bare model ids keep using the active account.
-* **Manual account management by editing the JSON.** No command is required:
-  add/rename accounts and flip `activeAccount` directly in the file.
-* Storage helpers exported for scripting/automation: `loadAccountStore`,
-  `loadAccountAuth`, `saveAccountAuth`, `setActiveAccount`, `renameAccount`,
-  `seedAccountFromActive`, `splitAccountModel`, `accountModelKey`.
+### Features
 
-## [1.6.0-kpihx.1] — fork identity + fully dynamic catalog (2026-11-17)
-
-Fork of `anthonyhaussman/opencode-agy-auth`, maintained by KpihX (`kpihx-labs`).
-
-### Changed
-
-* **identity:** package renamed `@anthonyhaussman/opencode-agy-auth` → `@kpihx-labs/opencode-agy-auth`.
-  A stray npm spec (`@latest` in a project-scope `.opencode/opencode.json`) could otherwise be
-  installed alongside the local `file://` fork and silently override the provider's model list
-  with upstream statics. Distinct naming makes that collision impossible to miss.
-* **models:** fully dynamic catalog. Model IDs are read live from the AGY quota API
-  (`retrieveUserQuota`), tier mapping and display metadata are inferred from the returned IDs.
-  `STATIC_MODELS_SIMPLE`, `TIER_MAPPING` and the bundled `models.json` catalog are removed.
+* **agy:** bump agy CLI to v1.5.9 ([6648232](https://github.com/anthonyhaussman/opencode-agy-auth/commit/6648232628d39f3690a3f6a0516670a17caa488f))
+* **plugin:** warn about Antigravity ToS account risk ([b2c7a7d](https://github.com/anthonyhaussman/opencode-agy-auth/commit/b2c7a7d559f812c806832d387b3fab4aa5950d93))
 
 ## [1.5.8](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.5.6...1.5.8) (2026-11-13)
 

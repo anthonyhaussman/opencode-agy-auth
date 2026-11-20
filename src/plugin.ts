@@ -51,6 +51,7 @@ import {
   type SimpleStaticModel
 } from './plugin/tier';
 import { getSafeHeader, setSafeHeaders, toUrlString } from './plugin/headers';
+import { emitAgyTosWarning } from './plugin/tos-warning';
 export {
   inferModelMetadata,
   extractBaseModelId,
@@ -232,6 +233,7 @@ async function buildDynamicModelCatalog(
  * Fully dynamic — no hardcoded model lists.
  */
 export const AgyCLIOAuthPlugin = async ({ client }: PluginContext): Promise<PluginResult> => {
+  emitAgyTosWarning(client);
   let latestConfig: Config | undefined;
   let dynamicTierMapping: Record<string, Record<string, string>> = {};
 
