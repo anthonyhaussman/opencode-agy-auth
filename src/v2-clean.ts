@@ -23,6 +23,7 @@ import { refreshAccessToken } from "./plugin/token";
 import { retrieveUserQuota } from "./sdk/fetch_quota";
 import {
   buildTierMapping,
+  extractBaseModelId,
   fetchAvailableModelIds,
   inferModelMetadata,
   resolveModelTier,
@@ -40,6 +41,10 @@ import {
 const DEFAULT_IDS = ["agy", "agy-labs"];
 const DUMMY_KEY = "opencode-managed";
 const LOGIN_MODEL_ID = "__agy_login_required__";
+// Antigravity returns a misleading 429 "Resource has been exhausted" for an
+// oversized systemInstruction on an otherwise full-quota account. Verified
+// threshold: <=12000 chars -> 200, >=16000 chars -> 429. Stay well under it.
+const SYSTEM_INSTRUCTION_LIMIT = 10000;
 
 type AnyCtx = any;
 type OAuth = {
@@ -370,6 +375,53 @@ export const setup = async (ctx: AnyCtx): Promise<() => void> => {
         modelEnums,
       );
 
+      // The AI SDK opens the request with the catalog's display model id
+      // (e.g. `gemini-3.8-flash`) and prepareAgyRequest derives a variant
+      // (`gemini-3.8-flash-medium`) from modelEnums. The Antigravity backend
+      // only accepts the canonical bucket id (`gemini-3.8-flash-tiered`);
+      // anything else answers 404/429 "Resource has been exhausted" even with
+      // full quota. Force the wrapped body's `model` to a real bucket id built
+      // from the live quota, matching by base name, tiered variant preferred.
+      let outBody = transformed.init.body;
+      try {
+        const wrapped = JSON.parse(String(outBody));
+        // (1) Force the wrapped `model` to a canonical id that actually exists
+        // in the live-quota bucket set. The catalog's display names (and the
+        // variant derived by prepareAgyRequest from modelEnums, e.g.
+        // `gemini-3.8-flash-medium`) are rejected by the backend with 404/429.
+        const currentModel: string = String(wrapped?.model ?? requested ?? "");
+        const base = extractBaseModelId(currentModel);
+        const tierMap = tiersById.get(id)?.[base];
+        const canonical = tierMap
+          ? (tierMap["tiered"] ?? tierMap["medium"] ?? tierMap["high"] ?? Object.values(tierMap)[0])
+          : undefined;
+        if (canonical && canonical !== currentModel) {
+          wrapped.model = canonical;
+        }
+
+        // (2) Antigravity rejects an oversized `systemInstruction` (>~12k
+        // chars) with a misleading 429 "Resource has been exhausted" even on
+        // a full-quota account. OpenCode injects the whole AGENTS.md kernel
+        // there. Relocate the full text into a leading user content part and
+        // keep a short systemInstruction — lossless, no kernel content lost.
+        const req = wrapped?.request;
+        const parts: AnyCtx[] = Array.isArray(req?.systemInstruction?.parts) ? req.systemInstruction.parts : [];
+        const sysText = parts.map((p) => (typeof p?.text === "string" ? p.text : "")).join("");
+        if (sysText.length > SYSTEM_INSTRUCTION_LIMIT) {
+          req.systemInstruction = { parts: [{ text: sysText.slice(0, SYSTEM_INSTRUCTION_LIMIT) }] };
+          const contents: AnyCtx[] = Array.isArray(req.contents) ? req.contents : [];
+          req.contents = [
+            {
+              role: "user",
+              parts: [{ text: `The following is authoritative system context (AGENTS.md):\n\n${sysText}` }],
+            },
+            ...contents,
+          ];
+        }
+        outBody = JSON.stringify(wrapped);
+      } catch {
+        // If the body is not parseable JSON, forward it untouched.
+      }
       const headers = new Headers(transformed.init.headers);
       headers.delete("x-goog-api-key");
       headers.delete("x-api-key");
@@ -380,7 +432,7 @@ export const setup = async (ctx: AnyCtx): Promise<() => void> => {
       event.request = new Request(toUrlString(transformed.request), {
         method: transformed.init.method || event.request.method,
         headers,
-        body: transformed.init.body,
+        body: outBody,
       });
     }, { providerID: id });
 

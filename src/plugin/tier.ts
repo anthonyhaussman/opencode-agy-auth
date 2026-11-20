@@ -70,7 +70,12 @@ export function inferModelMetadata(modelId: string): SimpleStaticModel {
  * Extract base model ID from a tiered model ID.
  */
 export function extractBaseModelId(tieredModelId: string): string {
-  const tierSuffixes = ['-minimal', '-low', '-medium', '-high', '-xhigh'];
+  // `-tiered` is a real backend variant (e.g. gemini-3.8-flash-tiered is the
+  // only model ID the Antigravity backend accepts for 3.8 Flash; the bare
+  // `gemini-3.8-flash` returns 404 "Requested entity was not found"). Treat it
+  // as a tier so the base resolves to the accepted backend ID instead of
+  // sending the invalid bare name and surfacing as "Resource has been exhausted".
+  const tierSuffixes = ['-minimal', '-low', '-medium', '-high', '-xhigh', '-tiered'];
   for (const suffix of tierSuffixes) {
     if (tieredModelId.endsWith(suffix)) {
       return tieredModelId.slice(0, -suffix.length);
@@ -109,8 +114,17 @@ export function resolveModelTier(
   tierMapping?: Record<string, Record<string, string>>
 ): string {
   const parts = baseModelId.split('@');
-  const base = parts[0] || '';
-  const suffixTier = parts[1]?.toLowerCase();
+  const bare = parts[0] || '';
+  // OpenCode may append a tier to the model id itself (e.g.
+  // `gemini-3.8-flash-medium`), not only via `@` or x-agy-tier. Strip any
+  // recognized tier suffix to recover the base, then prefer that exact tier
+  // when the backend actually exposes it, else fall back to the canonical
+  // variant. Without this, `gemini-3.8-flash-medium` is sent verbatim and the
+  // backend answers 404/429 ("Resource has been exhausted") even though the
+  // account has full quota — the valid id is `gemini-3.8-flash-tiered`.
+  const base = extractBaseModelId(bare);
+  const derivedTier = bare.length > base.length ? bare.slice(base.length + 1) : undefined;
+  const suffixTier = (parts[1] || derivedTier)?.toLowerCase();
 
   const mapping = tierMapping?.[base];
   if (!mapping) {
