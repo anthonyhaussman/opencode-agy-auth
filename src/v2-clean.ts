@@ -2,7 +2,7 @@
  * v2-clean.ts — V2-only, one account per provider, secrets owned by OpenCode.
  *
  * Design:
- *  - `options.ids` (default ["agy", "agy-labs"]) drives N independent provider
+ *  - `options.ids` (default ["agy", "agy-x"]) drives N independent provider
  *    IDs, all served by this single plugin instance.
  *  - Each ID gets its own integration with one Google OAuth method. The
  *    credential is stored by OpenCode in SQLite — never in a plugin file.
@@ -38,7 +38,7 @@ import {
   transformAgyResponse,
 } from "./sdk/request";
 
-const DEFAULT_IDS = ["agy", "agy-labs"];
+const DEFAULT_IDS = ["agy", "agy-x"];
 const DUMMY_KEY = "opencode-managed";
 const LOGIN_MODEL_ID = "__agy_login_required__";
 // Antigravity returns a misleading 429 "Resource has been exhausted" for an

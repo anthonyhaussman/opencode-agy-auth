@@ -20,7 +20,7 @@ describe('index entrypoint — V2-only, one account per provider', () => {
     const modelTransform = vi.fn((fn: any) => { transforms.model = fn; });
     const hook = vi.fn();
     const mockCtx: any = {
-      options: { ids: ['agy', 'agy-labs'] },
+      options: { ids: ['agy', 'agy-x'] },
       provider: { transform: providerTransform },
       integration: { transform: integrationTransform },
       model: { transform: modelTransform },
@@ -42,7 +42,7 @@ describe('index entrypoint — V2-only, one account per provider', () => {
     expect(hook).not.toHaveBeenCalled();
   });
 
-  it('defaults to ["agy", "agy-labs"] when options.ids is absent', async () => {
+  it('defaults to ["agy", "agy-x"] when options.ids is absent', async () => {
     const providerTransform = vi.fn();
     await pluginDefault.setup({
       options: {},
