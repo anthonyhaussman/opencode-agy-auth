@@ -2,7 +2,7 @@
  * v2-clean.ts — V2-only, one account per provider, secrets owned by OpenCode.
  *
  * Design:
- *  - `options.ids` (default ["agy", "agy-x"]) drives N independent provider
+ *  - `options.ids` (default ["agy"]) drives N independent provider
  *    IDs, all served by this single plugin instance.
  *  - Each ID gets its own integration with one Google OAuth method. The
  *    credential is stored by OpenCode in SQLite — never in a plugin file.
@@ -37,8 +37,10 @@ import {
   rewriteRequestedModelInInput,
   transformAgyResponse,
 } from "./sdk/request";
+import { createAgyQuotaTool } from "./plugin/quota";
+import { createAgyQuotaSummaryTool } from "./plugin/quota-summary";
 
-const DEFAULT_IDS = ["agy", "agy-x"];
+const DEFAULT_IDS = ["agy"];
 const DUMMY_KEY = "opencode-managed";
 const LOGIN_MODEL_ID = "__agy_login_required__";
 // Antigravity returns a misleading 429 "Resource has been exhausted" for an
@@ -453,6 +455,92 @@ export const setup = async (ctx: AnyCtx): Promise<() => void> => {
       );
     }, { providerID: id });
   }
+
+  // Agent-callable quota tool + slash command, restored from the legacy V2
+  // plugin. Register once per configured id so each account's quota is
+  // reachable; tool names are derived from the id (no hardcoded account data).
+  const noopClient = { auth: { set: async () => {} } } as AnyCtx;
+  ctx.tool?.transform?.((editor: AnyCtx) => {
+    if (!editor) return;
+    for (const id of ids) {
+      const resolver = () => async () => {
+        const credential = await resolveCredential(id);
+        if (!credential) throw new Error(`No active credential for ${id}. Run: opencode auth login ${id}`);
+        return credential;
+      };
+      const qTool = createAgyQuotaTool({
+        client: noopClient,
+        getAuthResolver: resolver,
+        getConfiguredProjectId: () => undefined,
+        getUserAgentModel: () => undefined,
+      });
+      const sTool = createAgyQuotaSummaryTool({
+        client: noopClient,
+        getAuthResolver: resolver,
+        getConfiguredProjectId: () => undefined,
+        getUserAgentModel: () => undefined,
+      });
+      const emptySchema = { type: "object", properties: {}, required: [], additionalProperties: false };
+      const qName = id === "agy" ? "agy_quota" : `${id.replace(/[^A-Za-z0-9]/g, "_")}_quota`;
+      const sName = id === "agy" ? "agy_quota_summary" : `${id.replace(/[^A-Za-z0-9]/g, "_")}_quota_summary`;
+      if (typeof editor.add === "function") {
+        editor.add({
+          name: qName,
+          description: `Retrieve current Antigravity quota for the '${id}' account.`,
+          input: emptySchema,
+          execute: async (...args: AnyCtx[]) => {
+            const result = await (qTool as AnyCtx).execute(...args);
+            return typeof result === "string" ? { content: result } : result;
+          },
+        });
+        editor.add({
+          name: sName,
+          description: `Retrieve Antigravity quota summary by model group for the '${id}' account.`,
+          input: emptySchema,
+          execute: async (...args: AnyCtx[]) => {
+            const result = await (sTool as AnyCtx).execute(...args);
+            return typeof result === "string" ? { content: result } : result;
+          },
+        });
+      } else if (typeof editor.set === "function") {
+        editor.set(qName, qTool);
+        editor.set(sName, sTool);
+      }
+    }
+  });
+
+  ctx.command?.transform?.((editor: AnyCtx) => {
+    if (!editor) return;
+    for (const id of ids) {
+      const qName = id === "agy" ? "agy_quota" : `${id.replace(/[^A-Za-z0-9]/g, "_")}_quota`;
+      const sName = id === "agy" ? "agy_quota_summary" : `${id.replace(/[^A-Za-z0-9]/g, "_")}_quota_summary`;
+      const qCmd = id === "agy" ? "agy-quota" : `${id}-quota`;
+      const sCmd = id === "agy" ? "agy-quota-summary" : `${id}-quota-summary`;
+      const qTemplate = `Immediately call the \`${qName}\` tool with no arguments and return its output verbatim. Do not call other tools.`;
+      const sTemplate = `Immediately call the \`${sName}\` tool with no arguments and return its output verbatim. Do not call other tools.`;
+      if (typeof editor.add === "function") {
+        editor.add({
+          name: qCmd,
+          description: `Show Antigravity quota for '${id}'`,
+          template: qTemplate,
+          execute: async ({ sessionID, prompt, delivery }: AnyCtx = {}) => {
+            await ctx.session?.prompt?.({ ...prompt, sessionID, text: qTemplate, delivery });
+          },
+        });
+        editor.add({
+          name: sCmd,
+          description: `Show Antigravity quota summary by model group for '${id}'`,
+          template: sTemplate,
+          execute: async ({ sessionID, prompt, delivery }: AnyCtx = {}) => {
+            await ctx.session?.prompt?.({ ...prompt, sessionID, text: sTemplate, delivery });
+          },
+        });
+      } else if (typeof editor.set === "function") {
+        editor.set(qCmd, { description: `Show Antigravity quota for '${id}'`, template: qTemplate });
+        editor.set(sCmd, { description: `Show Antigravity quota summary for '${id}'`, template: sTemplate });
+      }
+    }
+  });
 
   // Rebuild the cached catalog when a credential appears or changes, then replay
   // the synchronous transforms through reload().

@@ -20,7 +20,7 @@ describe('index entrypoint — V2-only, one account per provider', () => {
     const modelTransform = vi.fn((fn: any) => { transforms.model = fn; });
     const hook = vi.fn();
     const mockCtx: any = {
-      options: { ids: ['agy', 'agy-x'] },
+      options: { ids: ['agy', 'secondary'] },
       provider: { transform: providerTransform },
       integration: { transform: integrationTransform },
       model: { transform: modelTransform },
@@ -42,7 +42,7 @@ describe('index entrypoint — V2-only, one account per provider', () => {
     expect(hook).not.toHaveBeenCalled();
   });
 
-  it('defaults to ["agy", "agy-x"] when options.ids is absent', async () => {
+  it('defaults to ["agy"] when options.ids is absent', async () => {
     const providerTransform = vi.fn();
     await pluginDefault.setup({
       options: {},
@@ -52,7 +52,7 @@ describe('index entrypoint — V2-only, one account per provider', () => {
       aisdk: { hook: vi.fn() },
       event: { subscribe: async function* () {} },
     } as any);
-    expect(providerTransform).toHaveBeenCalledTimes(2);
+    expect(providerTransform).toHaveBeenCalledTimes(1);
   });
 
   it('exposes an OAuth method registration for each integration id', async () => {

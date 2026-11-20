@@ -1,7 +1,7 @@
 /**
  * opencode-agy-auth — V2-only entry point.
  *
- * One plugin, N provider IDs (options.ids, default ["agy", "agy-x"]).
+ * One plugin, N provider IDs (options.ids, default ["agy"]).
  * Each ID has a single Google OAuth account whose credential is owned by
  * OpenCode (SQLite). No plugin-owned credential store, no account/model
  * namespacing, no multi-account failover.
