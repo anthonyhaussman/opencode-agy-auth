@@ -35,11 +35,11 @@ describe('index entrypoint — V2-only, one account per provider', () => {
 
     expect(providerTransform).toHaveBeenCalledTimes(2);
     expect(integrationTransform).toHaveBeenCalledTimes(2);
-    // The catalog is loaded before the transforms and injected through
-    // provider.models.set() — there is deliberately no model.transform.
-    expect(modelTransform).not.toHaveBeenCalled();
-    expect(hook).toHaveBeenCalledTimes(2);
-    expect(hook.mock.calls[0][0]).toBe('sdk');
+    // The catalog is loaded before the transforms, then published through the
+    // same ctx.model.transform + editor.update path the kernel mirror uses.
+    expect(modelTransform).toHaveBeenCalledTimes(2);
+    // No dead aisdk hook: request shaping lives in session http.request/http.response.
+    expect(hook).not.toHaveBeenCalled();
   });
 
   it('defaults to ["agy", "agy-labs"] when options.ids is absent', async () => {
