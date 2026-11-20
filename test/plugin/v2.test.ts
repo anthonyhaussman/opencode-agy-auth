@@ -19,6 +19,25 @@ import { AGY_QUOTA_TOOL_NAME } from '../../src/plugin/quota';
 import { AGY_QUOTA_SUMMARY_TOOL_NAME } from '../../src/plugin/quota-summary';
 import { getDiskSignatureCache, resetDiskSignatureCacheForTesting } from '../../src/plugin/cache';
 import type { OpenCodeV2PluginContext } from '../../src/plugin/types';
+import { AGY_ACP_PROVIDER_ID } from '../../src/acp/constants';
+
+vi.mock('../../src/acp/binary', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/acp/binary')>()),
+  probeAgy: vi.fn(async () => ({ status: 'missing' })),
+}));
+
+// The google-agy tests below assume they are the only registrant; the
+// google-agy-acp tests at the end opt into the real registration.
+const acpRegistration = vi.hoisted(() => ({ real: false }));
+vi.mock('../../src/acp/register', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/acp/register')>();
+  return {
+    ...actual,
+    registerAgyAcpProvider: vi.fn((ctx: any, o?: any) =>
+      acpRegistration.real ? actual.registerAgyAcpProvider(ctx, o) : Promise.resolve({ dispose: async () => {} }),
+    ),
+  };
+});
 
 describe('OpenCode v2 Plugin Setup Adapter', () => {
   it('defines v2 plugin definition with correct id and setup function', () => {
@@ -89,7 +108,7 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     expect(updateProviderMock).toHaveBeenCalledWith(AGY_PROVIDER_ID, expect.any(Function));
     const pObj: any = {};
     updateProviderMock.mock.calls[0][1](pObj);
-    expect(pObj.name).toBe('Antigravity CLI');
+    expect(pObj.name).toBe('Antigravity CLI (deprecated)');
     expect(pObj.activation).toBe('enabled');
     expect(pObj.package).toBe('aisdk:@ai-sdk/google');
     expect(pObj.settings).toEqual({ apiKey: 'dummy' });
@@ -99,14 +118,14 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     await providerTransformFn!({ set: setProviderMock });
     expect(setProviderMock).toHaveBeenCalledWith(
       AGY_PROVIDER_ID,
-      expect.objectContaining({ name: 'Antigravity CLI', integrationID: AGY_PROVIDER_ID })
+      expect.objectContaining({ name: 'Antigravity CLI (deprecated)', integrationID: AGY_PROVIDER_ID })
     );
 
     // 3. Test provider editor as plain object
     const plainProviderEditor: any = {};
     await providerTransformFn!(plainProviderEditor);
     expect(plainProviderEditor[AGY_PROVIDER_ID]).toBeDefined();
-    expect(plainProviderEditor[AGY_PROVIDER_ID].name).toBe('Antigravity CLI');
+    expect(plainProviderEditor[AGY_PROVIDER_ID].name).toBe('Antigravity CLI (deprecated)');
 
     // 4. Test provider editor null guard
     await providerTransformFn!(null);
@@ -246,7 +265,7 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     expect(providerUpdateMock).toHaveBeenCalledWith(AGY_PROVIDER_ID, expect.any(Function));
     const providerObj: any = {};
     providerUpdateMock.mock.calls[0][1](providerObj);
-    expect(providerObj.name).toBe('Antigravity CLI');
+    expect(providerObj.name).toBe('Antigravity CLI (deprecated)');
     expect(providerObj.activation).toBe('enabled');
     expect(providerObj.package).toBe('aisdk:@ai-sdk/google');
     expect(providerObj.description).toBe('Google Gemini Antigravity Code Assist OAuth provider');
@@ -1336,5 +1355,54 @@ describe('OpenCode v2 Plugin Setup Adapter', () => {
     } finally {
       globalThis.Headers = origHeaders;
     }
+  });
+
+  it('registers both google-agy and google-agy-acp providers', async () => {
+    acpRegistration.real = true;
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const providerFns: Array<(editor: any) => Promise<void> | void> = [];
+    const hooks: string[] = [];
+    const mockCtx: OpenCodeV2PluginContext = {
+      provider: { transform: vi.fn((fn) => { providerFns.push(fn); }) },
+      model: { transform: vi.fn() },
+      tool: { transform: vi.fn() },
+      command: { transform: vi.fn() },
+      session: { hook: vi.fn((name: string) => { hooks.push(name); }) },
+      location: {},
+    };
+
+    await setupOpenCodeV2(mockCtx);
+
+    const providers = new Map<string, any>();
+    const editor = {
+      update: (id: string, fn: (p: any) => void) => {
+        const p = providers.get(id) ?? { id };
+        fn(p);
+        providers.set(id, p);
+      },
+    };
+    for (const fn of providerFns) await fn(editor);
+    expect([...providers.keys()].sort()).toEqual([AGY_PROVIDER_ID, AGY_ACP_PROVIDER_ID].sort());
+    expect(providers.get(AGY_ACP_PROVIDER_ID).activation).toBe('auto');
+    expect(hooks).toContain('model.request');
+  });
+
+  it('keeps google-agy working when google-agy-acp registration throws', async () => {
+    acpRegistration.real = true;
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const mockCtx: OpenCodeV2PluginContext = {
+      provider: { transform: vi.fn() },
+      model: { transform: vi.fn() },
+      tool: { transform: vi.fn() },
+      command: { transform: vi.fn() },
+      session: {
+        hook: vi.fn((name: string) => {
+          if (name === 'model.request') throw new Error('hook rejected');
+        }),
+      },
+      location: {},
+    };
+    await expect(setupOpenCodeV2(mockCtx)).resolves.toBeUndefined();
+    expect(warn.mock.calls.some((c) => String(c[0]).includes('google-agy-acp registration failed'))).toBe(true);
   });
 });

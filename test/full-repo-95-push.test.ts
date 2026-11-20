@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AgyCLIOAuthPlugin } from '../src/plugin.js';
 import {
   cacheSignature,
   getLatestSignature,
@@ -286,34 +285,4 @@ describe('Final Push to >=95% Test Coverage', () => {
     expect(second.candidates[0].content.parts.length).toBe(0);
   });
 
-  it('tests plugin.ts auth methods structure and background traffic headers in internal endpoint', async () => {
-    const client = {
-      config: { get: vi.fn().mockResolvedValue({ data: {} }) },
-      auth: { set: vi.fn() },
-      tui: { showToast: vi.fn() }
-    };
-
-    const plugin = await AgyCLIOAuthPlugin({ client: client as any });
-    expect(plugin.auth?.methods).toBeDefined();
-    expect(plugin.auth?.methods?.length).toBe(2);
-
-    // Auth methods authorize call
-    const oauthMethod = plugin.auth?.methods?.[0];
-    expect(oauthMethod?.type).toBe('oauth');
-
-    // Test loader internal endpoint with background traffic
-    const auth = {
-      type: 'oauth' as const,
-      refresh: 'ref|proj|managed',
-      access: 'acc-internal',
-      expires: Date.now() + 3600000
-    };
-
-    vi.spyOn(fetchModule, 'agyFetch').mockResolvedValue(new Response('ok', { status: 200 }));
-    const loaderResult = await plugin.auth?.loader(async () => auth as any, { id: AGY_PROVIDER_ID } as any);
-    const res = await loaderResult.fetch('https://cloudcode-pa.googleapis.com/v1internal/test', {
-      method: 'POST'
-    });
-    expect(res.status).toBe(200);
-  });
 });

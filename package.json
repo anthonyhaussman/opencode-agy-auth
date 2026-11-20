@@ -19,6 +19,7 @@
   },
   "files": [
     "dist",
+    "agy-plugin/",
     "README.md"
   ],
   "keywords": [
@@ -54,7 +55,10 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.121",
+    "@ai-sdk/provider": "4.0.38",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@openauthjs/openauth": "^0.4.3",
-    "@opencode-ai/plugin": "^1.19.5"
+    "@opencode-ai/plugin": "^1.19.5",
+    "ajv": "^8.20.0"
   }
 }

@@ -27,6 +27,7 @@ import { initDiskSignatureCache, getDiskSignatureCache, resetDiskSignatureCacheF
 import { initTurnStateTracker } from '../sdk/request';
 import { initCooldownPersistence } from '../sdk/retry';
 import { emitAgyTosWarning } from './tos-warning';
+import { registerAgyAcpProvider } from '../acp/register';
 
 // Re-export common symbols for backward compatibility
 export { getSafeHeader, setSafeHeaders, toUrlString } from './headers';
@@ -89,7 +90,7 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
   };
 
   const updateProviderRecord = (p: any) => {
-    p.name = 'Antigravity CLI';
+    p.name = 'Antigravity CLI (deprecated)';
     p.activation = 'enabled';
     p.package = 'aisdk:@ai-sdk/google';
     p.description = 'Google Gemini Antigravity Code Assist OAuth provider';
@@ -200,7 +201,7 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
       catalog.providers = catalog.providers || {};
       catalog.providers[AGY_PROVIDER_ID] = {
         id: AGY_PROVIDER_ID,
-        name: 'Antigravity CLI',
+        name: 'Antigravity CLI (deprecated)',
         npm: 'aisdk:@ai-sdk/google',
         settings: { apiKey: 'dummy' },
         integrationID: AGY_PROVIDER_ID,
@@ -477,6 +478,13 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
 
   // 6. Register session hooks (http.request, http.response, retry)
   registerV2SessionHooks(ctx);
+
+  // 7. Register the agy ACP-backed provider (google-agy-acp)
+  try {
+    await registerAgyAcpProvider(ctx);
+  } catch (e) {
+    console.warn(`[Agy Auth] google-agy-acp registration failed: ${e instanceof Error ? e.message : e}`);
+  }
 }
 
 export const v2PluginDefinition: OpenCodeV2PluginDefinition = defineOpenCodeV2Plugin({

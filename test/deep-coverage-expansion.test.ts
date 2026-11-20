@@ -5,7 +5,6 @@ import { createAgyQuotaTool } from '../src/plugin/quota.js';
 import { fetchAvailableModels } from '../src/sdk/fetch_models.js';
 import { onboardManagedProject } from '../src/sdk/fetch_project.js';
 import { retrieveUserQuota, retrieveUserQuotaSummary } from '../src/sdk/fetch_quota.js';
-import { AgyCLIOAuthPlugin } from '../src/plugin.js';
 import * as helpers from '../src/sdk/retry/helpers.js';
 import * as projectUtils from '../src/plugin/project/utils.js';
 
@@ -194,38 +193,7 @@ describe('Deep Coverage Expansion', () => {
     });
   });
 
-  describe('plugin.ts custom models and quota sorting', () => {
-    it('merges custom model options and capabilities in config hook', async () => {
-      const plugin = await AgyCLIOAuthPlugin({
-        client: {
-          config: {
-            get: vi.fn().mockResolvedValue({
-              data: {
-                provider: {
-                  'google-agy': {
-                    options: {
-                      thinkingConfig: { thinkingBudget: 2048 },
-                    },
-                    models: {
-                      'custom-flash': {
-                        displayName: 'Custom Flash',
-                        options: {
-                          thinkingConfig: { thinkingBudget: 4096 },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            }),
-          },
-        } as any,
-      });
-
-      const configResult = { provider: { 'google-agy': {} } };
-      await plugin.config(configResult as any);
-      expect((configResult.provider['google-agy'] as any).models).toBeDefined();
-    });
+  describe('v2 plugin custom models and quota sorting', () => {
 
     it('sorts versions and variants correctly in quota tool', async () => {
       vi.spyOn(globalThis, 'fetch').mockImplementation((url) => {

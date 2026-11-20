@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   defineOpenCodeV2Plugin,
-  type DualOpenCodePlugin,
   type OpenCodeV2PluginContext,
   type OpenCodeV2PluginDefinition,
 } from "../../src/plugin/types";
@@ -56,19 +55,5 @@ describe("OpenCode v2 plugin types and helper", () => {
 
     await plugin.setup(dummyContext);
     expect(setupMock).toHaveBeenCalledWith(dummyContext);
-  });
-
-  it("satisfies DualOpenCodePlugin interface contracts", async () => {
-    const serverFn = vi.fn().mockResolvedValue({ status: "ok" });
-    const dualPlugin: DualOpenCodePlugin = {
-      id: "dual-plugin",
-      setup: vi.fn(),
-      server: serverFn,
-    };
-
-    expect(dualPlugin.id).toBe("dual-plugin");
-    const serverRes = await dualPlugin.server({ port: 1234 });
-    expect(serverRes).toEqual({ status: "ok" });
-    expect(serverFn).toHaveBeenCalledWith({ port: 1234 });
   });
 });

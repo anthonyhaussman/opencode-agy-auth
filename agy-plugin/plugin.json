@@ -1,0 +1,5 @@
+{
+  "name": "opencode-bridge",
+  "version": "1.0.1",
+  "description": "Bridges OpenCode tools into agy over MCP for the google-agy-acp provider"
+}

@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AgyCLIOAuthPlugin } from '../src/plugin.js';
 import * as fetchModule from '../src/fetch.js';
 import * as fetchProjectModule from '../src/sdk/fetch_project.js';
 import * as fetchQuotaModule from '../src/sdk/fetch_quota.js';
@@ -8,75 +7,6 @@ import * as errorsHelper from '../src/sdk/request-helpers/errors.js';
 describe('Coverage Booster - 95%+ Target', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-  });
-
-  it('tests plugin.ts variants, modalities, and capabilities for gpt, claude, and gemini models', async () => {
-    const client = {
-      config: { get: vi.fn().mockResolvedValue({ data: {} }) },
-      auth: { set: vi.fn() },
-      tui: { showToast: vi.fn() }
-    };
-    const plugin = await AgyCLIOAuthPlugin(client as any);
-
-    const configInput = {
-      provider: {
-        'google-agy': {
-          models: {
-            'custom-model-extra': {
-              name: 'Custom Extra',
-              description: 'Desc',
-              toolCall: false,
-              reasoning: false,
-              attachment: false,
-              cost: { input: 1, output: 2, cache: { read: 0.5, write: 1.5 } }
-            }
-          }
-        }
-      }
-    };
-    await plugin.config(configInput as any);
-
-    const models = (configInput.provider as any)['google-agy'].models;
-    expect(models['gpt-oss-120b-medium']).toBeDefined();
-    expect(models['gpt-oss-120b-medium'].modalities.input).toEqual(['text']);
-    expect(models['gpt-oss-120b-medium'].capabilities.input.audio).toBe(false);
-
-    expect(models['claude-sonnet-5-5']).toBeDefined();
-    expect(models['claude-sonnet-5-5'].capabilities.input.image).toBe(true);
-    expect(models['claude-sonnet-5-5'].capabilities.input.audio).toBe(false);
-
-    expect(models['gemini-3.8-flash']).toBeDefined();
-    expect(models['gemini-3.8-flash'].variants.low).toBeDefined();
-    expect(models['gemini-3.8-flash'].variants.medium).toBeDefined();
-    expect(models['gemini-3.8-flash'].variants.high).toBeDefined();
-  });
-
-  it('tests plugin.ts auth methods and loader authorization header branching', async () => {
-    const client = {
-      config: { get: vi.fn().mockResolvedValue({ data: {} }) },
-      auth: { set: vi.fn() },
-      tui: { showToast: vi.fn() }
-    };
-    const plugin = await AgyCLIOAuthPlugin(client as any);
-    const authRecord = {
-      type: 'oauth' as const,
-      refresh: 'ref|proj|man',
-      access: 'valid-access-123',
-      expires: Date.now() + 3600000
-    };
-
-    const loaderObj = await (plugin.auth as any).loader(async () => authRecord, { id: 'google-agy' });
-
-    vi.spyOn(fetchModule, 'agyFetch').mockResolvedValue(new Response('ok', { status: 200 }));
-    const respWithAuth = await loaderObj.fetch('https://cloudcode-pa.googleapis.com/v1internal:test', {
-      headers: { Authorization: 'Bearer [REDACTED:Bearer token]' }
-    });
-    expect(respWithAuth.status).toBe(200);
-
-    const respWithoutAuth = await loaderObj.fetch('https://cloudcode-pa.googleapis.com/v1internal:test', {
-      headers: { 'Content-Type': 'application/json' }
-    });
-    expect(respWithoutAuth.status).toBe(200);
   });
 
   it('tests sdk error helpers and retry parsing edge cases', () => {

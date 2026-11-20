@@ -8,6 +8,12 @@ import {
 } from "../../src/plugin/tos-warning";
 import type { PluginClient } from "../../src/plugin/types";
 
+describe("AGY_TOS_WARNING", () => {
+  it("points to the google-agy-acp provider", () => {
+    expect(AGY_TOS_WARNING).toContain("google-agy-acp");
+  });
+});
+
 describe("emitAgyTosWarning", () => {
   let warnSpy: ReturnType<typeof vi.spyOn>;
 
