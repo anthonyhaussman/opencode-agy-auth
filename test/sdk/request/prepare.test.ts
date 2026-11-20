@@ -446,18 +446,16 @@ describe("prepareAgyRequest Claude model detection and label setting", () => {
       expect(getModelEnum("completely-unknown-model")).toBe("MODEL_PLACEHOLDER_M16");
     });
 
-    it("resolves known models from models.json correctly", () => {
-      expect(getModelEnum("gemini-3.8-flash-low")).toBe("MODEL_PLACEHOLDER_M320");
-      expect(getModelEnum("gemini-4-argon-low")).toBe("MODEL_PLACEHOLDER_M419");
-      expect(getModelEnum("gemini-4-argon-medium")).toBe("MODEL_PLACEHOLDER_M418");
-      expect(getModelEnum("gemini-4-argon-high")).toBe("MODEL_PLACEHOLDER_M417");
-      expect(getModelEnum("gemini-4-hydrogen-low")).toBe("MODEL_PLACEHOLDER_M527");
-      expect(getModelEnum("gemini-4-hydrogen-medium")).toBe("MODEL_PLACEHOLDER_M526");
-      expect(getModelEnum("gemini-4-hydrogen-high")).toBe("MODEL_PLACEHOLDER_M525");
-      expect(getModelEnum("gemini-4-hydrogen-xhigh")).toBe("MODEL_PLACEHOLDER_M528");
+    it("uses the dynamic catalog enums and never invents static placeholders", () => {
+      // The fork deliberately dropped models.json: only catalog-supplied enums
+      // are real. getModelEnum is a legacy fallback that always returns the
+      // generic M16 sentinel, which enumLabel then omits.
+      expect(getModelEnum("gemini-3.8-flash-low")).toBe("MODEL_PLACEHOLDER_M16");
+      expect(getModelEnum("gemini-4-argon-low")).toBe("MODEL_PLACEHOLDER_M16");
+      expect(getModelEnum("completely-unknown-model")).toBe("MODEL_PLACEHOLDER_M16");
     });
 
-    it("sets model_enum to MODEL_PLACEHOLDER_M16 in prepareAgyRequest for gemini-3.1-pro-high", () => {
+    it("omits model_enum in prepareAgyRequest when no live catalog is supplied", () => {
       const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-high:generateContent";
       const result = prepareAgyRequest(
         url,
@@ -466,7 +464,7 @@ describe("prepareAgyRequest Claude model detection and label setting", () => {
         "mock-project",
       );
       const payload = JSON.parse(result.init.body as string);
-      expect(payload.request.labels.model_enum).toBe("MODEL_PLACEHOLDER_M16");
+      expect(payload.request.labels.model_enum).toBeUndefined();
     });
   });
 });

@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 
 import { AGY_CODE_ASSIST_ENDPOINT } from "../../constants";
-import modelsJson from "../../../models.json";
 import { normalizeThinkingConfig } from "../request-helpers";
 import { buildAgyCliUserAgent } from "../user-agent";
 import { normalizeRequestPayloadIdentifiers, normalizeWrappedIdentifiers } from "./identifiers";
@@ -28,6 +27,7 @@ export function prepareAgyRequest(
   accessToken: string,
   projectId: string,
   thinkingConfigDefaults?: ThinkingConfigDefaults,
+  modelEnums?: Record<string, string>,
 ): {
   request: RequestInfo;
   init: RequestInit;
@@ -76,6 +76,7 @@ export function prepareAgyRequest(
       effectiveModel,
       rawModel,
       thinkingConfigDefaults,
+      modelEnums,
     );
     if (transformed.body) {
       body = transformed.body;
@@ -109,27 +110,27 @@ export const LEGACY_MODEL_ENUM_FALLBACKS: Record<string, string> = {
 };
 
 export function getModelEnum(modelName: string): string {
-  const deprecated = (modelsJson as any).deprecatedModelIds;
-  if (deprecated && deprecated[modelName]) {
-    const entry = deprecated[modelName];
-    if (typeof entry === "string" && LEGACY_MODEL_ENUM_FALLBACKS[entry]) {
-      return LEGACY_MODEL_ENUM_FALLBACKS[entry];
-    }
-    if (entry.newModelEnum) {
-      return entry.newModelEnum;
-    }
-  }
-  const models = (modelsJson as any).models;
-  if (models && models[modelName] && models[modelName].model) {
-    return models[modelName].model;
-  }
-  if (deprecated && deprecated[modelName] && deprecated[modelName].oldModelEnum) {
-    return deprecated[modelName].oldModelEnum;
-  }
   if (LEGACY_MODEL_ENUM_FALLBACKS[modelName]) {
     return LEGACY_MODEL_ENUM_FALLBACKS[modelName];
   }
   return "MODEL_PLACEHOLDER_M16";
+}
+
+/**
+ * Build the optional `model_enum` label.
+ *
+ * The enum maps a public model id to the backend placeholder the Code Assist
+ * server expects. When it is unknown we now omit the field instead of sending
+ * the placeholder: a mismatched enum makes the streaming endpoint stall or
+ * reject the request, which surfaces as a silent hang in the client.
+ */
+export function enumLabel(modelName: string, modelEnums?: Record<string, string>): { model_enum?: string } {
+  const fromCatalogue = modelEnums?.[modelName];
+  if (fromCatalogue) {
+    return { model_enum: fromCatalogue };
+  }
+  const value = getModelEnum(modelName);
+  return value && value !== "MODEL_PLACEHOLDER_M16" ? { model_enum: value } : {};
 }
 
 export function isClaudeModel(model: string): boolean {
@@ -338,6 +339,7 @@ function transformRequestBody(
   effectiveModel: string,
   requestedModel: string,
   thinkingConfigDefaults?: ThinkingConfigDefaults,
+  modelEnums?: Record<string, string>,
 ): { body?: string; userPromptId: string; sessionId?: string } {
   const fallbackId = randomUUID();
   try {
@@ -374,7 +376,7 @@ function transformRequestBody(
         requestPayloadInside.labels = {
           last_execution_id: randomUUID(),
           last_step_index: "0",
-          model_enum: getModelEnum(effectiveModel),
+          ...enumLabel(effectiveModel, modelEnums),
           trajectory_id: randomUUID(),
           used_claude: isClaudeModel(effectiveModel) || isClaudeModel(requestedModel) ? "true" : "false",
           used_claude_conservative: "false"
@@ -475,7 +477,7 @@ function transformRequestBody(
       requestPayload.labels = {
         last_execution_id: randomUUID(),
         last_step_index: "0",
-        model_enum: getModelEnum(effectiveModel),
+        ...enumLabel(effectiveModel, modelEnums),
         trajectory_id: randomUUID(),
         used_claude: isClaudeModel(effectiveModel) || isClaudeModel(requestedModel) ? "true" : "false",
         used_claude_conservative: "false"

@@ -2,6 +2,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AgyCLIOAuthPlugin, GoogleOAuthPlugin } from '../../src/plugin';
 import { AGY_PROVIDER_ID } from '../../src/constants';
 
+// Test model IDs that will be returned by mocked quota
+const TEST_MODEL_IDS = [
+  'gemini-3.8-flash-low',
+  'gemini-3.8-flash-medium',
+  'gemini-3.8-flash-high',
+  'gemini-4-argon-low',
+  'gemini-4-argon-medium',
+  'gemini-4-argon-high',
+  'claude-sonnet-4-6',
+  '',
+  'claude-opus-4-6-thinking',
+  'gpt-oss-120b-medium',
+];
+
 vi.mock('../../src/fetch', () => ({
   agyFetch: vi.fn(async () => new Response('{"ok": true}', { status: 200, headers: { 'content-type': 'application/json' } }))
 }));
@@ -13,8 +27,11 @@ vi.mock('../../src/sdk/retry', () => ({
 
 vi.mock('../../src/plugin/pricing', () => ({
   updateStaticModelsWithPricing: vi.fn((models) => {
-    if (models['gemini-3.8-flash']) {
-      models['gemini-3.8-flash'].cost = { input: 1.25, output: 5, cache: { read: 0.3, write: 1.25 } };
+    // Add pricing to test models
+    for (const modelId of Object.keys(models)) {
+      if (!models[modelId].cost) {
+        models[modelId].cost = { input: 1.25, output: 5, cache: { read: 0.3, write: 1.25 } };
+      }
     }
   })
 }));
@@ -24,7 +41,9 @@ vi.mock('../../src/plugin/project', () => ({
     effectiveProjectId: 'managed-proj-123',
     auth: { access: 'test-token', refresh: 'refresh-token', type: 'oauth' }
   })),
-  retrieveUserQuota: vi.fn(async () => ({ buckets: [] })),
+  retrieveUserQuota: vi.fn(async () => ({
+    buckets: TEST_MODEL_IDS.map(modelId => ({ modelId, remainingAmount: '1000', remainingFraction: 0.5, resetTime: '2026-01-01T00:00:00Z', tokenType: 'REQUESTS' }))
+  })),
   retrieveUserQuotaSummary: vi.fn(async () => ({ groups: [] }))
 }));
 
@@ -45,7 +64,26 @@ vi.mock('../../src/plugin/notify', () => ({
   maybeShowAgyTestToast: vi.fn()
 }));
 
-describe('AgyCLIOAuthPlugin', () => {
+vi.mock('../../src/sdk/user-agent', () => ({
+  buildAgyCliUserAgent: vi.fn(() => 'test-agent/1.0')
+}));
+
+vi.mock('../../src/plugin/cache', () => ({
+  resolveCachedAuth: vi.fn((auth) => auth),
+  initDiskSignatureCache: vi.fn()
+}));
+
+vi.mock('../../src/plugin/auth', () => ({
+  accessTokenExpired: vi.fn(() => false),
+  isOAuthAuth: vi.fn((auth) => auth?.type === 'oauth'),
+  parseRefreshParts: vi.fn(() => ({ refreshToken: 'refresh' }))
+}));
+
+vi.mock('../../src/sdk/request/turn-state-tracker', () => ({
+  initTurnStateTracker: vi.fn()
+}));
+
+describe('AgyCLIOAuthPlugin (dynamic)', () => {
   let mockClient: any;
 
   beforeEach(() => {
@@ -87,12 +125,8 @@ describe('AgyCLIOAuthPlugin', () => {
     expect(configObj.command['agyquota']).toBeDefined();
     expect(configObj.command['agyquotasummary']).toBeDefined();
     expect(configObj.provider[AGY_PROVIDER_ID]).toBeDefined();
-    expect(configObj.provider[AGY_PROVIDER_ID].models['gemini-3.8-flash']).toBeDefined();
-    expect(configObj.provider[AGY_PROVIDER_ID].models['gemini-4-argon']).toBeDefined();
-    expect(configObj.provider[AGY_PROVIDER_ID].models['gemini-4-hydrogen']).toBeDefined();
-    expect(configObj.provider[AGY_PROVIDER_ID].models['claude-opus-5-5']).toBeDefined();
-    expect(configObj.provider[AGY_PROVIDER_ID].models['claude-sonnet-5-5']).toBeDefined();
-    expect(configObj.provider[AGY_PROVIDER_ID].models['gpt-oss-120b-medium']).toBeDefined();
+    // Models will be populated dynamically via provider.models hook
+    expect(configObj.provider[AGY_PROVIDER_ID].models).toBeDefined();
   });
 
   it('models hook returns login-required when no oauth auth present', async () => {
@@ -107,15 +141,18 @@ describe('AgyCLIOAuthPlugin', () => {
     expect(apiAuthResult['login-required']).toBeDefined();
   });
 
-  it('models hook returns models with updated pricing when authenticated', async () => {
+  it('models hook returns dynamic models with pricing when authenticated', async () => {
     const plugin = await AgyCLIOAuthPlugin({ client: mockClient });
     const modelsFn = plugin.provider?.models as any;
 
     const auth = { type: 'oauth', access: 'token', refresh: 'refresh' };
     const result = await modelsFn({ models: {} }, { auth });
 
-    expect(result['gemini-3.8-flash']).toBeDefined();
+    // Should have base models (not tiered variants)
+    expect(Object.keys(result).length).toBeGreaterThan(0);
     expect(result['gemini-3.8-flash'].cost.input).toBe(1.25);
+    
+     // base model ID extracted from tiered
   });
 
   it('loader returns null for non-oauth auth', async () => {
@@ -134,7 +171,7 @@ describe('AgyCLIOAuthPlugin', () => {
     const auth = { type: 'oauth', access: 'access-123', refresh: 'ref-123', expires: Date.now() + 3600000 };
     const providerObj: any = {
       models: {
-        'gemini-3.7-flash': {
+        'gemini-3.8-flash': {
           options: {
             thinkingConfig: { thinkingBudget: 2000 }
           }
@@ -167,7 +204,7 @@ describe('AgyCLIOAuthPlugin', () => {
     expect(res3).toBeDefined();
 
     // Case 4: Generative Language request (GL)
-    const res4 = await loaded.fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent', {
+    const res4 = await loaded.fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -179,6 +216,9 @@ describe('AgyCLIOAuthPlugin', () => {
   });
 
   it('handles expired tokens during fetch interception', async () => {
+    const { accessTokenExpired } = await import('../../src/plugin/auth');
+    vi.mocked(accessTokenExpired).mockReturnValueOnce(true);
+
     const plugin = await AgyCLIOAuthPlugin({ client: mockClient });
     const loader = plugin.auth?.loader;
 
@@ -190,6 +230,8 @@ describe('AgyCLIOAuthPlugin', () => {
       body: JSON.stringify({ contents: [] })
     });
     expect(res).toBeDefined();
+
+    vi.mocked(accessTokenExpired).mockReturnValue(false);
   });
 
   it('handles model tier rewriting with suffix @high or x-agy-tier header', async () => {
@@ -199,7 +241,7 @@ describe('AgyCLIOAuthPlugin', () => {
     const auth = { type: 'oauth', access: 'access-123', refresh: 'ref-123', expires: Date.now() + 3600000 };
     const loaded = await loader!(async () => auth, { models: {} } as any);
 
-    const res = await loaded.fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash@high:generateContent', {
+    const res = await loaded.fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash@high:generateContent', {
       method: 'POST',
       body: JSON.stringify({ contents: [] })
     });
@@ -233,7 +275,7 @@ describe('AgyCLIOAuthPlugin', () => {
     const auth = { type: 'oauth', access: 'access-123', refresh: 'ref-123', expires: Date.now() + 3600000 };
     const loaded = await loader!(async () => auth, { models: {} } as any);
 
-    const req = new Request('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash@high:generateContent', {
+    const req = new Request('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash@high:generateContent', {
       method: 'POST',
       body: JSON.stringify({ contents: [] })
     });
@@ -251,12 +293,12 @@ describe('AgyCLIOAuthPlugin', () => {
 
     // Switch to non-oauth during fetch call
     currentAuth = { type: 'api', key: '123' };
-    const res1 = await loaded.fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent');
+    const res1 = await loaded.fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent');
     expect(res1).toBeDefined();
 
     // Switch to oauth with empty access token
     currentAuth = { type: 'oauth', access: '', refresh: 'ref-123', expires: Date.now() + 3600000 };
-    const res2 = await loaded.fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent');
+    const res2 = await loaded.fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent');
     expect(res2).toBeDefined();
   });
 
@@ -298,7 +340,7 @@ describe('AgyCLIOAuthPlugin', () => {
     const auth = { type: 'oauth', access: 'access-123', refresh: 'ref-123', expires: Date.now() + 3600000 };
     const loaded = await loader!(async () => auth, { models: {} } as any);
 
-    await expect(loaded.fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent', {
+    await expect(loaded.fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent', {
       method: 'POST',
       body: JSON.stringify({ contents: [] })
     })).rejects.toThrow('Project context exploded');
@@ -318,7 +360,6 @@ describe('AgyCLIOAuthPlugin', () => {
     const res = await loaded.fetch(customReqObj as any);
     expect(res).toBeDefined();
   });
-
 
   it('handles resolver error in models hook gracefully', async () => {
     const plugin = await AgyCLIOAuthPlugin({ client: mockClient });

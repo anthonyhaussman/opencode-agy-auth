@@ -15,104 +15,118 @@ export interface SimpleStaticModel {
   };
 }
 
-export const STATIC_MODELS_SIMPLE: Record<string, SimpleStaticModel> = {
-  'gemini-3.8-flash': {
-    name: 'Gemini 3.8 Flash',
-    description: 'Gemini 3.8 Flash base model. Select tier at runtime.',
-    maxTokens: 1048576,
-    maxOutputTokens: 65536,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'gemini-4-argon': {
-    name: 'Gemini 4 Argon',
-    description: 'Gemini 4 Argon base model. Select tier at runtime.',
-    maxTokens: 1048576,
-    maxOutputTokens: 65536,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'gemini-4-hydrogen': {
-    name: 'Gemini 4 Hydrogen',
-    description: 'Gemini 4 Hydrogen base model. Select tier at runtime.',
-    maxTokens: 1048576,
-    maxOutputTokens: 262144,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'claude-opus-5-5': {
-    name: 'Claude Opus 5.5',
-    description: 'Claude Opus 5.5 deep reasoning model. Select tier at runtime.',
-    maxTokens: 1000000,
-    maxOutputTokens: 128000,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'claude-sonnet-5-5': {
-    name: 'Claude Sonnet 5.5',
-    description: 'Claude Sonnet 5.5 deep reasoning model. Select tier at runtime.',
-    maxTokens: 1000000,
-    maxOutputTokens: 128000,
-    toolCall: true,
-    reasoning: true,
-    attachment: true
-  },
-  'gpt-oss-120b-medium': {
-    name: 'GPT-OSS 120B (Medium)',
-    description: 'GPT open-source 120B parameter medium tier model, excellent performance in local deployment or specific open-source benchmarks.',
-    maxTokens: 131072,
-    maxOutputTokens: 32768,
-    toolCall: true,
-    reasoning: true,
-    attachment: false
-  }
-};
+/**
+ * Dynamic model metadata derived from model ID patterns.
+ * No hardcoded lists — everything inferred from AGY quota response.
+ */
+export function inferModelMetadata(modelId: string): SimpleStaticModel {
+  const isClaude = modelId.startsWith('claude-');
+  const isGpt = modelId.startsWith('gpt-');
+  const isGemini = modelId.startsWith('gemini-');
 
-export const TIER_MAPPING: Record<string, { low: string; high: string; medium?: string; minimal?: string; xhigh?: string } & Record<string, string | undefined>> = {
-  'gemini-3.8-flash': {
-    low: 'gemini-3.8-flash-low',
-    medium: 'gemini-3.8-flash-medium',
-    high: 'gemini-3.8-flash-high'
-  },
-  'gemini-4-argon': {
-    low: 'gemini-4-argon-low',
-    medium: 'gemini-4-argon-medium',
-    high: 'gemini-4-argon-high'
-  },
-  'gemini-4-hydrogen': {
-    low: 'gemini-4-hydrogen-low',
-    medium: 'gemini-4-hydrogen-medium',
-    high: 'gemini-4-hydrogen-high',
-    xhigh: 'gemini-4-hydrogen-xhigh'
-  },
-  'claude-opus-5-5': {
-    low: 'claude-opus-5-5-low',
-    medium: 'claude-opus-5-5-medium',
-    high: 'claude-opus-5-5-high'
-  },
-  'claude-sonnet-5-5': {
-    low: 'claude-sonnet-5-5-low',
-    medium: 'claude-sonnet-5-5-medium',
-    high: 'claude-sonnet-5-5-high'
+  // Base defaults
+  let name = modelId;
+  let description = `${modelId} model. Select tier at runtime.`;
+  let maxTokens = 1048576;
+  let maxOutputTokens = 65536;
+  let toolCall = true;
+  let reasoning = true;
+  let attachment = true;
+
+  if (isClaude) {
+    name = modelId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    description = `${name} deep reasoning model. Select tier at runtime.`;
+    maxTokens = 1000000;
+    maxOutputTokens = 128000;
+    attachment = true;
+  } else if (isGpt) {
+    name = modelId.toUpperCase().replace(/-/g, ' ');
+    description = `GPT open-source model. Select tier at runtime.`;
+    maxTokens = 131072;
+    maxOutputTokens = 32768;
+    attachment = false;
+  } else if (isGemini) {
+    // Some newer variants have larger output
+  if (maxOutputTokens < 262144 && /-4\b/.test(modelId) && modelId.split('-').length >= 3) {
+    maxOutputTokens = 262144;
   }
-};
+    name = modelId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    description = `${name} base model. Select tier at runtime.`;
+    attachment = true;
+  }
+
+  return {
+    name,
+    description,
+    maxTokens,
+    maxOutputTokens,
+    toolCall,
+    reasoning,
+    attachment
+  };
+}
+
+/**
+ * Extract base model ID from a tiered model ID.
+ */
+export function extractBaseModelId(tieredModelId: string): string {
+  // `-tiered` is a real backend variant (e.g. gemini-3.8-flash-tiered is the
+  // only model ID the Antigravity backend accepts for 3.8 Flash; the bare
+  // `gemini-3.8-flash` returns 404 "Requested entity was not found"). Treat it
+  // as a tier so the base resolves to the accepted backend ID instead of
+  // sending the invalid bare name and surfacing as "Resource has been exhausted".
+  const tierSuffixes = ['-minimal', '-low', '-medium', '-high', '-xhigh', '-tiered'];
+  for (const suffix of tierSuffixes) {
+    if (tieredModelId.endsWith(suffix)) {
+      return tieredModelId.slice(0, -suffix.length);
+    }
+  }
+  return tieredModelId;
+}
+
+/**
+ * Build tier mapping dynamically from a list of tiered model IDs.
+ * Returns mapping from base model ID to its available tiers.
+ */
+export function buildTierMapping(modelIds: string[]): Record<string, Record<string, string>> {
+  const mapping: Record<string, Record<string, string>> = {};
+
+  for (const modelId of modelIds) {
+    const base = extractBaseModelId(modelId);
+    const tier = modelId.slice(base.length + 1); // +1 for the dash
+
+    if (!mapping[base]) {
+      mapping[base] = {};
+    }
+    mapping[base][tier] = modelId;
+  }
+
+  return mapping;
+}
 
 /**
  * Resolves a model ID and optional request headers or suffix into the appropriate tier variant.
+ * Uses dynamically built TIER_MAPPING.
  */
 export function resolveModelTier(
   baseModelId: string,
-  headersOrInit?: RequestInit | unknown
+  headersOrInit?: RequestInit | unknown,
+  tierMapping?: Record<string, Record<string, string>>
 ): string {
   const parts = baseModelId.split('@');
-  const base = parts[0] || '';
-  const suffixTier = parts[1]?.toLowerCase();
+  const bare = parts[0] || '';
+  // OpenCode may append a tier to the model id itself (e.g.
+  // `gemini-3.8-flash-medium`), not only via `@` or x-agy-tier. Strip any
+  // recognized tier suffix to recover the base, then prefer that exact tier
+  // when the backend actually exposes it, else fall back to the canonical
+  // variant. Without this, `gemini-3.8-flash-medium` is sent verbatim and the
+  // backend answers 404/429 ("Resource has been exhausted") even though the
+  // account has full quota — the valid id is `gemini-3.8-flash-tiered`.
+  const base = extractBaseModelId(bare);
+  const derivedTier = bare.length > base.length ? bare.slice(base.length + 1) : undefined;
+  const suffixTier = (parts[1] || derivedTier)?.toLowerCase();
 
-  const mapping = TIER_MAPPING[base];
+  const mapping = tierMapping?.[base];
   if (!mapping) {
     return baseModelId;
   }
@@ -129,5 +143,28 @@ export function resolveModelTier(
     return mapping[requestedTier] || baseModelId;
   }
 
-  return mapping['medium'] ?? mapping['high'] ?? baseModelId;
+  // Default priority: medium > high > first available
+  return mapping['medium'] ?? mapping['high'] ?? Object.values(mapping)[0] ?? baseModelId;
+}
+
+/**
+ * Fetch available model IDs from AGY quota API.
+ * Returns a Set of model IDs that the current account/project has access to.
+ */
+export async function fetchAvailableModelIds(
+  retrieveUserQuota: (accessToken: string, projectId: string, userAgentModel?: string) => Promise<{ buckets?: Array<{ modelId?: string }> } | null>,
+  accessToken: string,
+  projectId: string,
+  userAgentModel?: string
+): Promise<Set<string>> {
+  const quota = await retrieveUserQuota(accessToken, projectId, userAgentModel);
+  if (!quota?.buckets?.length) return new Set();
+
+  const modelIds = new Set<string>();
+  for (const bucket of quota.buckets) {
+    if (bucket.modelId) {
+      modelIds.add(bucket.modelId);
+    }
+  }
+  return modelIds;
 }

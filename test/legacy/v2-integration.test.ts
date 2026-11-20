@@ -1,11 +1,33 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setupOpenCodeV2, setStoredAuthOverrideForTesting } from '../../src/plugin/v2';
 import { AGY_PROVIDER_ID } from '../../src/constants';
 import { AGY_QUOTA_TOOL_NAME } from '../../src/plugin/quota';
 import { AGY_QUOTA_SUMMARY_TOOL_NAME } from '../../src/plugin/quota-summary';
 import type { OpenCodeV2PluginContext } from '../../src/plugin/types';
 
-describe('OpenCode v2 Integration and Edge Cases', () => {
+// Test model IDs that will be returned by mocked quota
+const TEST_MODEL_IDS = [
+  'gemini-3.8-flash-low',
+  'gemini-3.8-flash-medium',
+  'gemini-3.8-flash-high',
+  'gemini-4-argon-low',
+  'gemini-4-argon-medium',
+  'gemini-4-argon-high',
+  'claude-opus-5-5-low',
+  'claude-opus-5-5-medium',
+  'claude-opus-5-5-high',
+  'gpt-oss-120b-medium',
+];
+
+// Mock auth record for testing
+const TEST_AUTH = {
+  type: 'oauth',
+  access: 'test-access-token',
+  refresh: 'test-refresh-token|test-project|citric-engine-123',
+  expires: Date.now() + 3600000
+};
+
+describe('OpenCode v2 Integration and Edge Cases (dynamic)', () => {
   const createMockContext = () => {
     let catalogTransformFn: ((catalog: any) => Promise<void> | void) | undefined;
     let toolTransformFn: ((editor: any) => Promise<void> | void) | undefined;
@@ -50,6 +72,15 @@ describe('OpenCode v2 Integration and Edge Cases', () => {
       getSessionHook: (name: string) => sessionHooks[name]
     };
   };
+
+  beforeEach(() => {
+    // Set up test auth so dynamic model catalog is populated
+    setStoredAuthOverrideForTesting(TEST_AUTH);
+  });
+
+  afterEach(() => {
+    setStoredAuthOverrideForTesting(undefined);
+  });
 
   describe('catalog.transform edge cases', () => {
     it('handles pre-existing provider and model configurations without overwriting', async () => {
@@ -96,9 +127,12 @@ describe('OpenCode v2 Integration and Edge Cases', () => {
       await transform(catalog);
 
       const models = catalog.providers[AGY_PROVIDER_ID].models;
+      // Dynamic models from test auth
       expect(models['gemini-3.8-flash'].family).toBe('gemini');
-      expect(models['claude-sonnet-5-5'].family).toBe('claude');
-      expect(models['gpt-oss-120b-medium'].family).toBe('gpt');
+      expect(models['gemini-4-argon'].family).toBe('gemini');
+      expect(models['claude-opus-5-5'].family).toBe('claude');
+      expect(models['claude-sonnet-5-5']).toBeDefined(); // may not be in test auth
+      expect(models['gpt-oss-120b'].family).toBe('gpt');
     });
   });
 
@@ -125,7 +159,7 @@ describe('OpenCode v2 Integration and Edge Cases', () => {
         const summaryOutput = await summaryTool.execute({});
         expect(summaryOutput).toContain('unavailable before Google auth is initialized');
       } finally {
-        setStoredAuthOverrideForTesting(undefined);
+        setStoredAuthOverrideForTesting(TEST_AUTH);
       }
     });
   });

@@ -1,5 +1,12 @@
 import { AGY_PROVIDER_ID } from '../constants';
-import { STATIC_MODELS_SIMPLE, TIER_MAPPING } from './tier';
+import {
+  inferModelMetadata,
+  extractBaseModelId,
+  buildTierMapping,
+  resolveModelTier,
+  fetchAvailableModelIds,
+  type SimpleStaticModel
+} from './tier';
 import { createAgyQuotaTool, AGY_QUOTA_TOOL_NAME, AGY_V2_QUOTA_COMMAND, AGY_V2_QUOTA_COMMAND_TEMPLATE } from './quota';
 import {
   createAgyQuotaSummaryTool,
@@ -14,9 +21,10 @@ import {
 } from './types';
 import { authorizeAgy, exchangeAgyWithVerifier } from '../sdk/oauth';
 import { parseOAuthCallbackInput } from './oauth-authorize';
-import { formatRefreshParts } from './auth';
-import { ensureProjectContext } from './project';
+import { formatRefreshParts, parseRefreshParts } from './auth';
+import { ensureProjectContext, retrieveUserQuota } from './project';
 import {
+  loadAccountStore,
   loadStoredAuthFromJson,
   saveStoredAuthToJson,
   setStoredAuthOverrideForTesting,
@@ -27,6 +35,8 @@ import { initDiskSignatureCache, getDiskSignatureCache, resetDiskSignatureCacheF
 import { initTurnStateTracker } from '../sdk/request';
 import { initCooldownPersistence } from '../sdk/retry';
 import { emitAgyTosWarning } from './tos-warning';
+import { accessTokenExpired, isOAuthAuth } from './auth';
+import { resolveCachedAuth } from './cache';
 
 // Re-export common symbols for backward compatibility
 export { getSafeHeader, setSafeHeaders, toUrlString } from './headers';
@@ -46,11 +56,112 @@ export {
 };
 
 /**
+ * Build dynamic model catalog using the connection API (for v2 plugin).
+ * Uses the connection API to get current auth and config, handling token refresh.
+ */
+async function buildDynamicModelCatalogForV2(ctx: OpenCodeV2PluginContext): Promise<{
+  models: Record<string, SimpleStaticModel>;
+  tierMapping: Record<string, Record<string, string>>;
+  projectId: string | undefined;
+}> {
+  const models: Record<string, SimpleStaticModel> = {};
+  const tierMapping: Record<string, Record<string, string>> = {};
+  let firstProjectId: string | undefined;
+
+  const addCatalogForAccount = async (
+    account: string | undefined,
+    authRecord: any,
+    projectId: string | undefined
+  ): Promise<void> => {
+    if (!authRecord?.access || !projectId) {
+      return;
+    }
+    const availableModelIds = await fetchAvailableModelIds(
+      retrieveUserQuota,
+      authRecord.access,
+      projectId,
+      undefined
+    );
+    if (availableModelIds.size === 0) {
+      return;
+    }
+    const accountTiers = buildTierMapping(Array.from(availableModelIds));
+    for (const [baseModelId, variants] of Object.entries(accountTiers)) {
+      const key = account ? `${account}/${baseModelId}` : baseModelId;
+      models[key] = inferModelMetadata(baseModelId);
+      tierMapping[key] = variants;
+    }
+    if (!firstProjectId) {
+      firstProjectId = projectId;
+    }
+  };
+
+  const store = loadAccountStore();
+  const accountNames = Object.keys(store.accounts);
+
+  if (accountNames.length > 0) {
+    // Multi-account: one namespace per account, project id per account.
+    for (const name of accountNames) {
+      const record = store.accounts[name];
+      if (!record || !isOAuthAuth(record) || !record.access) {
+        continue;
+      }
+      const projectId = parseRefreshParts(record.refresh).projectId;
+      try {
+        await addCatalogForAccount(name, record, projectId);
+      } catch {
+        // Skip accounts whose quota cannot be read.
+      }
+    }
+    return { models, tierMapping, projectId: firstProjectId };
+  }
+
+  // Legacy single account: connection API (handles token refresh) then storage.
+  const connApi = (ctx.integration as any)?.connection;
+  if (!connApi || typeof connApi.active !== 'function' || typeof connApi.resolve !== 'function') {
+    return { models, tierMapping, projectId: firstProjectId };
+  }
+
+  try {
+    const active = await connApi.active(AGY_PROVIDER_ID);
+    if (!active) {
+      return { models, tierMapping, projectId: firstProjectId };
+    }
+
+    const resolved = await connApi.resolve(active);
+    if (!resolved || resolved.type !== 'credential' || resolved.credential?.type !== 'oauth') {
+      return { models, tierMapping, projectId: firstProjectId };
+    }
+
+    const authRecord = resolved.credential;
+    if (!authRecord.access || !authRecord.refresh) {
+      return { models, tierMapping, projectId: firstProjectId };
+    }
+
+    let projectId: string | undefined;
+    try {
+      const configResult = await connApi.config?.get?.();
+      if (configResult?.data?.provider?.[AGY_PROVIDER_ID]?.options?.projectId) {
+        projectId = configResult.data.provider[AGY_PROVIDER_ID].options.projectId;
+      }
+    } catch {
+      // Ignore config read errors
+    }
+
+    projectId = projectId || process.env.OPENCODE_AGY_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT_ID;
+    await addCatalogForAccount(undefined, authRecord, projectId);
+    return { models, tierMapping, projectId: firstProjectId };
+  } catch {
+    return { models, tierMapping, projectId: firstProjectId };
+  }
+}
+
+/**
  * Setup adapter for OpenCode v2 plugin architecture.
+ * Fully dynamic — no hardcoded model lists.
  */
 export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<void> {
   emitAgyTosWarning();
-
   // 0. Initialize persistent caches and tracking
   try {
     initDiskSignatureCache({
@@ -75,104 +186,116 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
     console.warn(`[Agy Auth] initCooldownPersistence failed, running without cooldown disk persistence: ${e instanceof Error ? e.message : e}`);
   }
 
-  // 1. Register provider and models
-  const resolveVariants = (modelId: string) => {
-    const mapping = TIER_MAPPING[modelId];
-    if (!mapping) return undefined;
-    const variants: Array<{ id: string }> = [];
-    if (mapping.minimal !== undefined) variants.push({ id: 'minimal' });
-    if (mapping.low !== undefined) variants.push({ id: 'low' });
-    if (mapping.medium !== undefined) variants.push({ id: 'medium' });
-    if (mapping.high !== undefined) variants.push({ id: 'high' });
-    if (mapping.xhigh !== undefined) variants.push({ id: 'xhigh' });
-    return variants.length > 0 ? variants : undefined;
-  };
-
-  const updateProviderRecord = (p: any) => {
-    p.name = 'Antigravity CLI';
-    p.activation = 'enabled';
-    p.package = 'aisdk:@ai-sdk/google';
-    p.description = 'Google Gemini Antigravity Code Assist OAuth provider';
-    p.settings = { ...(p.settings || {}), apiKey: 'dummy' };
-    p.integrationID = AGY_PROVIDER_ID;
-  };
-
-  const buildModelRecord = (modelId: string, simple: any, existingModel?: any) => {
-    const isClaude = modelId.startsWith('claude-');
-    const isGpt = modelId.startsWith('gpt-');
-    const variants = resolveVariants(modelId);
-    return {
-      id: modelId,
-      providerID: AGY_PROVIDER_ID,
-      name: simple.name,
-      description: simple.description,
-      family: modelId.includes('gemini') ? 'gemini' : (isClaude ? 'claude' : (isGpt ? 'gpt' : 'unknown')),
-      reasoning: simple.reasoning,
-      attachment: simple.attachment,
-      tool_call: simple.toolCall,
-      limit: {
-        context: simple.maxTokens,
-        output: simple.maxOutputTokens,
-      },
-      cost: simple.cost || { input: 0, output: 0 },
-      ...(variants ? { variants } : {}),
-      ...(existingModel || {}),
-    };
-  };
-
-  const updateModelRecord = (m: any, modelId: string, simple: any) => {
-    m.name = simple.name;
-    m.capabilities = {
-      tools: true,
-      input: ['text', 'image'],
-      output: ['text'],
-    };
-    m.limit = {
-      context: simple.maxTokens,
-      output: simple.maxOutputTokens,
-    };
-    m.family = 'gemini';
-    if (simple.cost) {
-      m.cost = simple.cost;
-    }
-    const variants = resolveVariants(modelId);
-    if (variants) {
-      m.variants = variants;
-    }
-  };
-
   // OpenCode v2.0.8+ splits catalog into top-level provider and model services
   if (ctx.provider?.transform) {
     ctx.provider.transform(async (editor: any) => {
       if (!editor) return;
       if (typeof editor.update === 'function') {
-        editor.update(AGY_PROVIDER_ID, updateProviderRecord);
+        editor.update(AGY_PROVIDER_ID, (p: any) => {
+          p.name = 'Antigravity CLI';
+          p.activation = 'enabled';
+          p.package = 'aisdk:@ai-sdk/google';
+          p.description = 'Google Gemini Antigravity Code Assist OAuth provider';
+          p.settings = { ...(p.settings || {}), apiKey: 'dummy' };
+          p.integrationID = AGY_PROVIDER_ID;
+        });
       } else if (typeof editor.set === 'function') {
         const p: any = { id: AGY_PROVIDER_ID };
-        updateProviderRecord(p);
+        p.name = 'Antigravity CLI';
+        p.activation = 'enabled';
+        p.package = 'aisdk:@ai-sdk/google';
+        p.description = 'Google Gemini Antigravity Code Assist OAuth provider';
+        p.settings = { ...(p.settings || {}), apiKey: 'dummy' };
+        p.integrationID = AGY_PROVIDER_ID;
         editor.set(AGY_PROVIDER_ID, p);
       } else if (typeof editor === 'object') {
         const p: any = editor[AGY_PROVIDER_ID] || { id: AGY_PROVIDER_ID };
-        updateProviderRecord(p);
+        p.name = 'Antigravity CLI';
+        p.activation = 'enabled';
+        p.package = 'aisdk:@ai-sdk/google';
+        p.description = 'Google Gemini Antigravity Code Assist OAuth provider';
+        p.settings = { ...(p.settings || {}), apiKey: 'dummy' };
+        p.integrationID = AGY_PROVIDER_ID;
         editor[AGY_PROVIDER_ID] = p;
       }
     });
   }
 
+  // 2. Register dynamic models via ctx.model.transform (called when catalog is queried)
   if (ctx.model?.transform) {
     ctx.model.transform(async (editor: any) => {
       if (!editor) return;
+
+      // Fetch dynamic models using connection API (handles token refresh & config)
+      const { models: dynamicModels, tierMapping } = await buildDynamicModelCatalogForV2(ctx);
+
+      const resolveVariants = (modelId: string) => {
+        const mapping = tierMapping[modelId];
+        if (!mapping) return undefined;
+        const variants: Array<{ id: string }> = [];
+        if (mapping.minimal !== undefined) variants.push({ id: 'minimal' });
+        if (mapping.low !== undefined) variants.push({ id: 'low' });
+        if (mapping.medium !== undefined) variants.push({ id: 'medium' });
+        if (mapping.high !== undefined) variants.push({ id: 'high' });
+        if (mapping.xhigh !== undefined) variants.push({ id: 'xhigh' });
+        return variants.length > 0 ? variants : undefined;
+      };
+
+      const buildModelRecord = (modelId: string, simple: SimpleStaticModel, existingModel?: any) => {
+        const isClaude = modelId.startsWith('claude-');
+        const isGpt = modelId.startsWith('gpt-');
+        const variants = resolveVariants(modelId);
+        return {
+          id: modelId,
+          providerID: AGY_PROVIDER_ID,
+          name: simple.name,
+          description: simple.description,
+          family: modelId.includes('gemini') ? 'gemini' : (isClaude ? 'claude' : (isGpt ? 'gpt' : 'unknown')),
+          reasoning: simple.reasoning,
+          attachment: simple.attachment,
+          tool_call: simple.toolCall,
+          limit: {
+            context: simple.maxTokens,
+            output: simple.maxOutputTokens,
+          },
+          cost: simple.cost || { input: 0, output: 0 },
+          ...(variants ? { variants } : {}),
+          ...(existingModel || {}),
+        };
+      };
+
+      const updateModelRecord = (m: any, modelId: string, simple: SimpleStaticModel) => {
+        m.name = simple.name;
+        m.capabilities = {
+          tools: true,
+          input: ['text', 'image'],
+          output: ['text'],
+        };
+        m.limit = {
+          context: simple.maxTokens,
+          output: simple.maxOutputTokens,
+        };
+        m.family = (modelId.split('/').pop() || modelId).split('-')[0] || 'unknown';
+        if (simple.cost) {
+          m.cost = simple.cost;
+        }
+        const variants = resolveVariants(modelId);
+        if (variants) {
+          m.variants = variants;
+        }
+      };
+
       if (typeof editor.update === 'function') {
-        for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
+        for (const [modelId, simple] of Object.entries(dynamicModels)) {
           editor.update(AGY_PROVIDER_ID, modelId, (m: any) => updateModelRecord(m, modelId, simple));
         }
       } else if (typeof editor.set === 'function') {
-        for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
+        for (const [modelId, simple] of Object.entries(dynamicModels)) {
           const m = buildModelRecord(modelId, simple);
           editor.set(`${AGY_PROVIDER_ID}:${modelId}`, m);
         }
       } else if (typeof editor === 'object') {
-        for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
+        for (const [modelId, simple] of Object.entries(dynamicModels)) {
           const key = `${AGY_PROVIDER_ID}:${modelId}`;
           editor[key] = buildModelRecord(modelId, simple, editor[key]);
         }
@@ -180,16 +303,80 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
     });
   }
 
-  // OpenCode v2 <= 2.0.7 legacy catalog transform fallback
+  // 3. Also register via catalog.transform for v2 <= 2.0.7 compatibility
   if (ctx.catalog?.transform) {
     ctx.catalog.transform(async (editor: any) => {
       if (!editor) return;
 
+      const { models: dynamicModels, tierMapping } = await buildDynamicModelCatalogForV2(ctx);
+
+      const resolveVariants = (modelId: string) => {
+        const mapping = tierMapping[modelId];
+        if (!mapping) return undefined;
+        const variants: Array<{ id: string }> = [];
+        if (mapping.minimal !== undefined) variants.push({ id: 'minimal' });
+        if (mapping.low !== undefined) variants.push({ id: 'low' });
+        if (mapping.medium !== undefined) variants.push({ id: 'medium' });
+        if (mapping.high !== undefined) variants.push({ id: 'high' });
+        if (mapping.xhigh !== undefined) variants.push({ id: 'xhigh' });
+        return variants.length > 0 ? variants : undefined;
+      };
+
+      const buildModelRecord = (modelId: string, simple: SimpleStaticModel, existingModel?: any) => {
+        const variants = resolveVariants(modelId);
+        const family = (modelId.split('/').pop() || modelId).split('-')[0] || 'unknown';
+        return {
+          id: modelId,
+          providerID: AGY_PROVIDER_ID,
+          name: simple.name,
+          description: simple.description,
+          family,
+          reasoning: simple.reasoning,
+          attachment: simple.attachment,
+          tool_call: simple.toolCall,
+          limit: {
+            context: simple.maxTokens,
+            output: simple.maxOutputTokens,
+          },
+          cost: simple.cost || { input: 0, output: 0 },
+          ...(variants ? { variants } : {}),
+          ...(existingModel || {}),
+        };
+      };
+
+      const updateModelRecord = (m: any, modelId: string, simple: SimpleStaticModel) => {
+        m.name = simple.name;
+        m.capabilities = {
+          tools: true,
+          input: ['text', 'image'],
+          output: ['text'],
+        };
+        m.limit = {
+          context: simple.maxTokens,
+          output: simple.maxOutputTokens,
+        };
+        m.family = (modelId.split('/').pop() || modelId).split('-')[0] || 'unknown';
+        if (simple.cost) {
+          m.cost = simple.cost;
+        }
+        const variants = resolveVariants(modelId);
+        if (variants) {
+          m.variants = variants;
+        }
+      };
+
       if (typeof editor?.provider?.update === 'function') {
-        editor.provider.update(AGY_PROVIDER_ID, updateProviderRecord);
+        editor.provider.update(AGY_PROVIDER_ID, (p: any) => {
+          p.name = 'Antigravity CLI';
+          p.activation = 'enabled';
+          p.package = 'aisdk:@ai-sdk/google';
+          p.description = 'Google Gemini Antigravity Code Assist OAuth provider';
+          p.settings = { ...(p.settings || {}), apiKey: 'dummy' };
+          p.integrationID = AGY_PROVIDER_ID;
+        });
 
         if (typeof editor?.model?.update === 'function') {
-          for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
+          for (const [modelId, simple] of Object.entries(dynamicModels)) {
             editor.model.update(AGY_PROVIDER_ID, modelId, (m: any) => updateModelRecord(m, modelId, simple));
           }
         }
@@ -219,13 +406,13 @@ export async function setupOpenCodeV2(ctx: OpenCodeV2PluginContext): Promise<voi
 
       const targetModels = catalog.providers[AGY_PROVIDER_ID].models;
 
-      for (const [modelId, simple] of Object.entries(STATIC_MODELS_SIMPLE)) {
+      for (const [modelId, simple] of Object.entries(dynamicModels)) {
         targetModels[modelId] = buildModelRecord(modelId, simple, targetModels[modelId]);
       }
     });
   }
 
-  // 2. Register agy_quota and agy_quota_summary tools via tool transform
+  // 4. Register agy_quota and agy_quota_summary tools via tool transform
   ctx.tool.transform(async (editor: any) => {
     if (!editor) return;
 

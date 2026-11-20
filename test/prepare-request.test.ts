@@ -58,7 +58,26 @@ describe("prepareAgyRequest Comprehensive Suite", () => {
     expect(parsed.request.cached_content).toBeUndefined();
     expect(parsed.request.extra_body).toBeUndefined();
     expect(parsed.request.model).toBeUndefined();
-    expect(parsed.request.labels.model_enum).toBeDefined();
+    // Unknown enum is intentionally omitted: a stale MODEL_PLACEHOLDER_M16
+    // makes the streaming endpoint stall or reject the request.
+    expect(parsed.request.labels.model_enum).toBeUndefined();
+  });
+
+  it("emits model_enum when the live catalogue provides one", () => {
+    const input = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
+    const body = JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: "Hello" }] }],
+    });
+    const result = prepareAgyRequest(
+      input,
+      { method: "POST", body },
+      token,
+      project,
+      undefined,
+      { "gemini-2.5-pro": "MODEL_ENUM_FROM_CATALOGUE" },
+    );
+    const parsed = JSON.parse(result.init.body as string);
+    expect(parsed.request.labels.model_enum).toBe("MODEL_ENUM_FROM_CATALOGUE");
   });
 
   it("classifies image_gen, checkpoint, chat, and web_search requestTypes", () => {

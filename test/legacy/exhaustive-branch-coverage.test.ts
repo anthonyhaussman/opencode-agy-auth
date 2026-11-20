@@ -124,7 +124,7 @@ describe('Exhaustive Branch Coverage Suite', () => {
 
     const parsed = parseGenerativeLanguageRequest('https://daily-cloudcode-pa.googleapis.com/v1internal/models/gemini-3.1-pro-high:generateContent');
     expect(parsed?.requestedModel).toBe('gemini-3.1-pro-high');
-    expect(parsed?.effectiveModel).toBe('gemini-pro-agent');
+    expect(parsed?.effectiveModel).toBe('gemini-3.1-pro-high');
 
     expect(isRecord({})).toBe(true);
     expect(isRecord(null)).toBe(false);

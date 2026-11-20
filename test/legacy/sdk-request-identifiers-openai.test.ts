@@ -42,7 +42,7 @@ describe("src/sdk/request/shared", () => {
 
     const parsed = parseGenerativeLanguageRequest("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-high:streamGenerateContent");
     expect(parsed?.requestedModel).toBe("gemini-3.1-pro-high");
-    expect(parsed?.effectiveModel).toBe("gemini-pro-agent");
+    expect(parsed?.effectiveModel).toBe("gemini-3.1-pro-high");
     expect(parsed?.action).toBe("streamGenerateContent");
 
     expect(parseGenerativeLanguageRequest("https://example.com/other")).toBeUndefined();
