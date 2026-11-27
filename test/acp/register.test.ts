@@ -177,6 +177,8 @@ async function register(ctx: any, overrides: Record<string, unknown> = {}) {
     pool: new AgyProcessPool(),
     log: vi.fn(),
     listModels: async () => ({ models: [], recognized: true }),
+    // Most tests drive discovery by hand after setup; do not hold setup for it.
+    modelsStartupWaitMs: 0,
     ...overrides,
   } as any);
   regs.push(reg);
@@ -227,12 +229,36 @@ describe("registerAgyAcpProvider: catalog", () => {
     ]);
   });
 
-  it("setup does not wait for agy models", async () => {
+  it("setup waits for the first agy models discovery so the catalog is filled", async () => {
     const { ctx, rec } = fakeCtx();
-    const reg = await register(ctx, { listModels: () => new Promise(() => {}) });
+    const listModels = () =>
+      new Promise<{ models: typeof MODELS; recognized: boolean }>((r) =>
+        setTimeout(() => r({ models: MODELS, recognized: true }), 50),
+      );
+    await register(ctx, { listModels, modelsStartupWaitMs: 5000 });
+    await rec.apply();
+    expect(modelIds(rec)).toEqual([
+      ["m-high", "Model High"],
+      ["m-low", "Model Low"],
+    ]);
+  });
+
+  it("setup waits at most modelsStartupWaitMs for agy models, then logs and continues", async () => {
+    const { ctx, rec } = fakeCtx();
+    const log = vi.fn();
+    let finish!: (v: { models: typeof MODELS; recognized: boolean }) => void;
+    const listModels = () => new Promise<{ models: typeof MODELS; recognized: boolean }>((r) => (finish = r));
+    const started = Date.now();
+    const reg = await register(ctx, { log, listModels, modelsStartupWaitMs: 20 });
+    expect(Date.now() - started).toBeLessThan(2000);
     expect(reg.status().status).toBe("ready");
+    expect(log).toHaveBeenCalledWith("warn", expect.stringContaining("agy models still running"));
     await rec.apply();
     expect(rec.models.size).toBe(0);
+    finish({ models: MODELS, recognized: true });
+    await reg.modelsReady;
+    await rec.apply();
+    expect(rec.models.size).toBe(2);
   });
 
   it.each([

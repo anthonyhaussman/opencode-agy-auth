@@ -6,6 +6,8 @@ export const MIN_AGY_VERSION = "1.5.10";
 
 export const STARTUP_TIMEOUT_MS = 30_000;
 export const IDLE_TIMEOUT_MS = 300_000;
+/** How long plugin setup waits for the first `agy models` before returning. */
+export const MODELS_STARTUP_WAIT_MS = 10_000;
 export const BRIDGE_CONNECT_TIMEOUT_MS = 10_000;
 /** How long a cancelled agy turn may take to settle before its process is disposed. */
 export const CANCEL_SETTLE_TIMEOUT_MS = 10_000;
