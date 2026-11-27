@@ -1,5 +1,80 @@
 # Changelog
 
+## [1.5.18](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.5.9...1.5.18) (2026-11-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **global:** OpenCode v1 is no longer supported.
+
+### Features
+
+* **acp:** add NDJSON JSON-RPC connection ([f56cac1](https://github.com/anthonyhaussman/opencode-agy-auth/commit/f56cac106605a13e579f42ccafeb579ba09bec79))
+* **acp:** bridge OpenCode tools to agy over MCP ([d7424ab](https://github.com/anthonyhaussman/opencode-agy-auth/commit/d7424ab3790b30b523a98cf0ac4505c1da894c9d))
+* **acp:** discover google-agy-acp models from agy and refresh live ([8e38efd](https://github.com/anthonyhaussman/opencode-agy-auth/commit/8e38efd615ef7293302e0017004af1f225898fee))
+* **acp:** implement agy ACP language model ([f844454](https://github.com/anthonyhaussman/opencode-agy-auth/commit/f8444548d340e55777349ef52f6194e460dc9302))
+* **acp:** list models from agy models stream-json output ([0ff834b](https://github.com/anthonyhaussman/opencode-agy-auth/commit/0ff834b3cedb86a00da5c74ca2ccf068fb9454da))
+* **acp:** manage agy acp process lifecycle ([c18a70d](https://github.com/anthonyhaussman/opencode-agy-auth/commit/c18a70dead8a14fbb03315afd87f7db0997c69f2))
+* **acp:** map ACP session updates to AI SDK stream parts ([a812a6f](https://github.com/anthonyhaussman/opencode-agy-auth/commit/a812a6fa68ea01e5c5f0b982ec769adcbf4669bd))
+* **acp:** opt-in AGY_ACP_DEBUG log of agy traffic ([66f3c42](https://github.com/anthonyhaussman/opencode-agy-auth/commit/66f3c42616e2f3e38fd4d569715b3b958a20e3e6))
+* **acp:** register google-agy-acp provider for OpenCode v2 ([f650f14](https://github.com/anthonyhaussman/opencode-agy-auth/commit/f650f14dc44a73d313af043e6e520d72bde2ee76))
+* **acp:** resolve and probe agy binary ([a5d810c](https://github.com/anthonyhaussman/opencode-agy-auth/commit/a5d810c0237140c3922d9837cbdc48e6a045a1fa))
+* **acp:** ship and install the opencode-bridge agy plugin ([9ecaa93](https://github.com/anthonyhaussman/opencode-agy-auth/commit/9ecaa93fe6f093133e4bfd40a5a46088a1338d32))
+* **acp:** sync OpenCode history with agy sessions ([649887e](https://github.com/anthonyhaussman/opencode-agy-auth/commit/649887e15c3f1b68fe299cc99c17a5cc81800826))
+* **agy:** bump agy CLI to v1.5.18 ([4e123f8](https://github.com/anthonyhaussman/opencode-agy-auth/commit/4e123f81514716b65c9a11661b9de7e45afc741c))
+
+
+### Bug Fixes
+
+* **acp:** bound cancelled turns and serialize sessions ([6fdd6d9](https://github.com/anthonyhaussman/opencode-agy-auth/commit/6fdd6d90b8bc92f4c90fa6f595d791fcd3e428ad))
+* **acp:** compare model lists regardless of order ([adbab90](https://github.com/anthonyhaussman/opencode-agy-auth/commit/adbab907561d5ecfff2e7d5bd2803ff1f96d2059))
+* **acp:** deliver results of invalid bridge calls late ([3521c7f](https://github.com/anthonyhaussman/opencode-agy-auth/commit/3521c7f7b6c4bae44dacd6b5fddfd12859bcad8d))
+* **acp:** discover models with the OpenCode credential, drop stale lists ([d1126e1](https://github.com/anthonyhaussman/opencode-agy-auth/commit/d1126e12eb5d1ae085bc2da92cb47510b53ac15b))
+* **acp:** echo request id on id-null bridge errors ([91b2e23](https://github.com/anthonyhaussman/opencode-agy-auth/commit/91b2e2386f813132c5aa2ce1857cabd833b97c25))
+* **acp:** free sessions on exit and respawn on key switch ([2cd1649](https://github.com/anthonyhaussman/opencode-agy-auth/commit/2cd16495153a0ace5e26e9c619b56203ed44e4bb))
+* **acp:** harden MCP bridge schema compile and re-initialize ([9309566](https://github.com/anthonyhaussman/opencode-agy-auth/commit/93095667e2eae65b84cb05ce4d3a9386d357e0a3))
+* **acp:** ignore late model discovery after dispose and warn without catalog reload ([f346d0a](https://github.com/anthonyhaussman/opencode-agy-auth/commit/f346d0ae16b9e68f654eb6d96d71ad46fef6a1b9))
+* **acp:** keep last working model list on transient agy models failure ([fea2cb4](https://github.com/anthonyhaussman/opencode-agy-auth/commit/fea2cb4388d428e892f4a956fbbafc40527b2485))
+* **acp:** launch the agy tool bridge as bun under compiled OpenCode ([61de0b3](https://github.com/anthonyhaussman/opencode-agy-auth/commit/61de0b3c49ffae08aa66a5f17422f4136dbee917))
+* **acp:** reinstall agy plugin when its dir is missing ([a4b369d](https://github.com/anthonyhaussman/opencode-agy-auth/commit/a4b369d3f623f793aacb42fdb94e02ff343fc5ff))
+* **acp:** reload provider and model catalogs on OpenCode 2.3 hosts ([c970309](https://github.com/anthonyhaussman/opencode-agy-auth/commit/c97030939a5f036f66b0209622e0b47a796f5940))
+* **acp:** wait for first agy model discovery before setup returns ([de410e4](https://github.com/anthonyhaussman/opencode-agy-auth/commit/de410e453ed68c3d841c177996b23c7f65a2e02c))
+
+
+### Refactor
+
+* **acp:** in-memory model registry, drop fallback list and cache ([f8cd1f4](https://github.com/anthonyhaussman/opencode-agy-auth/commit/f8cd1f488301fbc10c23cfed010bca216ae9acb2))
+* **global:** drop OpenCode v1 integration ([1df5d04](https://github.com/anthonyhaussman/opencode-agy-auth/commit/1df5d0437af9fba312de1a58a5159e61be21b04d))
+
+
+### Documentation
+
+* **acp:** document dynamic model discovery ([f78944c](https://github.com/anthonyhaussman/opencode-agy-auth/commit/f78944ce17db18c37172b3e21eef74e1141f0021))
+* **acp:** record agent-plugin spike findings ([f52940d](https://github.com/anthonyhaussman/opencode-agy-auth/commit/f52940d9c555aa230416abdb7cd822f301e87a51))
+* **acp:** record agy acp spike findings ([9fecbb4](https://github.com/anthonyhaussman/opencode-agy-auth/commit/9fecbb4a102ecc403b90775496f7e154353c3cc5))
+* **acp:** require OpenCode &gt;= 2.4.0 ([7f0c25c](https://github.com/anthonyhaussman/opencode-agy-auth/commit/7f0c25cb397a4ed8959f9066b944225b8e78640e))
+* **acp:** state OpenCode 2.2.3 minimum for google-agy-acp ([b06976f](https://github.com/anthonyhaussman/opencode-agy-auth/commit/b06976fc241c084490f1ef81c49d8502d2316caf))
+* **agents:** audit ACP surface during agy binary inspection ([138d6aa](https://github.com/anthonyhaussman/opencode-agy-auth/commit/138d6aa1ac7f57dd0986f2df986990221b1e7ed5))
+* **agents:** extend agy bump workflow for ACP checks ([1b2ee52](https://github.com/anthonyhaussman/opencode-agy-auth/commit/1b2ee528019623b33c454695e7be3bef8491c1c0))
+* document google-agy-acp and deprecate direct API provider ([28ba070](https://github.com/anthonyhaussman/opencode-agy-auth/commit/28ba070d313e99a41bc30dc939e208d69ae7eb82))
+* replace alpha release guide with AGENTS.md note ([06873c5](https://github.com/anthonyhaussman/opencode-agy-auth/commit/06873c5287ebcd0a967dbc425a783ee4ca048c95))
+
+
+### Tests
+
+* **acp:** keep idle-kill session pooled under coverage load ([7df7e27](https://github.com/anthonyhaussman/opencode-agy-auth/commit/7df7e27c9e27c52e96acaebd97fd7c353030bd8e))
+* **acp:** match host catalog shape and drop timing sleeps ([21b8f9f](https://github.com/anthonyhaussman/opencode-agy-auth/commit/21b8f9ffce55f4f26ed456a5e25a7b3ea1ec1b87))
+
+
+### Build System
+
+* **deps-dev:** bump @vitest/coverage-v8 from 5.1.0 to 5.1.1 ([8fb31b1](https://github.com/anthonyhaussman/opencode-agy-auth/commit/8fb31b175649aa513e705e924f13f3d877fae6b9))
+* **deps:** bump @ai-sdk/google from 4.0.121 to 4.0.124 ([904878a](https://github.com/anthonyhaussman/opencode-agy-auth/commit/904878a73e977c135f31c9449362a14575125a30))
+* **deps:** bump @opencode-ai/plugin from 1.19.5 to 1.19.6 ([c732fd8](https://github.com/anthonyhaussman/opencode-agy-auth/commit/c732fd809726552d28247ed78f137a9380cba7bf))
+* **deps:** bump hashgraph-online/ai-plugin-scanner-action ([f84a63f](https://github.com/anthonyhaussman/opencode-agy-auth/commit/f84a63fd701d37c1381879fee6221d3985ea07f1))
+* **deps:** raise @opencode-ai/sdk range to ^1.19.6 ([afa3988](https://github.com/anthonyhaussman/opencode-agy-auth/commit/afa3988555aaaea9352697fd82bdb5b3935e3c1d))
+* **deps:** update dependencies to latest ([534fe43](https://github.com/anthonyhaussman/opencode-agy-auth/commit/534fe43a1c283699b6a256878b0ec6e31883c88a))
+
 ## [1.5.9](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.5.8...1.5.9) (2026-11-15)
 
 
