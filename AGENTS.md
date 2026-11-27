@@ -157,6 +157,7 @@ When reconciling agy CLI release notes against this plugin's code surface, check
 ## Gotchas
 
 - `.release-please-manifest.json` is auto-managed by release-please; do not manually edit it.
+- Release track: `.release-please-config.json` `packages."."` sets `"prerelease"` (`true`: `X.Y.Z-alpha.N` tags on the npm `alpha` dist-tag; `false`: stable `X.Y.Z`) and `"release-as"` (next version). To switch tracks, change only these keys.
 - Debug `google-agy-acp` with `AGY_ACP_DEBUG=1` (optional `AGY_ACP_DEBUG_FILE`, default `<XDG_DATA_HOME or ~/.local/share>/opencode/agy-acp/debug.log`, mode 0600): logs spawn, ACP JSON-RPC traffic, stderr and exit per agy child; the bridge token and Gemini API key are redacted, prompts are not.
 - When the agy CLI is not logged in (`agy --version` works but `agy` interactive fails with "could not open TTY"), the `agy models` command still works and returns a cached or session-less model list.
 - curl may show `HTTP/1.0 400 Bad Request` from a network security appliance intercepting `Authorization`-header requests against Google APIs. Use Node `fetch` instead (HTTP/2 stream multiplexing works correctly through such appliances). This is why `scripts/fetch-models.mjs` uses Node's built-in `fetch` rather than shelling out to `curl`.
