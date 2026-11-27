@@ -2,7 +2,7 @@ import type { OpenCodeV2PluginContext, PluginClient } from "../plugin/types";
 import { emitAgyAcpTosWarning } from "../plugin/tos-warning";
 import { createAgyPluginInstaller } from "./agy-plugin";
 import { listAgyModels, probeAgy, type AgyProbe } from "./binary";
-import { AGY_ACP_PROVIDER_ID, KIND_HEADER, SESSION_HEADER } from "./constants";
+import { AGY_ACP_PROVIDER_ID, KIND_HEADER, MODELS_STARTUP_WAIT_MS, SESSION_HEADER } from "./constants";
 import { AgyAcpError, type AgyErrorCode } from "./errors";
 import { AgyAcpLanguageModel, type AgyAcpDeps, type LiveSession } from "./language-model";
 import { AgyProcessPool, applyAgyAuthEnv, type AcpModelInfo } from "./process";
@@ -17,6 +17,8 @@ export type AgyAcpRegisterOverrides = Partial<AgyAcpDeps> & {
   installer?: () => Promise<void>;
   /** Model discovery via `agy models` (tests). */
   listModels?: typeof listAgyModels;
+  /** Upper bound for how long setup waits for the first model discovery (tests). */
+  modelsStartupWaitMs?: number;
   /** Extra options for the default agy plugin installer (tests). */
   installerOptions?: Omit<Parameters<typeof createAgyPluginInstaller>[0], "agyPath" | "notify">;
   /** Toast channel; defaults to `ctx.client` when the host provides one. */
@@ -75,6 +77,7 @@ export async function registerAgyAcpProvider(
     probe: probeFn = probeAgy,
     installer: installerOverride,
     listModels = listAgyModels,
+    modelsStartupWaitMs = MODELS_STARTUP_WAIT_MS,
     installerOptions,
     client = (ctx as { client?: PluginClient }).client,
     ...depOverrides
@@ -263,6 +266,19 @@ export async function registerAgyAcpProvider(
     if (sdkRegistration && typeof sdkRegistration.dispose === "function") sdkRegistration.dispose();
     await deps.pool.disposeAll();
   };
+
+  // Hosts resolve `opencode run -m` and default models right after setup, so give
+  // the first `agy models` a bounded head start; a slow agy still fills the
+  // catalog later through the reload.
+  let waitTimer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = await Promise.race([
+    handle.modelsReady.then(() => false),
+    new Promise<boolean>((resolve) => {
+      waitTimer = setTimeout(() => resolve(true), modelsStartupWaitMs);
+    }),
+  ]);
+  clearTimeout(waitTimer);
+  if (timedOut) log("warn", "agy-acp: agy models still running; models appear when it finishes");
   return handle;
 }
 
