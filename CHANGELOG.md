@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.5.9](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.5.9...1.5.9) (2026-11-27)
+
+
+### Build System
+
+* **deps-dev:** bump @vitest/coverage-v8 from 5.1.0 to 5.1.1 ([8fb31b1](https://github.com/anthonyhaussman/opencode-agy-auth/commit/8fb31b175649aa513e705e924f13f3d877fae6b9))
+* **deps:** bump @ai-sdk/google from 4.0.121 to 4.0.124 ([904878a](https://github.com/anthonyhaussman/opencode-agy-auth/commit/904878a73e977c135f31c9449362a14575125a30))
+* **deps:** bump @opencode-ai/plugin from 1.19.5 to 1.19.6 ([c732fd8](https://github.com/anthonyhaussman/opencode-agy-auth/commit/c732fd809726552d28247ed78f137a9380cba7bf))
+
 ## [1.5.9](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.5.8...1.5.9) (2026-11-15)
 
 
