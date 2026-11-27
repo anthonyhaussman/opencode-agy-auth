@@ -325,3 +325,16 @@ listener check only worked because its empty 500 made the proxy synthesize an
 error carrying the request id. Fix: `bridge-proxy.mjs` now copies the request id
 into id-null error replies (agy plugin version 1.0.1). After the fix the live
 echo round trip passes.
+
+## Re-check on agy 1.5.18
+
+Date: 2026-11-27. OpenCode 2.4.2. Audited through ACP only (no direct Code Assist calls).
+
+- `initialize`: `agentInfo.version` `1.5.18`; `_meta.antigravity` still advertises `tier: true` and `systemPrompt.append: true`; capabilities unchanged (`loadSession`, `sessionCapabilities` resume/close/load/list/additionalDirectories).
+- Restricted agent: `agy acp --agent opencode` without bridge env lists only `read_file, manage_task`; with the bridge connected it adds `call_mcp_tool`. `AGY_ACP_LIVE=1 npx vitest run test/acp/live.test.ts`: 4/4 passed (including "never lets write_file succeed").
+- Permission shape unchanged: `call_mcp_tool` with `ServerName: opencode-bridge_bridge`, options `allow` (`allow_once`) and `deny` (`reject_once`).
+- MCP wait limit: a bridge `tools/call` that never answers fails 180.0 s after allow with `MCP tool call to server "opencode-bridge_bridge" timed out after 3m0s: context deadline exceeded`. Still 180 s.
+- `call_mcp_tool` is only exposed once the bridge MCP server has connected; a `session/prompt` sent right after `session/new` can miss it.
+- `session/new` `mcpServers` (stdio) was not exposed to the default agent in this run; the provider does not use that path (`mcpServers: []`).
+- antigravity-cli#1684: `systemPrompt.append` containing `tools.opencode.session_move` still ends with `RESOURCE_EXHAUSTED (code 429)` after about 141 s; `tools.opencode.sessionMove` answers in 5 s.
+- `MIN_AGY_VERSION` stays `1.5.10`.
