@@ -756,7 +756,8 @@ describe("AgyAcpLanguageModel", () => {
 
   it("idle_kill_closes_bridge_and_frees_slot", async () => {
     const h = harness([INIT, AUTH, NEW, { expect: "session/prompt", reply: END }], {
-      deps: { idleTimeoutMs: 150, bridgeConnectTimeoutMs: 2000 },
+      // Long enough that the session is still pooled after run() under coverage load.
+      deps: { idleTimeoutMs: 1000, bridgeConnectTimeoutMs: 2000 },
     });
     await run(h, opts([user("hi")], { tools: [READ_TOOL] }));
     const live = h.deps.pool.get("ses-1")!;
