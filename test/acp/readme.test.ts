@@ -23,7 +23,8 @@ describe("README", () => {
 
   it("documents requirements, disclaimer and runtime notes", () => {
     for (const needle of [
-      "OpenCode >= 2.2.3",
+      "OpenCode >= 2.4.0",
+      "tools.opencode.session_move",
       "OPENCODE_AGY_PATH",
       "google-agy-acp",
       "makes no claim",

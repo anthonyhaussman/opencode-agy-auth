@@ -1,6 +1,6 @@
 # AGENTS.md
 
-OpenCode v2 plugin (OpenCode >= 2.2.3, v2 only) for the Google Gemini Antigravity CLI (`agy`). It registers two providers:
+OpenCode v2 plugin (OpenCode >= 2.4.0, v2 only) for the Google Gemini Antigravity CLI (`agy`). It registers two providers:
 
 - `google-agy-acp`: drives the local `agy acp --agent opencode` binary (agy >= 1.5.10) over ACP. OpenCode tools are bridged to agy over MCP through an agy plugin named `opencode-bridge`.
 - `google-agy` (deprecated, display name suffixed "(deprecated)"): the original direct Code Assist provider. It intercepts `@ai-sdk/google` requests and rewrites them to the Antigravity Code Assist endpoint with OAuth bearer auth, project context resolution, and server-supplied model enum mapping. It also ships the `agy_quota` and `agy_quota_summary` tools and quota commands.

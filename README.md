@@ -30,7 +30,7 @@ An [OpenCode](https://opencode.ai/) plugin for the Antigravity CLI (`agy`). It s
 
 ## Requirements
 
-- OpenCode >= 2.2.3, required by `google-agy-acp` (this package supports the v2 plugin API only; older OpenCode versions cannot load the provider).
+- OpenCode >= 2.4.0, required by `google-agy-acp` (this package supports the v2 plugin API only; older OpenCode versions cannot load the provider). OpenCode 2.2.3 to 2.3.2 can load the provider, but their system prompt names the Code Mode tool `tools.opencode.session_move`, and agy answers every prompt that contains this string with `RESOURCE_EXHAUSTED (code 429)` ([antigravity-cli#1684](https://github.com/google-antigravity/antigravity-cli/issues/1684)). OpenCode 2.4.0 renamed the tool to `tools.opencode.session.move`.
 - agy >= 1.5.10 for `google-agy-acp`. The binary is `agy` on your `PATH`, or the path in `OPENCODE_AGY_PATH`.
 
 ## google-agy-acp provider
