@@ -2,6 +2,32 @@
 
 ## [1.5.18](https://github.com/anthonyhaussman/opencode-agy-auth/compare/1.5.9...1.5.18) (2026-11-27)
 
+### Highlights
+
+**New `google-agy-acp` provider (recommended).** The plugin now drives your local
+[`agy`](https://github.com/google-antigravity/antigravity-cli) CLI over the Agent Client
+Protocol (`agy acp`) instead of calling the Gemini Code Assist API itself. The CLI handles
+requests, login and quota, the same way it does when you use it on its own. OpenCode keeps
+running the tools (edits, shell, permission prompts) through a local MCP bridge. Models come
+from `agy models` and appear on their own; the low/medium/high variants map to agy's
+thought level.
+
+Why it matters: the old provider sent OpenCode's own requests straight to Google's API with
+the Antigravity OAuth client, and Google has disabled accounts for that kind of third-party
+use. With `google-agy-acp`, the plugin no longer talks to the Gemini API directly.
+This lowers the risk but does not remove it: Google's policy names OpenCode as a third-party
+tool, and this project makes no claim of Terms of Service compliance. The **Gemini API key**
+and **Vertex AI** login methods remain the safest choices.
+
+Requirements: OpenCode >= 2.4.0 and agy >= 1.5.10 (1.5.18 tested). OpenCode 2.2.3 to 2.3.2
+trigger an upstream 429 ([antigravity-cli#1684](https://github.com/google-antigravity/antigravity-cli/issues/1684)).
+Set `AGY_ACP_DEBUG=1` to log agy traffic when reporting problems.
+
+**`google-agy` is deprecated.** The direct-API provider still works for existing setups but
+will not get new features. Switch to `google-agy-acp`.
+
+**OpenCode v1 is no longer supported** (see breaking changes below).
+
 
 ### ⚠ BREAKING CHANGES
 
